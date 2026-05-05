@@ -911,8 +911,42 @@
 	}
 
 	@media (max-width: 768px) {
+		.page {
+			padding: 0 var(--spacing-sm);
+		}
+
+		.tabs {
+			width: 100%;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			-webkit-overflow-scrolling: touch;
+			scrollbar-width: none;
+			margin-bottom: var(--spacing-lg);
+		}
+
+		.tabs::-webkit-scrollbar {
+			display: none;
+		}
+
+		.tab {
+			padding: var(--spacing-sm) var(--spacing-md);
+			font-size: 0.8125rem;
+			white-space: nowrap;
+			flex-shrink: 0;
+		}
+
+		.tab-header {
+			flex-direction: column;
+			gap: var(--spacing-md);
+		}
+
+		.tab-header .btn {
+			width: 100%;
+		}
+
 		.downloads-layout {
 			grid-template-columns: 1fr;
+			gap: var(--spacing-lg);
 		}
 
 		.downloads-grid,
@@ -922,6 +956,41 @@
 
 		.form-row {
 			grid-template-columns: 1fr;
+		}
+
+		.form-card {
+			padding: var(--spacing-md);
+		}
+
+		.content-card {
+			padding: var(--spacing-md);
+		}
+
+		.card-header h3 {
+			font-size: 0.9375rem;
+		}
+
+		.actions {
+			flex-wrap: wrap;
+		}
+
+		.actions .btn {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.section h2,
+		.active-section h2,
+		.form-section h2 {
+			font-size: 1.25rem;
+		}
+
+		.download-card .thumbnail {
+			height: 140px;
+		}
+
+		.download-card .content {
+			padding: var(--spacing-md);
 		}
 	}
 </style>

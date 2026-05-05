@@ -212,4 +212,21 @@
 	button[type='submit'] {
 		width: 100%;
 	}
+
+	@media (max-width: 768px) {
+		.download-form {
+			padding: var(--spacing-md);
+		}
+
+		.profile-buttons {
+			gap: var(--spacing-xs);
+		}
+
+		.profile-btn {
+			flex: 1;
+			min-width: 0;
+			padding: var(--spacing-sm);
+			font-size: 0.8125rem;
+		}
+	}
 </style>

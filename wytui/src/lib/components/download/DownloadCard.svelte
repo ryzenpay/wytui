@@ -63,8 +63,18 @@
 		}
 	}
 
+	function isMobileDevice() {
+		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+			navigator.userAgent
+		);
+	}
+
 	async function downloadFile() {
-		if (!navigator.canShare?.({ files: [new File([], 'test')] })) {
+		// Only use share dialog on mobile devices
+		const useMobileShare =
+			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
+
+		if (!useMobileShare) {
 			window.open(`/api/files/${download.id}`, '_blank');
 			return;
 		}
@@ -307,5 +317,28 @@
 	.actions {
 		display: flex;
 		gap: var(--spacing-sm);
+	}
+
+	@media (max-width: 768px) {
+		.thumbnail {
+			height: 140px;
+		}
+
+		.content {
+			padding: var(--spacing-md);
+		}
+
+		h3 {
+			font-size: 0.9375rem;
+		}
+
+		.actions {
+			flex-wrap: wrap;
+		}
+
+		.actions button {
+			flex: 1;
+			min-width: 0;
+		}
 	}
 </style>

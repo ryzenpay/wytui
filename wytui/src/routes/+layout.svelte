@@ -205,8 +205,35 @@
 	}
 
 	@media (max-width: 768px) {
+		.header {
+			padding: var(--spacing-sm) 0;
+		}
+
+		.logo h1 {
+			font-size: 1.25rem;
+			min-width: 90px;
+		}
+
 		.nav-links {
+			gap: var(--spacing-sm);
+		}
+
+		.connection-status .status-label {
 			display: none;
+		}
+
+		.connection-status {
+			padding: var(--spacing-xs);
+			min-width: unset;
+		}
+
+		.signout-btn {
+			padding: var(--spacing-xs) var(--spacing-sm);
+			font-size: 0.875rem;
+		}
+
+		.main {
+			padding: var(--spacing-lg) 0;
 		}
 	}
 </style>
