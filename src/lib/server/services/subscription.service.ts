@@ -141,14 +141,21 @@ class SubscriptionService {
 	private async fetchPlaylistEntries(url: string, opts: { limit?: number; dateAfter?: string } = {}): Promise<any[]> {
 		ytdlpService.validateUrl(url);
 
+		const useFullExtraction = !!opts.dateAfter;
+
 		return new Promise((resolve, reject) => {
 			const args = [
-				'--flat-playlist',
 				'--print', 'id',
 				'--print', 'title',
 				'--print', 'webpage_url',
-				'--print', 'upload_date',
 			];
+
+			if (useFullExtraction) {
+				args.unshift('--no-download');
+				args.push('--dateafter', opts.dateAfter!);
+			} else {
+				args.unshift('--flat-playlist');
+			}
 
 			if (opts.limit) {
 				args.push('--playlist-end', opts.limit.toString());
@@ -173,12 +180,8 @@ class SubscriptionService {
 					const lines = output.trim().split('\n');
 					const videos = [];
 
-					for (let i = 0; i < lines.length; i += 4) {
-						if (i + 3 < lines.length) {
-							const uploadDate = lines[i + 3]; // YYYYMMDD or NA
-							if (opts.dateAfter && uploadDate && uploadDate !== 'NA' && uploadDate < opts.dateAfter) {
-								continue;
-							}
+					for (let i = 0; i < lines.length; i += 3) {
+						if (i + 2 < lines.length) {
 							videos.push({
 								id: lines[i],
 								title: lines[i + 1],
