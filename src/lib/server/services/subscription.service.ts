@@ -147,14 +147,11 @@ class SubscriptionService {
 				'--print', 'id',
 				'--print', 'title',
 				'--print', 'webpage_url',
+				'--print', 'upload_date',
 			];
 
 			if (opts.limit) {
 				args.push('--playlist-end', opts.limit.toString());
-			}
-
-			if (opts.dateAfter) {
-				args.push('--dateafter', opts.dateAfter);
 			}
 
 			args.push(url);
@@ -176,8 +173,12 @@ class SubscriptionService {
 					const lines = output.trim().split('\n');
 					const videos = [];
 
-					for (let i = 0; i < lines.length; i += 3) {
-						if (i + 2 < lines.length) {
+					for (let i = 0; i < lines.length; i += 4) {
+						if (i + 3 < lines.length) {
+							const uploadDate = lines[i + 3]; // YYYYMMDD or NA
+							if (opts.dateAfter && uploadDate && uploadDate !== 'NA' && uploadDate < opts.dateAfter) {
+								continue;
+							}
 							videos.push({
 								id: lines[i],
 								title: lines[i + 1],
