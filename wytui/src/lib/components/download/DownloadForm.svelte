@@ -3,20 +3,27 @@
 
 	let url = $state('');
 	let selectedProfileId = $state('');
+	let saveToLibrary = $state(false);
 	let profiles = $state<any[]>([]);
 	let loading = $state(false);
 	let error = $state('');
+	let libraryConfigured = $state(false);
 
 	onMount(async () => {
-		// Load profiles
-		const res = await fetch('/api/profiles');
-		if (res.ok) {
-			profiles = await res.json();
-			// Select default profile
+		const [profilesRes, settingsRes] = await Promise.all([
+			fetch('/api/profiles'),
+			fetch('/api/settings'),
+		]);
+		if (profilesRes.ok) {
+			profiles = await profilesRes.json();
 			const defaultProfile = profiles.find((p) => p.isDefault);
 			if (defaultProfile) {
 				selectedProfileId = defaultProfile.id;
 			}
+		}
+		if (settingsRes.ok) {
+			const settings = await settingsRes.json();
+			libraryConfigured = !!settings.libraryPath;
 		}
 	});
 
@@ -35,7 +42,7 @@
 			const res = await fetch('/api/downloads', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ url, profileId: selectedProfileId }),
+				body: JSON.stringify({ url, profileId: selectedProfileId, saveToLibrary }),
 			});
 
 			if (!res.ok) {
@@ -43,8 +50,8 @@
 				throw new Error(data.message || 'Failed to create download');
 			}
 
-			// Clear form
 			url = '';
+			saveToLibrary = false;
 		} catch (e: any) {
 			error = e.message;
 		} finally {
@@ -110,6 +117,13 @@
 				</div>
 			</div>
 		</div>
+
+		{#if libraryConfigured}
+			<label class="checkbox-label library-toggle">
+				<input type="checkbox" bind:checked={saveToLibrary} disabled={loading} />
+				Save to Library
+			</label>
+		{/if}
 
 		{#if error}
 			<div class="error-message">{error}</div>
@@ -197,6 +211,21 @@
 	.profile-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		margin-bottom: var(--spacing-lg);
+		color: var(--text-secondary);
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+	}
+
+	.checkbox-label input {
+		width: auto;
 	}
 
 	.error-message {

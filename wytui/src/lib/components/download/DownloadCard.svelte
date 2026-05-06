@@ -63,6 +63,23 @@
 		}
 	}
 
+	let promoting = $state(false);
+
+	async function promoteToLibrary() {
+		promoting = true;
+		try {
+			const res = await fetch(`/api/downloads/${download.id}/promote`, { method: 'POST' });
+			if (res.ok) {
+				const updated = await res.json();
+				download.storagePool = updated.storagePool;
+			}
+		} catch (e) {
+			console.error('Failed to promote:', e);
+		} finally {
+			promoting = false;
+		}
+	}
+
 	function isMobileDevice() {
 		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
 			navigator.userAgent
@@ -105,9 +122,16 @@
 	<div class="content">
 		<div class="header">
 			<h3>{download.title || download.url}</h3>
-			<span class="status" style="color: {statusColor}">
-				{getStatusLabel(download.status)}
-			</span>
+			<div class="header-badges">
+				{#if download.status === 'COMPLETED'}
+					<span class="pool-badge" class:library={download.storagePool === 'library'}>
+						{download.storagePool === 'library' ? 'Library' : 'Cache'}
+					</span>
+				{/if}
+				<span class="status" style="color: {statusColor}">
+					{getStatusLabel(download.status)}
+				</span>
+			</div>
 		</div>
 
 		{#if download.uploader}
@@ -159,6 +183,11 @@
 				<button class="btn btn-sm btn-primary" onclick={downloadFile}>
 					Download
 				</button>
+				{#if download.storagePool === 'cache'}
+					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
+						{promoting ? 'Saving...' : 'Save to Library'}
+					</button>
+				{/if}
 			{/if}
 
 			{#if download.status === 'COMPLETED' || download.status === 'FAILED' || download.status === 'CANCELLED'}
@@ -215,6 +244,29 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+	}
+
+	.header-badges {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+		flex-shrink: 0;
+	}
+
+	.pool-badge {
+		font-size: 0.625rem;
+		font-weight: 600;
+		padding: 2px 6px;
+		border-radius: var(--radius-sm);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		background: var(--bg-tertiary);
+		color: var(--text-tertiary);
+	}
+
+	.pool-badge.library {
+		background: rgba(16, 185, 129, 0.15);
+		color: var(--success);
 	}
 
 	.status {

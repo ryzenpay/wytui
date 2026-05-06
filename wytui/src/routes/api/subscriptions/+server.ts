@@ -94,6 +94,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				checkInterval,
 				maxVideos,
 				autoDownload: data.autoDownload ?? true,
+				saveToLibrary: data.saveToLibrary ?? false,
 				enabled: true,
 				userId,
 			},

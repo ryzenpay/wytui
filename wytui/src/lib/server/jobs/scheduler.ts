@@ -2,10 +2,12 @@ import cron, { type ScheduledTask } from 'node-cron';
 import { subscriptionService } from '../services/subscription.service';
 import { monitorService } from '../services/monitor.service';
 import { ytdlpService } from '../services/ytdlp.service';
+import { libraryService } from '../services/library.service';
 import { prisma } from '../db';
 
 class JobScheduler {
 	private ytdlpUpdateTask: ScheduledTask | null = null;
+	private cacheCleanupTask: ScheduledTask | null = null;
 
 	/**
 	 * Start all background jobs
@@ -22,6 +24,15 @@ class JobScheduler {
 		// Schedule yt-dlp updates (daily at 3 AM)
 		this.ytdlpUpdateTask = cron.schedule('0 3 * * *', async () => {
 			await this.checkYtdlpUpdate();
+		});
+
+		// Schedule cache quota enforcement (every 5 minutes)
+		this.cacheCleanupTask = cron.schedule('*/5 * * * *', async () => {
+			try {
+				await libraryService.enforceCacheQuota();
+			} catch (error) {
+				console.error('[Scheduler] Cache cleanup failed:', error);
+			}
 		});
 
 		console.log('[Scheduler] All background jobs started');
@@ -77,6 +88,11 @@ class JobScheduler {
 		if (this.ytdlpUpdateTask) {
 			this.ytdlpUpdateTask.stop();
 			this.ytdlpUpdateTask = null;
+		}
+
+		if (this.cacheCleanupTask) {
+			this.cacheCleanupTask.stop();
+			this.cacheCleanupTask = null;
 		}
 
 		console.log('[Scheduler] All background jobs stopped');

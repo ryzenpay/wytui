@@ -104,7 +104,8 @@ class SubscriptionService {
 						video.url,
 						subscription.profileId,
 						subscription.userId || undefined,
-						subscriptionId
+						subscriptionId,
+						subscription.saveToLibrary
 					);
 				}
 			} else {

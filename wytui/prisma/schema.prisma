@@ -136,6 +136,9 @@ model Download {
   userId      String?
   user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  // Storage pool
+  storagePool String    @default("cache") // "cache" | "library"
+
   // From subscription (optional)
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
@@ -150,6 +153,7 @@ model Download {
   @@index([userId])
   @@index([subscriptionId])
   @@index([createdAt])
+  @@index([storagePool])
   @@map("downloads")
 }
 
@@ -180,6 +184,7 @@ model Subscription {
   profileId   String
   profile     DownloadProfile @relation(fields: [profileId], references: [id])
   autoDownload Boolean  @default(true)
+  saveToLibrary Boolean @default(false)
   maxVideos   Int?      // Limit backlog downloads (null = all)
 
   // Metadata
@@ -259,8 +264,13 @@ model Settings {
   // Authentication
   authMode    String    @default("password") // "password" | "oidc" | "both"
 
-  // Cleanup
-  autoDeleteAfter Int?  // days (null = never)
+  // Library & cache
+  libraryPath     String?
+  cacheQuotaBytes BigInt    @default(10737418240) // 10 GB
+
+  // Jellyfin integration
+  jellyfinUrl     String?
+  jellyfinApiKey  String?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

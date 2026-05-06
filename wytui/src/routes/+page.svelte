@@ -36,25 +36,33 @@
 	let monFormType = $state('YOUTUBE_LIVE');
 	let monFormAutoDownload = $state(true);
 
+	let subFormSaveToLibrary = $state(false);
+
 	// Form error state
 	let subFormError = $state('');
 	let monFormError = $state('');
 
 	// Shared state
 	let profiles = $state<any[]>([]);
+	let libraryConfigured = $state(false);
+	let cacheUsage = $state<{ usedBytes: string; quotaBytes: string; percentage: number } | null>(null);
+	let clearingCache = $state(false);
 
 	onMount(() => {
 		loadProfiles();
 		loadCompletedDownloads();
+		loadCacheUsage();
 
 		const unsubComplete = onSSEEvent('download:complete', ({ download }) => {
 			const exists = completedDownloads.find((d) => d.id === download.id);
 			if (!exists) {
 				completedDownloads = [download, ...completedDownloads];
 			}
+			loadCacheUsage();
 		});
 		const unsubDeleted = onSSEEvent('download:deleted', ({ id }) => {
 			completedDownloads = completedDownloads.filter((d) => d.id !== id);
+			loadCacheUsage();
 		});
 		const unsubChecked = onSSEEvent('subscription:checked', ({ id, name, newVideos }) => {
 			const message =
@@ -91,17 +99,54 @@
 
 	async function loadProfiles() {
 		try {
-			const res = await fetch('/api/profiles');
-			if (res.ok) {
-				profiles = await res.json();
+			const [profilesRes, settingsRes] = await Promise.all([
+				fetch('/api/profiles'),
+				fetch('/api/settings'),
+			]);
+			if (profilesRes.ok) {
+				profiles = await profilesRes.json();
 				const defaultProfile = profiles.find((p) => p.isDefault);
 				if (defaultProfile) {
 					subFormProfileId = defaultProfile.id;
 					monFormProfileId = defaultProfile.id;
 				}
 			}
+			if (settingsRes.ok) {
+				const settings = await settingsRes.json();
+				libraryConfigured = !!settings.libraryPath;
+			}
 		} catch (e) {
 			console.error('Failed to load profiles:', e);
+		}
+	}
+
+	async function loadCacheUsage() {
+		try {
+			const res = await fetch('/api/library/usage');
+			if (res.ok) {
+				cacheUsage = await res.json();
+			}
+		} catch (e) {
+			console.error('Failed to load cache usage:', e);
+		}
+	}
+
+	async function clearCache() {
+		const confirmed = await showConfirm(
+			'Clear Cache',
+			'This will delete all cached downloads. Library downloads will not be affected.',
+			'Clear Cache'
+		);
+		if (!confirmed) return;
+
+		clearingCache = true;
+		try {
+			await fetch('/api/library/clear', { method: 'POST' });
+			await Promise.all([loadCompletedDownloads(), loadCacheUsage()]);
+		} catch (e) {
+			console.error('Failed to clear cache:', e);
+		} finally {
+			clearingCache = false;
 		}
 	}
 
@@ -134,6 +179,7 @@
 					profileId: subFormProfileId,
 					checkInterval: subFormCheckInterval,
 					autoDownload: subFormAutoDownload,
+					saveToLibrary: subFormSaveToLibrary,
 					maxVideos: subFormMaxVideos,
 				}),
 			});
@@ -141,6 +187,7 @@
 			if (res.ok) {
 				subFormUrl = '';
 				subFormName = '';
+				subFormSaveToLibrary = false;
 				showSubsForm = false;
 				await loadSubscriptions();
 			} else {
@@ -274,6 +321,14 @@
 		}
 	}
 
+	function formatBytes(bytes: string): string {
+		const b = Number(bytes);
+		if (b === 0) return '0 B';
+		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+		const i = Math.floor(Math.log(b) / Math.log(1024));
+		return `${(b / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+	}
+
 	function formatWaitTime(seconds: number | null): string {
 		if (!seconds) return 'Checking...';
 
@@ -351,6 +406,28 @@
 					{/if}
 				</div>
 			</div>
+
+			{#if cacheUsage}
+				<div class="cache-usage">
+					<div class="cache-usage-header">
+						<div class="cache-usage-left">
+							<span class="cache-usage-label">Cache Usage</span>
+							<span class="cache-usage-tooltip" title="Old downloads are automatically removed when the cache is full. You don't need to manage this manually.">?</span>
+						</div>
+						<div class="cache-usage-right">
+							<span class="cache-usage-value">{formatBytes(cacheUsage.usedBytes)} / {formatBytes(cacheUsage.quotaBytes)}</span>
+							{#if Number(cacheUsage.usedBytes) > 0}
+								<button class="btn btn-sm btn-secondary cache-clear-btn" onclick={clearCache} disabled={clearingCache}>
+									{clearingCache ? 'Clearing...' : 'Clear'}
+								</button>
+							{/if}
+						</div>
+					</div>
+					<div class="cache-usage-bar">
+						<div class="cache-usage-fill" class:warning={cacheUsage.percentage > 80} class:critical={cacheUsage.percentage > 95} style="width: {cacheUsage.percentage}%"></div>
+					</div>
+				</div>
+			{/if}
 
 			<div class="section">
 				<h2>Completed ({completedDownloads.length})</h2>
@@ -433,10 +510,18 @@
 						</div>
 					</div>
 
-					<label class="checkbox-label">
-						<input type="checkbox" bind:checked={subFormAutoDownload} />
-						Auto-download new videos
-					</label>
+					<div class="checkbox-row">
+						<label class="checkbox-label">
+							<input type="checkbox" bind:checked={subFormAutoDownload} />
+							Auto-download new videos
+						</label>
+						{#if libraryConfigured}
+							<label class="checkbox-label">
+								<input type="checkbox" bind:checked={subFormSaveToLibrary} />
+								Save to Library
+							</label>
+						{/if}
+					</div>
 
 					{#if subFormError}
 						<p class="form-error">{subFormError}</p>
@@ -469,6 +554,9 @@
 								<span>Profile: {sub.profile.name}</span>
 								<span>Check: {formatInterval(sub.checkInterval)}</span>
 								<span>Type: {sub.type}</span>
+								{#if sub.saveToLibrary}
+									<span class="library-tag">Library</span>
+								{/if}
 							</div>
 
 							{#if sub.lastChecked}
@@ -902,6 +990,102 @@
 		color: var(--error, #ef4444);
 		font-size: 0.85rem;
 		margin: var(--spacing-xs) 0;
+	}
+
+	.checkbox-row {
+		display: flex;
+		gap: var(--spacing-xl);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.cache-usage {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-md) var(--spacing-lg);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.cache-usage-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--spacing-sm);
+	}
+
+	.cache-usage-left {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+	}
+
+	.cache-usage-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+
+	.cache-usage-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--text-tertiary);
+	}
+
+	.cache-usage-tooltip {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: var(--bg-tertiary);
+		color: var(--text-tertiary);
+		font-size: 0.625rem;
+		font-weight: 700;
+		cursor: help;
+		border: 1px solid var(--border);
+	}
+
+	.cache-usage-value {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+	}
+
+	.cache-clear-btn {
+		padding: 2px 8px !important;
+		font-size: 0.6875rem !important;
+	}
+
+	.library-tag {
+		background: rgba(16, 185, 129, 0.15);
+		color: var(--success);
+		padding: 1px 6px;
+		border-radius: var(--radius-sm);
+		font-weight: 600;
+	}
+
+	.cache-usage-bar {
+		height: 6px;
+		background: var(--bg-tertiary);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+	}
+
+	.cache-usage-fill {
+		height: 100%;
+		background: var(--accent-primary);
+		border-radius: var(--radius-sm);
+		transition: width 0.3s ease;
+	}
+
+	.cache-usage-fill.warning {
+		background: var(--warning);
+	}
+
+	.cache-usage-fill.critical {
+		background: var(--error);
 	}
 
 	.actions {

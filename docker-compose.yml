@@ -23,6 +23,7 @@ services:
       - ./wytui:/app
       - /app/node_modules
       - downloads:/downloads
+      - library:/media
     ports:
       - "5173:5173"
       - "5555:5555"
@@ -39,3 +40,4 @@ services:
 volumes:
   pgdata:
   downloads:
+  library:

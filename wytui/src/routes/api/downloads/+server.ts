@@ -9,7 +9,7 @@ import type { RequestHandler } from './$types';
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		const { url, profileId } = await request.json();
+		const { url, profileId, saveToLibrary } = await request.json();
 
 		if (!url || !profileId) {
 			throw error(400, 'Missing required fields: url, profileId');
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!profile.isSystem && profile.userId !== userId) {
 			throw error(403, 'Cannot use another user\'s profile');
 		}
-		const download = await downloadService.createDownload(url, profileId, userId);
+		const download = await downloadService.createDownload(url, profileId, userId, undefined, !!saveToLibrary);
 
 		return json(download, { status: 201 });
 	} catch (e: any) {

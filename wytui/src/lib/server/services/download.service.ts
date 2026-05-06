@@ -6,6 +6,7 @@ import { DownloadStatus } from '@prisma/client';
 import type { ChildProcess } from 'child_process';
 import type { Download } from '$lib/types';
 import { unlink } from 'fs/promises';
+import { libraryService } from './library.service';
 
 /**
  * Serialize download object for JSON responses
@@ -52,7 +53,8 @@ class DownloadService {
 		url: string,
 		profileId: string,
 		userId?: string,
-		subscriptionId?: string
+		subscriptionId?: string,
+		saveToLibrary?: boolean
 	): Promise<Download> {
 		console.log('[DownloadService] Creating download:', { url, profileId, userId });
 
@@ -69,6 +71,7 @@ class DownloadService {
 				profileId,
 				userId,
 				subscriptionId,
+				storagePool: saveToLibrary ? 'library' : 'cache',
 			},
 			include: {
 				profile: true,
@@ -277,8 +280,22 @@ class DownloadService {
 			await this.addToArchive(download.url, download.title);
 		}
 
+		// Move to library if requested
+		if (download.storagePool === 'library' && settings.libraryPath) {
+			try {
+				await libraryService.promoteToLibrary(downloadId);
+			} catch (error) {
+				console.error(`[DownloadService] Failed to move to library: ${error}`);
+			}
+		}
+
 		this.emitToOwner('download:complete', { id: downloadId, download }, downloadId);
 		this.downloadOwners.delete(downloadId);
+
+		// Enforce cache quota asynchronously
+		libraryService.enforceCacheQuota().catch((error) => {
+			console.error('[DownloadService] Cache quota enforcement failed:', error);
+		});
 	}
 
 	/**

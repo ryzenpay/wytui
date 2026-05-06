@@ -14,7 +14,10 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'enableArchive',
 	'archivePath',
 	'authMode',
-	'autoDeleteAfter',
+	'libraryPath',
+	'cacheQuotaBytes',
+	'jellyfinUrl',
+	'jellyfinApiKey',
 ]);
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -33,8 +36,16 @@ export const GET: RequestHandler = async ({ locals }) => {
 			});
 		}
 
+		if (!locals.session.user.isAdmin) {
+			return json({
+				libraryPath: settings.libraryPath,
+				cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
+			});
+		}
+
 		return json({
 			...settings,
+			cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
 			oidcConfigured: isOidcConfigured(),
 			oidcDisplayName: isOidcConfigured() ? getOidcDisplayName() : null,
 		});
@@ -83,6 +94,22 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
+		if (updates.libraryPath !== undefined && updates.libraryPath !== null) {
+			const normalized = normalize(resolve(updates.libraryPath));
+			if (normalized.includes('..')) {
+				throw error(400, 'Invalid library path');
+			}
+			updates.libraryPath = normalized;
+		}
+
+		if (updates.cacheQuotaBytes !== undefined) {
+			const val = BigInt(updates.cacheQuotaBytes);
+			if (val < BigInt(0)) {
+				throw error(400, 'Cache quota must be positive');
+			}
+			updates.cacheQuotaBytes = val;
+		}
+
 		if (updates.maxConcurrentDownloads !== undefined) {
 			const val = Number(updates.maxConcurrentDownloads);
 			if (!Number.isInteger(val) || val < 1 || val > 20) {
@@ -96,7 +123,10 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 			data: updates,
 		});
 
-		return json(settings);
+		return json({
+			...settings,
+			cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
+		});
 	} catch (e: any) {
 		console.error('Failed to update settings:', e);
 		if (e.status) throw e;

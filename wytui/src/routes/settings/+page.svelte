@@ -20,6 +20,7 @@
 	let users = $state<any[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
+	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
 	let activeTab = $state<'general' | 'users'>('general');
 
 	// Create user form
@@ -36,7 +37,9 @@
 	let passwordError = $state('');
 
 	onMount(async () => {
-		await Promise.all([loadSettings(), loadUsers()]);
+		if (isAdmin) {
+			await Promise.all([loadSettings(), loadUsers()]);
+		}
 	});
 
 	async function loadSettings() {
@@ -64,7 +67,15 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'autoDeleteAfter'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey'];
+
+	let cacheQuotaGB = $derived(settings ? Number(BigInt(settings.cacheQuotaBytes || '10737418240')) / (1024 * 1024 * 1024) : 10);
+
+	function updateCacheQuota(gb: number) {
+		if (settings) {
+			settings.cacheQuotaBytes = String(Math.round(gb * 1024 * 1024 * 1024));
+		}
+	}
 
 	async function saveSettings() {
 		saving = true;
@@ -232,24 +243,37 @@
 </svelte:head>
 
 <div class="page">
-	<div class="tabs">
-		<button
-			class="tab"
-			class:active={activeTab === 'general'}
-			onclick={() => (activeTab = 'general')}
-		>
-			General
-		</button>
-		<button
-			class="tab"
-			class:active={activeTab === 'users'}
-			onclick={() => (activeTab = 'users')}
-		>
-			Users
-		</button>
-	</div>
+	{#if isAdmin}
+		<div class="tabs">
+			<button
+				class="tab"
+				class:active={activeTab === 'general'}
+				onclick={() => (activeTab = 'general')}
+			>
+				General
+			</button>
+			<button
+				class="tab"
+				class:active={activeTab === 'users'}
+				onclick={() => (activeTab = 'users')}
+			>
+				Users
+			</button>
+		</div>
+	{/if}
 
-	{#if loading}
+	{#if !isAdmin}
+		<div class="settings-section">
+			<h2>Account</h2>
+			<p class="text-muted">Manage your account settings.</p>
+			<button
+				class="btn-primary"
+				onclick={() => openPasswordChange(data.session?.user?.id || '')}
+			>
+				Change Password
+			</button>
+		</div>
+	{:else if loading}
 		<div class="loading">Loading...</div>
 	{:else}
 		{#if activeTab === 'general' && settings}
@@ -311,6 +335,58 @@
 							Enable download archive
 						</label>
 						<p class="help-text">Track downloaded videos to prevent re-downloading</p>
+					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Library & Cache</h2>
+					<div class="form-group">
+						<label for="libraryPath">Library Path</label>
+						<input
+							type="text"
+							id="libraryPath"
+							bind:value={settings.libraryPath}
+							placeholder="/media/youtube"
+						/>
+						<p class="help-text">Path to your media library (e.g., Jellyfin library folder). Leave empty to disable library feature.</p>
+					</div>
+
+					<div class="form-group">
+						<label for="cacheQuota">Cache Quota (GB)</label>
+						<input
+							type="number"
+							id="cacheQuota"
+							value={cacheQuotaGB}
+							oninput={(e) => updateCacheQuota(parseFloat(e.currentTarget.value) || 0)}
+							min="1"
+							step="1"
+						/>
+						<p class="help-text">Maximum storage for cached downloads. Oldest downloads are removed when quota is exceeded.</p>
+					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Jellyfin Integration</h2>
+					<div class="form-group">
+						<label for="jellyfinUrl">Jellyfin URL</label>
+						<input
+							type="text"
+							id="jellyfinUrl"
+							bind:value={settings.jellyfinUrl}
+							placeholder="http://jellyfin:8096"
+						/>
+						<p class="help-text">Optional. Triggers a library scan when files are saved to library.</p>
+					</div>
+
+					<div class="form-group">
+						<label for="jellyfinApiKey">Jellyfin API Key</label>
+						<input
+							type="password"
+							id="jellyfinApiKey"
+							bind:value={settings.jellyfinApiKey}
+							placeholder="Enter API key"
+						/>
+						<p class="help-text">Generate an API key in Jellyfin under Dashboard > API Keys.</p>
 					</div>
 				</div>
 
