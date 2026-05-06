@@ -11,6 +11,13 @@
 	// Completed downloads
 	let completedDownloads = $state<any[]>([]);
 	let completedLoading = $state(false);
+	let completedFilter = $state<'all' | 'cache' | 'library'>('all');
+
+	let filteredCompletedDownloads = $derived(
+		completedFilter === 'all'
+			? completedDownloads
+			: completedDownloads.filter((d) => d.storagePool === completedFilter)
+	);
 
 	// Subscriptions state
 	let subscriptions = $state<any[]>([]);
@@ -432,16 +439,41 @@
 			{/if}
 
 			<div class="section">
-				<h2>Completed ({completedDownloads.length})</h2>
+				<div class="section-header">
+					<h2>Completed ({filteredCompletedDownloads.length})</h2>
+					<div class="tabs completed-filter">
+						<button
+							class="tab"
+							class:active={completedFilter === 'all'}
+							onclick={() => (completedFilter = 'all')}
+						>
+							All
+						</button>
+						<button
+							class="tab"
+							class:active={completedFilter === 'cache'}
+							onclick={() => (completedFilter = 'cache')}
+						>
+							Cache
+						</button>
+						<button
+							class="tab"
+							class:active={completedFilter === 'library'}
+							onclick={() => (completedFilter = 'library')}
+						>
+							Library
+						</button>
+					</div>
+				</div>
 				{#if completedLoading}
 					<div class="loading">Loading...</div>
-				{:else if completedDownloads.length === 0}
+				{:else if filteredCompletedDownloads.length === 0}
 					<div class="empty-state">
-						<p>No completed downloads yet</p>
+						<p>{completedFilter === 'all' ? 'No completed downloads yet' : `No ${completedFilter} downloads`}</p>
 					</div>
 				{:else}
 					<div class="downloads-grid">
-						{#each completedDownloads as download (download.id)}
+						{#each filteredCompletedDownloads as download (download.id)}
 							<DownloadCard {download} {jellyfinUrl} />
 						{/each}
 					</div>
@@ -816,6 +848,28 @@
 	.section {
 		margin-bottom: var(--spacing-xl);
 		width: 100%;
+	}
+
+	.section-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.section-header h2 {
+		margin-bottom: 0;
+	}
+
+	.completed-filter {
+		margin-bottom: 0;
+		margin-left: 0;
+		margin-right: 0;
+	}
+
+	.completed-filter .tab {
+		padding: var(--spacing-xs) var(--spacing-md);
+		font-size: 0.8rem;
 	}
 
 	.section h2 {
