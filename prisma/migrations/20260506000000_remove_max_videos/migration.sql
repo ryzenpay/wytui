@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Subscription" DROP COLUMN IF EXISTS "maxVideos";
+ALTER TABLE "subscriptions" DROP COLUMN IF EXISTS "maxVideos";
