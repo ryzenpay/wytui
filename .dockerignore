@@ -5,6 +5,7 @@ npm-debug.log
 !.env.example
 .git
 .gitignore
+.github
 .vscode
 .idea
 *.md
@@ -13,7 +14,9 @@ Dockerfile*
 docker-compose*
 .svelte-kit
 build
+wytui
 .DS_Store
 coverage
 *.log
 dist
+LICENSE

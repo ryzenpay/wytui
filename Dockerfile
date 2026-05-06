@@ -10,10 +10,14 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++ gcc musl-dev linux-headers
 
 # Copy package files
-COPY wytui/package*.json ./
+COPY package*.json ./
 
 # Copy source code (without node_modules due to .dockerignore)
-COPY wytui/ ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+COPY src ./src
+COPY static ./static
+COPY svelte.config.js tsconfig.json vite.config.ts ./
 
 # Install dependencies (after source copy to ensure no host node_modules)
 RUN rm -rf node_modules && npm ci

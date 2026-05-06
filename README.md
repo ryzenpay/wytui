@@ -1,33 +1,23 @@
 # wytui
 
-> **Pronunciation**: /ˈwaɪti/ (like "Y.T.")
+A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with SvelteKit 5. Supports YouTube, TikTok, Twitter, and any yt-dlp compatible URL.
 
-Modern web interface for yt-dlp. Download videos with a clean UI, real-time progress, and quality presets.
-
-![License](https://img.shields.io/github/license/willuhmjs/wytui)
-![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?logo=docker&logoColor=white)
+> *wytui* — pronounced "white-ui"
 
 ## Features
 
-- Real-time download progress with SSE
-- Quality presets (4K, 1080p, 720p, audio-only)
-- Channel subscriptions with auto-download
-- Livestream monitoring
-- Multi-user support with authentication
-- Dark theme UI
+- **Download profiles** — Pre-configured presets (4K, 1080p, 720p, 480p, MP3, AAC, FLAC) and custom profiles
+- **Two-tier storage** — Temporary cache with configurable quota + permanent library organized by uploader
+- **Jellyfin integration** — Auto library scan, thumbnail artwork, and deep-link to Jellyfin search
+- **Subscriptions** — Monitor channels/playlists, auto-download new videos on a schedule
+- **Livestream monitors** — Watch YouTube Live and Twitch streams, auto-download when live
+- **Real-time progress** — Server-Sent Events for live download status
+- **OIDC authentication** — OpenID Connect SSO with admin/user roles
+- **Mobile-friendly** — Web Share API on iOS for save-to-photos
 
 ## Quick Start
 
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -v ./downloads:/downloads \
-  -e DATABASE_URL="your-postgres-url" \
-  -e AUTH_SECRET="change-me" \
-  ghcr.io/willuhmjs/wytui:latest
-```
-
-Or use Docker Compose:
+### Docker Compose
 
 ```yaml
 services:
@@ -35,66 +25,51 @@ services:
     image: ghcr.io/willuhmjs/wytui:latest
     ports:
       - "3000:3000"
-    volumes:
-      - ./downloads:/downloads
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/wytui
-      - AUTH_SECRET=change-this-secret
+      DATABASE_URL: "postgresql://wytui:password@db:5432/wytui"
+      AUTH_SECRET: "change-me-to-a-random-string"
+      AUTH_TRUST_HOST: "true"
     depends_on:
       db:
         condition: service_healthy
 
   db:
-    image: postgres:18-alpine
+    image: postgres:18
     environment:
-      POSTGRES_DB: wytui
-      POSTGRES_USER: postgres
+      POSTGRES_USER: wytui
       POSTGRES_PASSWORD: password
+      POSTGRES_DB: wytui
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d wytui"]
+      test: ["CMD-ONLY", "pg_isready", "-U", "wytui"]
       interval: 5s
-      timeout: 5s
       retries: 5
 
 volumes:
   pgdata:
 ```
 
-Visit `http://localhost:3000` and create your admin account.
+### Environment Variables
 
-## Environment Variables
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `AUTH_SECRET` | Session signing secret |
+| `AUTH_TRUST_HOST` | Set `true` behind a reverse proxy |
+| `OIDC_NAME` | OIDC provider display name |
+| `OIDC_CLIENT_ID` | OIDC client ID |
+| `OIDC_CLIENT_SECRET` | OIDC client secret |
+| `OIDC_ISSUER` | OIDC issuer URL |
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
-| `AUTH_SECRET` | Yes | - | Secret for session encryption |
-| `AUTH_TRUST_HOST` | No | `true` | Trust proxy headers |
-| `PORT` | No | `3000` | Server port |
+## Tech Stack
 
-## Development
-
-```bash
-git clone https://github.com/willuhmjs/wytui.git
-cd wytui
-docker-compose up
-```
-
-Access the dev server at `http://localhost:5173`
-
-## Tech
-
-- **Frontend**: SvelteKit 5
-- **Backend**: Node.js
-- **Database**: PostgreSQL + Prisma
-- **Downloader**: yt-dlp
-- **Auth**: Custom bcrypt-based
+- **Frontend**: SvelteKit 5 (Svelte with runes)
+- **Database**: PostgreSQL with Prisma ORM
+- **Auth**: Auth.js with OIDC support
+- **Real-time**: Server-Sent Events (SSE)
+- **Styling**: Custom dark theme CSS
 
 ## License
 
 MIT
-
-## Credits
-
-Built by [@willuhmjs](https://github.com/willuhmjs). Powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp).

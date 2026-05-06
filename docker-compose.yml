@@ -17,10 +17,10 @@ services:
 
   app:
     build:
-      context: ./wytui
-      dockerfile: ../Dockerfile.dev
+      context: .
+      dockerfile: Dockerfile.dev
     volumes:
-      - ./wytui:/app
+      - .:/app
       - /app/node_modules
       - downloads:/downloads
       - library:/media
