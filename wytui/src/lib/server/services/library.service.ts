@@ -1,7 +1,7 @@
 import { prisma } from '../db';
 import { sseEmitter } from '../sse/emitter';
 import { DownloadStatus } from '@prisma/client';
-import { copyFile, unlink, mkdir } from 'fs/promises';
+import { copyFile, unlink, mkdir, access } from 'fs/promises';
 import { join, basename, resolve, extname } from 'path';
 
 function sanitizeFilename(name: string): string {
@@ -35,10 +35,21 @@ class LibraryService {
 		await mkdir(destDir, { recursive: true });
 
 		const ext = extname(download.filepath);
-		const filename = download.title
-			? sanitizeFilename(download.title) + ext
-			: basename(download.filepath);
-		const destPath = join(destDir, filename);
+		const baseFilename = download.title
+			? sanitizeFilename(download.title)
+			: basename(download.filepath, ext);
+		let destPath = join(destDir, baseFilename + ext);
+
+		let suffix = 1;
+		while (true) {
+			try {
+				await access(destPath);
+				destPath = join(destDir, `${baseFilename} (${suffix})${ext}`);
+				suffix++;
+			} catch {
+				break;
+			}
+		}
 
 		await copyFile(download.filepath, destPath);
 		try {
@@ -97,7 +108,7 @@ class LibraryService {
 				try {
 					await unlink(candidate.filepath);
 				} catch {
-					// File may already be gone
+					continue;
 				}
 			}
 
@@ -142,12 +153,11 @@ class LibraryService {
 		};
 	}
 
-	async clearCache(userId: string): Promise<number> {
+	async clearCache(): Promise<number> {
 		const candidates = await prisma.download.findMany({
 			where: {
 				storagePool: 'cache',
 				status: DownloadStatus.COMPLETED,
-				userId,
 			},
 			select: { id: true, filepath: true, url: true, userId: true },
 		});
@@ -156,7 +166,9 @@ class LibraryService {
 			if (candidate.filepath) {
 				try {
 					await unlink(candidate.filepath);
-				} catch {}
+				} catch {
+					continue;
+				}
 			}
 
 			const videoId = await this.getVideoIdForDownload(candidate.id);

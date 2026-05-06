@@ -63,6 +63,18 @@ class DownloadService {
 			throw new Error('Invalid URL');
 		}
 
+		const existing = await prisma.download.findFirst({
+			where: {
+				url,
+				status: {
+					in: [DownloadStatus.PENDING, DownloadStatus.FETCHING_INFO, DownloadStatus.DOWNLOADING, DownloadStatus.PROCESSING],
+				},
+			},
+		});
+		if (existing) {
+			throw new Error('This URL is already being downloaded');
+		}
+
 		// Create download record
 		const download = await prisma.download.create({
 			data: {
@@ -325,6 +337,12 @@ class DownloadService {
 				}, delay);
 				this.retryTimeouts.set(downloadId, timeout);
 			} else {
+				if (download.filepath) {
+					try {
+						await unlink(download.filepath);
+					} catch {}
+				}
+
 				await this.updateDownload(downloadId, {
 					status: DownloadStatus.FAILED,
 					error,
@@ -365,6 +383,7 @@ class DownloadService {
 		});
 
 		this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
+		this.downloadOwners.delete(downloadId);
 	}
 
 	/**

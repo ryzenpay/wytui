@@ -414,7 +414,7 @@
 					<div class="cache-usage-header">
 						<div class="cache-usage-left">
 							<span class="cache-usage-label">Cache Usage</span>
-							<span class="cache-usage-tooltip" title="Old downloads are automatically removed when the cache is full. You don't need to manage this manually.">?</span>
+							<span class="cache-usage-tooltip" data-tooltip="Downloads are stored in a temporary cache. When the cache fills up, the oldest downloads are automatically removed to free space. Save to Library to keep downloads permanently.">?</span>
 						</div>
 						<div class="cache-usage-right">
 							<span class="cache-usage-value">{formatBytes(cacheUsage.usedBytes)} / {formatBytes(cacheUsage.quotaBytes)}</span>
@@ -1048,6 +1048,34 @@
 		font-weight: 700;
 		cursor: help;
 		border: 1px solid var(--border);
+		position: relative;
+	}
+
+	.cache-usage-tooltip::after {
+		content: attr(data-tooltip);
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 50%;
+		transform: translateX(-50%);
+		background: var(--bg-tertiary);
+		color: var(--text-primary);
+		border: 1px solid var(--border-light);
+		border-radius: var(--radius-md);
+		padding: 8px 12px;
+		font-size: 0.75rem;
+		font-weight: 400;
+		line-height: 1.4;
+		width: 260px;
+		white-space: normal;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.15s ease;
+		z-index: 10;
+		box-shadow: var(--shadow-lg);
+	}
+
+	.cache-usage-tooltip:hover::after {
+		opacity: 1;
 	}
 
 	.cache-usage-value {

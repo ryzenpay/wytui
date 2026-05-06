@@ -8,7 +8,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 			throw error(401, 'Authentication required');
 		}
 
-		const count = await libraryService.clearCache(locals.session.user.id);
+		const count = await libraryService.clearCache();
 		return json({ success: true, deleted: count });
 	} catch (e: any) {
 		console.error('Failed to clear cache:', e);

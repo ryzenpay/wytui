@@ -90,28 +90,30 @@ class SubscriptionService {
 			// Filter out already downloaded videos
 			const newVideos = await this.filterNewVideos(videos);
 
-			// Update last checked time
-			await prisma.subscription.update({
-				where: { id: subscriptionId },
-				data: { lastChecked: new Date() },
-			});
-
 			if (newVideos.length > 0 && subscription.autoDownload) {
 				console.log(`[Subscriptions] Found ${newVideos.length} new videos for ${subscription.name}`);
 
-				// Create downloads for new videos
 				for (const video of newVideos) {
-					await downloadService.createDownload(
-						video.url,
-						subscription.profileId,
-						subscription.userId || undefined,
-						subscriptionId,
-						subscription.saveToLibrary
-					);
+					try {
+						await downloadService.createDownload(
+							video.url,
+							subscription.profileId,
+							subscription.userId || undefined,
+							subscriptionId,
+							subscription.saveToLibrary
+						);
+					} catch (err) {
+						console.error(`[Subscriptions] Failed to create download for ${video.url}:`, err);
+					}
 				}
 			} else {
 				console.log(`[Subscriptions] No new videos for ${subscription.name}`);
 			}
+
+			await prisma.subscription.update({
+				where: { id: subscriptionId },
+				data: { lastChecked: new Date() },
+			});
 
 			sseEmitter.broadcast('subscription:checked', {
 				id: subscriptionId,
