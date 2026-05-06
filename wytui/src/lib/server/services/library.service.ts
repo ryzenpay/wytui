@@ -1,7 +1,7 @@
 import { prisma } from '../db';
 import { sseEmitter } from '../sse/emitter';
 import { DownloadStatus } from '@prisma/client';
-import { copyFile, unlink, mkdir, access } from 'fs/promises';
+import { copyFile, unlink, mkdir, access, writeFile } from 'fs/promises';
 import { join, basename, resolve, extname } from 'path';
 
 function sanitizeFilename(name: string): string {
@@ -56,6 +56,20 @@ class LibraryService {
 			await unlink(download.filepath);
 		} catch {
 			// Original may already be gone
+		}
+
+		if (download.thumbnail) {
+			try {
+				const thumbRes = await fetch(download.thumbnail);
+				if (thumbRes.ok) {
+					const thumbBase = basename(destPath, extname(destPath));
+					const thumbPath = join(destDir, thumbBase + '.jpg');
+					const buffer = Buffer.from(await thumbRes.arrayBuffer());
+					await writeFile(thumbPath, buffer);
+				}
+			} catch {
+				// Thumbnail is nice-to-have, don't fail the promote
+			}
 		}
 
 		await prisma.download.update({
