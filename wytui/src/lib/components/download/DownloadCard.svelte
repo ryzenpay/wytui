@@ -2,7 +2,7 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import type { Download } from '$lib/types';
 
-	let { download }: { download: Download } = $props();
+	let { download, jellyfinUrl = '' }: { download: Download; jellyfinUrl?: string } = $props();
 
 	let progressPercent = $derived(download.progress?.toFixed(1) || 0);
 	let statusColor = $derived(getStatusColor(download.status));
@@ -187,6 +187,16 @@
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
 						{promoting ? 'Saving...' : 'Save to Library'}
 					</button>
+				{/if}
+				{#if download.storagePool === 'library' && jellyfinUrl}
+					<a
+						class="btn btn-sm btn-secondary"
+						href="{jellyfinUrl}/web/#/search.html?query={encodeURIComponent(download.title || '')}"
+						target="_blank"
+						rel="noopener"
+					>
+						Open in Jellyfin
+					</a>
 				{/if}
 			{/if}
 

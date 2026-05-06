@@ -197,6 +197,48 @@ textarea::placeholder {
 	color: var(--text-tertiary);
 }
 
+input[type='checkbox'] {
+	appearance: none;
+	-webkit-appearance: none;
+	width: 18px;
+	height: 18px;
+	min-width: 18px;
+	min-height: 18px;
+	padding: 0;
+	background: var(--bg-tertiary);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	position: relative;
+	vertical-align: middle;
+}
+
+input[type='checkbox']:checked {
+	background: var(--accent-primary);
+	border-color: var(--accent-primary);
+}
+
+input[type='checkbox']:checked::after {
+	content: '';
+	position: absolute;
+	left: 5px;
+	top: 2px;
+	width: 5px;
+	height: 9px;
+	border: solid white;
+	border-width: 0 2px 2px 0;
+	transform: rotate(45deg);
+}
+
+input[type='checkbox']:focus-visible {
+	border-color: var(--accent-primary);
+	box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+input[type='checkbox']:hover:not(:disabled) {
+	border-color: var(--accent-primary);
+}
+
 /* Cards */
 .card {
 	background: var(--bg-secondary);

@@ -88,14 +88,41 @@
 		}
 	}
 
+	let testingJellyfin = $state(false);
+	let jellyfinTestResult = $state<{ success: boolean; message: string } | null>(null);
+
 	function toggleJellyfin(enabled: boolean) {
 		if (!settings) return;
+		jellyfinTestResult = null;
 		if (enabled) {
 			settings.jellyfinUrl = settings.jellyfinUrl || 'http://jellyfin:8096';
 			settings.jellyfinApiKey = settings.jellyfinApiKey || '';
 		} else {
 			settings.jellyfinUrl = null;
 			settings.jellyfinApiKey = null;
+		}
+	}
+
+	async function testJellyfinConnection() {
+		if (!settings?.jellyfinUrl || !settings?.jellyfinApiKey) return;
+		testingJellyfin = true;
+		jellyfinTestResult = null;
+		try {
+			const res = await fetch('/api/settings/jellyfin-test', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ url: settings.jellyfinUrl, apiKey: settings.jellyfinApiKey }),
+			});
+			const data = await res.json();
+			if (data.success) {
+				jellyfinTestResult = { success: true, message: `Connected to ${data.serverName}` };
+			} else {
+				jellyfinTestResult = { success: false, message: data.error };
+			}
+		} catch {
+			jellyfinTestResult = { success: false, message: 'Request failed' };
+		} finally {
+			testingJellyfin = false;
 		}
 	}
 
@@ -413,6 +440,21 @@
 								/>
 								<p class="help-text">Dashboard > API Keys in Jellyfin</p>
 							</div>
+						</div>
+						<div class="jellyfin-test nested-field">
+							<button
+								type="button"
+								class="btn-secondary btn-sm"
+								onclick={testJellyfinConnection}
+								disabled={testingJellyfin || !settings.jellyfinUrl || !settings.jellyfinApiKey}
+							>
+								{testingJellyfin ? 'Testing...' : 'Test Connection'}
+							</button>
+							{#if jellyfinTestResult}
+								<span class="test-result" class:success={jellyfinTestResult.success} class:error={!jellyfinTestResult.success}>
+									{jellyfinTestResult.message}
+								</span>
+							{/if}
 						</div>
 					{/if}
 				</div>
@@ -734,6 +776,26 @@
 		margin-left: var(--spacing-xl);
 		padding-left: var(--spacing-lg);
 		border-left: 2px solid rgba(255, 255, 255, 0.1);
+	}
+
+	.jellyfin-test {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.test-result {
+		font-size: 0.8125rem;
+		font-weight: 500;
+	}
+
+	.test-result.success {
+		color: var(--success);
+	}
+
+	.test-result.error {
+		color: var(--error);
 	}
 
 	.form-group {

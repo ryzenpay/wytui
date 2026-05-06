@@ -45,6 +45,7 @@
 	// Shared state
 	let profiles = $state<any[]>([]);
 	let libraryConfigured = $state(false);
+	let jellyfinUrl = $state('');
 	let cacheUsage = $state<{ usedBytes: string; quotaBytes: string; percentage: number } | null>(null);
 	let clearingCache = $state(false);
 
@@ -114,6 +115,7 @@
 			if (settingsRes.ok) {
 				const settings = await settingsRes.json();
 				libraryConfigured = !!settings.libraryPath;
+				jellyfinUrl = settings.jellyfinUrl || '';
 			}
 		} catch (e) {
 			console.error('Failed to load profiles:', e);
@@ -400,7 +402,7 @@
 					{:else}
 						<div class="downloads-list">
 							{#each sseState.downloads as download (download.id)}
-								<DownloadCard {download} />
+								<DownloadCard {download} {jellyfinUrl} />
 							{/each}
 						</div>
 					{/if}
@@ -440,7 +442,7 @@
 				{:else}
 					<div class="downloads-grid">
 						{#each completedDownloads as download (download.id)}
-							<DownloadCard {download} />
+							<DownloadCard {download} {jellyfinUrl} />
 						{/each}
 					</div>
 				{/if}
