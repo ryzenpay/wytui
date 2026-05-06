@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { sseEmitter } from '../sse/emitter';
 import { DownloadStatus } from '@prisma/client';
 import { copyFile, unlink, mkdir } from 'fs/promises';
-import { join, basename, resolve } from 'path';
+import { join, basename, resolve, extname } from 'path';
 
 function sanitizeFilename(name: string): string {
 	return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Unknown';
@@ -34,7 +34,10 @@ class LibraryService {
 		}
 		await mkdir(destDir, { recursive: true });
 
-		const filename = basename(download.filepath);
+		const ext = extname(download.filepath);
+		const filename = download.title
+			? sanitizeFilename(download.title) + ext
+			: basename(download.filepath);
 		const destPath = join(destDir, filename);
 
 		await copyFile(download.filepath, destPath);
