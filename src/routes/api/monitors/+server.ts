@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { monitorService } from '$lib/server/services/monitor.service';
+import { ytdlpService } from '$lib/server/services/ytdlp.service';
 import type { RequestHandler } from './$types';
 
 /**
@@ -60,6 +61,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Invalid monitor type');
 		}
 
+		// Validate custom flags
+		const customFlags = Array.isArray(data.customFlags) ? data.customFlags : [];
+		if (customFlags.length > 0) {
+			const badFlag = ytdlpService.findDangerousFlag(customFlags);
+			if (badFlag) {
+				throw error(400, `Forbidden flag: ${badFlag}`);
+			}
+		}
+
 		const monitor = await prisma.monitor.create({
 			data: {
 				url: data.url,
@@ -67,6 +77,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				profileId: data.profileId,
 				type: data.type,
 				autoDownload: data.autoDownload ?? true,
+				customFlags,
 			},
 			include: { profile: true },
 		});

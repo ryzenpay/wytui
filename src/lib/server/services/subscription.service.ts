@@ -101,7 +101,8 @@ class SubscriptionService {
 							subscription.profileId,
 							subscription.userId || undefined,
 							subscriptionId,
-							subscription.saveToLibrary
+							subscription.saveToLibrary,
+							subscription.customFlags?.length ? subscription.customFlags : undefined
 						);
 					} catch (err) {
 						console.error(`[Subscriptions] Failed to create download for ${video.url}:`, err);
@@ -251,7 +252,8 @@ class SubscriptionService {
 					subscription.profileId,
 					subscription.userId || undefined,
 					subscriptionId,
-					subscription.saveToLibrary
+					subscription.saveToLibrary,
+					subscription.customFlags?.length ? subscription.customFlags : undefined
 				);
 			} catch (err) {
 				console.error(`[Subscriptions] Backfill: failed to create download for ${video.url}:`, err);

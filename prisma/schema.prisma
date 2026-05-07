@@ -188,6 +188,7 @@ model Subscription {
   profile     DownloadProfile @relation(fields: [profileId], references: [id])
   autoDownload Boolean  @default(true)
   saveToLibrary Boolean @default(false)
+  customFlags String[]  // Per-subscription yt-dlp flags (SponsorBlock, subtitles, etc.)
 
   // Metadata
   thumbnail   String?
@@ -230,6 +231,7 @@ model Monitor {
   profileId   String
   profile     DownloadProfile @relation(fields: [profileId], references: [id])
   autoDownload Boolean  @default(true)
+  customFlags String[]  // Per-monitor yt-dlp flags (SponsorBlock, subtitles, etc.)
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

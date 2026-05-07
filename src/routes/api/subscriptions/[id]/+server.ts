@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { subscriptionService } from '$lib/server/services/subscription.service';
+import { ytdlpService } from '$lib/server/services/ytdlp.service';
 import type { RequestHandler } from './$types';
 
 /**
@@ -62,7 +63,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		const body = await request.json();
 
-		const allowedFields = ['name', 'url', 'type', 'enabled', 'checkInterval', 'autoDownload', 'saveToLibrary', 'profileId'];
+		const allowedFields = ['name', 'url', 'type', 'enabled', 'checkInterval', 'autoDownload', 'saveToLibrary', 'profileId', 'customFlags'];
 		const updates: Record<string, any> = {};
 		for (const key of allowedFields) {
 			if (key in body) updates[key] = body[key];
@@ -92,6 +93,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 			if (!profile.isSystem && profile.userId !== locals.session.user.id) {
 				throw error(403, 'Cannot use another user\'s profile');
+			}
+		}
+
+		if (updates.customFlags !== undefined) {
+			if (!Array.isArray(updates.customFlags)) {
+				throw error(400, 'customFlags must be an array');
+			}
+			const badFlag = ytdlpService.findDangerousFlag(updates.customFlags);
+			if (badFlag) {
+				throw error(400, `Forbidden flag: ${badFlag}`);
 			}
 		}
 

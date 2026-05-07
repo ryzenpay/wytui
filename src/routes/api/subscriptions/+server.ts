@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { subscriptionService } from '$lib/server/services/subscription.service';
+import { ytdlpService } from '$lib/server/services/ytdlp.service';
 import type { RequestHandler } from './$types';
 
 /**
@@ -79,6 +80,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Check interval must be between 60 and 86400 seconds');
 		}
 
+		// Validate custom flags
+		const customFlags = Array.isArray(data.customFlags) ? data.customFlags : [];
+		if (customFlags.length > 0) {
+			const badFlag = ytdlpService.findDangerousFlag(customFlags);
+			if (badFlag) {
+				throw error(400, `Forbidden flag: ${badFlag}`);
+			}
+		}
+
 		// Create subscription with validated data only
 		const subscription = await prisma.subscription.create({
 			data: {
@@ -89,6 +99,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				checkInterval,
 				autoDownload: data.autoDownload ?? true,
 				saveToLibrary: data.saveToLibrary ?? false,
+				customFlags,
 				enabled: true,
 				userId,
 			},

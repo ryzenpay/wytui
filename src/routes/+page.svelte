@@ -32,6 +32,7 @@
 	let subFormAutoDownload = $state(true);
 	let subFormType = $state('CHANNEL');
 	let subFormSaveToLibrary = $state(false);
+	let subFormOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
 
 	// Subscription edit state
 	let editingSub = $state<any | null>(null);
@@ -42,6 +43,7 @@
 	let editSubCheckInterval = $state(1800);
 	let editSubAutoDownload = $state(true);
 	let editSubSaveToLibrary = $state(false);
+	let editSubOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
 
 	// Subscription backfill state
 	let backfillingSub = $state<string | null>(null);
@@ -57,6 +59,7 @@
 	let monFormProfileId = $state('');
 	let monFormType = $state('YOUTUBE_LIVE');
 	let monFormAutoDownload = $state(true);
+	let monFormOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
 
 	// Monitor edit state
 	let editingMonitor = $state<any | null>(null);
@@ -65,6 +68,7 @@
 	let editMonType = $state('YOUTUBE_LIVE');
 	let editMonProfileId = $state('');
 	let editMonAutoDownload = $state(true);
+	let editMonOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
 
 	// Form error state
 	let subFormError = $state('');
@@ -76,6 +80,23 @@
 	let jellyfinUrl = $state('');
 	let cacheUsage = $state<{ usedBytes: string; quotaBytes: string; percentage: number } | null>(null);
 	let clearingCache = $state(false);
+
+	function buildOptionsFlags(opts: { sponsorblock: boolean; subtitles: boolean; metadata: boolean }, saveToLibrary = false): string[] {
+		const flags: string[] = [];
+		if (opts.sponsorblock) flags.push('--sponsorblock-remove', 'sponsor,selfpromo');
+		if (opts.subtitles) flags.push('--write-subs', '--embed-subs', '--sub-langs', 'en');
+		if (opts.metadata) flags.push('--embed-metadata', '--embed-chapters');
+		if (saveToLibrary) flags.push('--write-thumbnail');
+		return flags;
+	}
+
+	function parseOptionsFromFlags(flags: string[]): { sponsorblock: boolean; subtitles: boolean; metadata: boolean } {
+		return {
+			sponsorblock: flags.includes('--sponsorblock-remove'),
+			subtitles: flags.includes('--write-subs'),
+			metadata: flags.includes('--embed-metadata'),
+		};
+	}
 
 	onMount(() => {
 		loadProfiles();
@@ -210,6 +231,7 @@
 					checkInterval: subFormCheckInterval,
 					autoDownload: subFormAutoDownload,
 					saveToLibrary: subFormSaveToLibrary,
+					customFlags: buildOptionsFlags(subFormOptions, subFormSaveToLibrary),
 				}),
 			});
 
@@ -217,6 +239,7 @@
 				subFormUrl = '';
 				subFormName = '';
 				subFormSaveToLibrary = false;
+				subFormOptions = { sponsorblock: false, subtitles: false, metadata: false };
 				showSubsForm = false;
 				await loadSubscriptions();
 			} else {
@@ -278,6 +301,7 @@
 		editSubCheckInterval = sub.checkInterval;
 		editSubAutoDownload = sub.autoDownload;
 		editSubSaveToLibrary = sub.saveToLibrary;
+		editSubOptions = parseOptionsFromFlags(sub.customFlags || []);
 	}
 
 	function cancelEditSub() {
@@ -298,6 +322,7 @@
 					checkInterval: editSubCheckInterval,
 					autoDownload: editSubAutoDownload,
 					saveToLibrary: editSubSaveToLibrary,
+					customFlags: buildOptionsFlags(editSubOptions, editSubSaveToLibrary),
 				}),
 			});
 			if (res.ok) {
@@ -392,12 +417,14 @@
 					type: monFormType,
 					profileId: monFormProfileId,
 					autoDownload: monFormAutoDownload,
+					customFlags: buildOptionsFlags(monFormOptions),
 				}),
 			});
 
 			if (res.ok) {
 				monFormUrl = '';
 				monFormName = '';
+				monFormOptions = { sponsorblock: false, subtitles: false, metadata: false };
 				showMonitorsForm = false;
 				await loadMonitors();
 			} else {
@@ -445,6 +472,7 @@
 		editMonType = monitor.type;
 		editMonProfileId = monitor.profileId;
 		editMonAutoDownload = monitor.autoDownload;
+		editMonOptions = parseOptionsFromFlags(monitor.customFlags || []);
 	}
 
 	function cancelEditMonitor() {
@@ -463,6 +491,7 @@
 					type: editMonType,
 					profileId: editMonProfileId,
 					autoDownload: editMonAutoDownload,
+					customFlags: buildOptionsFlags(editMonOptions),
 				}),
 			});
 			if (res.ok) {
@@ -683,10 +712,27 @@
 						</label>
 						{#if libraryConfigured}
 							<label class="checkbox-label">
-								<input type="checkbox" bind:checked={subFormSaveToLibrary} />
+								<input
+									type="checkbox"
+									bind:checked={subFormSaveToLibrary}
+									onchange={() => {
+										if (subFormSaveToLibrary) {
+											subFormOptions = { sponsorblock: true, subtitles: true, metadata: true };
+										}
+									}}
+								/>
 								Save to Library
 							</label>
 						{/if}
+					</div>
+
+					<div class="options-row">
+						<span class="options-label">Options</span>
+						<div class="options-chips">
+							<button type="button" class="option-chip" class:active={subFormOptions.sponsorblock} onclick={() => subFormOptions.sponsorblock = !subFormOptions.sponsorblock}>SponsorBlock</button>
+							<button type="button" class="option-chip" class:active={subFormOptions.subtitles} onclick={() => subFormOptions.subtitles = !subFormOptions.subtitles}>Subtitles</button>
+							<button type="button" class="option-chip" class:active={subFormOptions.metadata} onclick={() => subFormOptions.metadata = !subFormOptions.metadata}>Metadata</button>
+						</div>
 					</div>
 
 					{#if subFormError}
@@ -748,10 +794,26 @@
 										</label>
 										{#if libraryConfigured}
 											<label class="checkbox-label">
-												<input type="checkbox" bind:checked={editSubSaveToLibrary} />
+												<input
+													type="checkbox"
+													bind:checked={editSubSaveToLibrary}
+													onchange={() => {
+														if (editSubSaveToLibrary) {
+															editSubOptions = { sponsorblock: true, subtitles: true, metadata: true };
+														}
+													}}
+												/>
 												Save to Library
 											</label>
 										{/if}
+									</div>
+									<div class="options-row">
+										<span class="options-label">Options</span>
+										<div class="options-chips">
+											<button type="button" class="option-chip" class:active={editSubOptions.sponsorblock} onclick={() => editSubOptions.sponsorblock = !editSubOptions.sponsorblock}>SponsorBlock</button>
+											<button type="button" class="option-chip" class:active={editSubOptions.subtitles} onclick={() => editSubOptions.subtitles = !editSubOptions.subtitles}>Subtitles</button>
+											<button type="button" class="option-chip" class:active={editSubOptions.metadata} onclick={() => editSubOptions.metadata = !editSubOptions.metadata}>Metadata</button>
+										</div>
 									</div>
 									<div class="actions">
 										<button class="btn btn-sm btn-primary" onclick={saveEditSub}>Save</button>
@@ -774,6 +836,15 @@
 									<span>Type: {sub.type}</span>
 									{#if sub.saveToLibrary}
 										<span class="library-tag">Library</span>
+									{/if}
+									{#if sub.customFlags?.includes('--sponsorblock-remove')}
+										<span class="option-tag">SB</span>
+									{/if}
+									{#if sub.customFlags?.includes('--write-subs')}
+										<span class="option-tag">Subs</span>
+									{/if}
+									{#if sub.customFlags?.includes('--embed-metadata')}
+										<span class="option-tag">Meta</span>
 									{/if}
 								</div>
 
@@ -898,6 +969,15 @@
 						Auto-download when live
 					</label>
 
+					<div class="options-row">
+						<span class="options-label">Options</span>
+						<div class="options-chips">
+							<button type="button" class="option-chip" class:active={monFormOptions.sponsorblock} onclick={() => monFormOptions.sponsorblock = !monFormOptions.sponsorblock}>SponsorBlock</button>
+							<button type="button" class="option-chip" class:active={monFormOptions.subtitles} onclick={() => monFormOptions.subtitles = !monFormOptions.subtitles}>Subtitles</button>
+							<button type="button" class="option-chip" class:active={monFormOptions.metadata} onclick={() => monFormOptions.metadata = !monFormOptions.metadata}>Metadata</button>
+						</div>
+					</div>
+
 					{#if monFormError}
 						<p class="form-error">{monFormError}</p>
 					{/if}
@@ -949,6 +1029,14 @@
 										<input type="checkbox" bind:checked={editMonAutoDownload} />
 										Auto-download when live
 									</label>
+									<div class="options-row">
+										<span class="options-label">Options</span>
+										<div class="options-chips">
+											<button type="button" class="option-chip" class:active={editMonOptions.sponsorblock} onclick={() => editMonOptions.sponsorblock = !editMonOptions.sponsorblock}>SponsorBlock</button>
+											<button type="button" class="option-chip" class:active={editMonOptions.subtitles} onclick={() => editMonOptions.subtitles = !editMonOptions.subtitles}>Subtitles</button>
+											<button type="button" class="option-chip" class:active={editMonOptions.metadata} onclick={() => editMonOptions.metadata = !editMonOptions.metadata}>Metadata</button>
+										</div>
+									</div>
 									<div class="actions">
 										<button class="btn btn-sm btn-primary" onclick={saveEditMonitor}>Save</button>
 										<button class="btn btn-sm btn-secondary" onclick={cancelEditMonitor}>Cancel</button>
@@ -1470,6 +1558,59 @@
 		padding: 1px 6px;
 		border-radius: var(--radius-sm);
 		font-weight: 600;
+	}
+
+	.option-tag {
+		background: rgba(99, 102, 241, 0.15);
+		color: var(--accent-primary);
+		padding: 1px 6px;
+		border-radius: var(--radius-sm);
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.options-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		margin-bottom: var(--spacing-md);
+	}
+
+	.options-label {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+		text-transform: uppercase;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		white-space: nowrap;
+	}
+
+	.options-chips {
+		display: flex;
+		gap: var(--spacing-xs);
+		flex-wrap: wrap;
+	}
+
+	.option-chip {
+		padding: var(--spacing-xs) var(--spacing-sm);
+		background: var(--bg-tertiary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		color: var(--text-secondary);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.option-chip:hover {
+		background: var(--bg-hover);
+		border-color: var(--accent-dim);
+	}
+
+	.option-chip.active {
+		background: rgba(99, 102, 241, 0.15);
+		border-color: var(--accent-primary);
+		color: var(--accent-primary);
 	}
 
 	.cache-usage-bar {

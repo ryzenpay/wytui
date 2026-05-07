@@ -152,7 +152,9 @@ class MonitorService {
 				monitor.url,
 				monitor.profileId,
 				undefined,
-				undefined
+				undefined,
+				false,
+				monitor.customFlags?.length ? monitor.customFlags : undefined
 			);
 			console.log(`[Monitor ${monitor.name}] Started download`);
 		}
