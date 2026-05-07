@@ -101,14 +101,14 @@ postgresql:
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `AUTH_SECRET` | Session signing secret |
-| `AUTH_TRUST_HOST` | Set `true` behind a reverse proxy |
-| `ORIGIN` | Public URL of the app (e.g. `https://wytui.example.com`) |
+| `AUTH_TRUST_HOST` | Set `true` behind a reverse proxy (optional) |
+| `ORIGIN` | Public URL of the app (optional, defaults to `http://localhost:3000`) |
 | `ADMIN_USERNAME` | Auto-create admin user, skipping the setup wizard (optional) |
 | `ADMIN_PASSWORD` | Password for the auto-created admin user (optional) |
-| `OIDC_ISSUER_URL` | OIDC issuer URL |
-| `OIDC_CLIENT_ID` | OIDC client ID |
-| `OIDC_CLIENT_SECRET` | OIDC client secret |
-| `OIDC_DISPLAY_NAME` | OIDC provider display name |
+| `OIDC_ISSUER_URL` | OIDC issuer URL (optional) |
+| `OIDC_CLIENT_ID` | OIDC client ID (optional) |
+| `OIDC_CLIENT_SECRET` | OIDC client secret (optional) |
+| `OIDC_DISPLAY_NAME` | OIDC provider display name (optional, defaults to "SSO") |
 
 ## Tech Stack
 
