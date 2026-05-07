@@ -1,0 +1,68 @@
+image:
+  repository: ghcr.io/willuhmjs/wytui
+  tag: latest
+  pullPolicy: IfNotPresent
+
+strategy:
+  type: Recreate
+
+ingress:
+  enabled: true
+  className: traefik
+  domain: wytui.example.com
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: wytui-tls
+
+secret:
+  existing: false
+  name: wytui-secret
+  authSecret: ""
+  authSecretKey: AUTH_SECRET
+
+oidc:
+  enabled: false
+  name: oidc
+  secret:
+    existing: false
+    name: wytui-oidc-secret
+    clientId: wytui
+    clientIdKey: OIDC_CLIENT_ID
+    clientSecret: ""
+    clientSecretKey: OIDC_CLIENT_SECRET
+    issuer: ""
+    issuerKey: OIDC_ISSUER
+
+postgresql:
+  enabled: true
+  image: postgres:18-alpine
+  database: wytui
+  secret:
+    existing: false
+    name: wytui-postgresql-secret
+    url: ""
+    urlKey: DATABASE_URL
+    username: wytui
+    usernameKey: POSTGRES_USER
+    password: ""
+    passwordKey: POSTGRES_PASSWORD
+  persistent:
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+downloads:
+  persistent:
+    size: 5Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+library:
+  persistent:
+    size: 10Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce

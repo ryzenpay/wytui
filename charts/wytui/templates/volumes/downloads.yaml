@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wytui-downloads
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: wytui-downloads
+spec:
+  storageClassName: {{ .Values.downloads.persistent.storageClass }}
+  accessModes:
+    {{- toYaml .Values.downloads.persistent.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.downloads.persistent.size }}

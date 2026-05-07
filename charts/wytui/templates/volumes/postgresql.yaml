@@ -1,0 +1,16 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wytui-postgresql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: wytui-postgresql
+spec:
+  storageClassName: {{ .Values.postgresql.persistent.storageClass }}
+  accessModes:
+    {{- toYaml .Values.postgresql.persistent.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.postgresql.persistent.size }}
+{{- end }}

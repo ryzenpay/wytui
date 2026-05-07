@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wytui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: wytui
+spec:
+  replicas: 1
+  strategy:
+    type: {{ .Values.strategy.type }}
+  selector:
+    matchLabels:
+      app: wytui
+  template:
+    metadata:
+      labels:
+        app: wytui
+    spec:
+      securityContext:
+        fsGroup: 1001
+      initContainers:
+      - name: migrate
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["npx", "prisma", "migrate", "deploy"]
+        env:
+        {{- include "wytui.appEnv" . | nindent 8 }}
+      containers:
+      - name: wytui
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["node", "build"]
+        ports:
+        - containerPort: 3000
+        env:
+        {{- include "wytui.appEnv" . | nindent 8 }}
+        volumeMounts:
+        - name: downloads
+          mountPath: /downloads
+        - name: library
+          mountPath: /media
+      volumes:
+      - name: downloads
+        persistentVolumeClaim:
+          claimName: wytui-downloads
+      - name: library
+        persistentVolumeClaim:
+          claimName: wytui-library
