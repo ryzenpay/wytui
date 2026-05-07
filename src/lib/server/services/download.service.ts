@@ -235,7 +235,7 @@ class DownloadService {
 	/**
 	 * Handle progress updates from yt-dlp
 	 */
-	private processingStatus = new Set<string>();
+	private processingSteps = new Map<string, string>();
 
 	private handleProgress(downloadId: string, data: any): void {
 		// Handle file destination info
@@ -254,14 +254,14 @@ class DownloadService {
 
 		// Handle post-processing step
 		if (data.type === 'postprocess' && data.step) {
-			if (!this.processingStatus.has(downloadId)) {
-				this.processingStatus.add(downloadId);
+			if (!this.processingSteps.has(downloadId)) {
 				this.updateDownload(downloadId, {
 					status: DownloadStatus.PROCESSING,
 					speed: null,
 					eta: null,
 				});
 			}
+			this.processingSteps.set(downloadId, data.step);
 			this.emitToOwner('download:progress', {
 				id: downloadId,
 				status: 'PROCESSING',
@@ -343,7 +343,7 @@ class DownloadService {
 			}
 		}
 
-		this.processingStatus.delete(downloadId);
+		this.processingSteps.delete(downloadId);
 		this.emitToOwner('download:complete', { id: downloadId, download }, downloadId);
 		this.downloadOwners.delete(downloadId);
 
@@ -391,7 +391,7 @@ class DownloadService {
 					error,
 				});
 
-				this.processingStatus.delete(downloadId);
+				this.processingSteps.delete(downloadId);
 				this.emitToOwner('download:failed', { id: downloadId, error }, downloadId);
 				this.downloadOwners.delete(downloadId);
 			}
@@ -426,7 +426,7 @@ class DownloadService {
 			status: DownloadStatus.CANCELLED,
 		});
 
-		this.processingStatus.delete(downloadId);
+		this.processingSteps.delete(downloadId);
 		this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
 		this.downloadOwners.delete(downloadId);
 	}
@@ -510,7 +510,7 @@ class DownloadService {
 	/**
 	 * Get active downloads
 	 */
-	async getActiveDownloads(userId?: string): Promise<Download[]> {
+	async getActiveDownloads(userId?: string): Promise<any[]> {
 		const downloads = await prisma.download.findMany({
 			where: {
 				userId,
@@ -527,7 +527,12 @@ class DownloadService {
 			orderBy: { createdAt: 'desc' },
 		});
 
-		return downloads.map(serializeDownload);
+		return downloads.map((d) => {
+			const serialized = serializeDownload(d);
+			const step = this.processingSteps.get(d.id);
+			if (step) serialized.processingStep = step;
+			return serialized;
+		});
 	}
 
 	/**
