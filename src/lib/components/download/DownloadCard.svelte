@@ -186,7 +186,7 @@
 		{/if}
 
 		<div class="actions">
-			{#if download.status === 'DOWNLOADING' || download.status === 'PENDING' || download.status === 'FETCHING_INFO'}
+			{#if download.status === 'DOWNLOADING' || download.status === 'PENDING' || download.status === 'FETCHING_INFO' || download.status === 'PROCESSING'}
 				<button class="btn btn-sm btn-danger" onclick={cancelDownload}>
 					Cancel
 				</button>
