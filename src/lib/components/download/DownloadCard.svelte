@@ -265,6 +265,7 @@
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		transition: all var(--transition-normal);
+		flex-shrink: 0;
 	}
 
 	.download-card:hover {
