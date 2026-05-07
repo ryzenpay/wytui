@@ -296,21 +296,28 @@ export class YtdlpService {
 						const ppMatch = line.match(/^\[(\w+)\]\s+(.+)/);
 						if (ppMatch && onProgress) {
 							const module = ppMatch[1];
-							const detail = ppMatch[2];
-							const stepMap: Record<string, string> = {
-								'SponsorBlock': 'SponsorBlock',
-								'ModifyChapters': 'Removing chapters',
-								'Merger': 'Merging formats',
-								'Metadata': 'Embedding metadata',
-								'EmbedSubtitle': 'Embedding subtitles',
-								'EmbedThumbnail': 'Embedding thumbnail',
-								'ExtractAudio': 'Extracting audio',
-								'FFmpegVideoConvertor': 'Converting video',
-								'FFmpegMetadata': 'Embedding metadata',
-								'ThumbnailsConvertor': 'Converting thumbnail',
-							};
-							if (stepMap[module]) {
-								onProgress({ type: 'postprocess', step: stepMap[module] });
+							const ignoredModules = new Set([
+								'download', 'info', 'debug', 'generic',
+								'youtube', 'youtube:tab',
+							]);
+							if (!ignoredModules.has(module)) {
+								const stepMap: Record<string, string> = {
+									'SponsorBlock': 'SponsorBlock',
+									'ModifyChapters': 'Removing chapters',
+									'Merger': 'Merging formats',
+									'Metadata': 'Embedding metadata',
+									'EmbedSubtitle': 'Embedding subtitles',
+									'EmbedThumbnail': 'Embedding thumbnail',
+									'ExtractAudio': 'Extracting audio',
+									'FFmpegVideoConvertor': 'Converting video',
+									'FFmpegMetadata': 'Embedding metadata',
+									'ThumbnailsConvertor': 'Converting thumbnail',
+									'FixupM3u8': 'Fixing container',
+									'FixupDuplicateMoov': 'Fixing container',
+									'FixupStretchedRatio': 'Fixing aspect ratio',
+								};
+								const step = stepMap[module] || `Processing (${module})`;
+								onProgress({ type: 'postprocess', step });
 							}
 						}
 					}
