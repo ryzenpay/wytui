@@ -148,8 +148,22 @@
 						{download.storagePool === 'library' ? 'Library' : 'Cache'}
 					</span>
 				{/if}
-				<span class="status" style="color: {statusColor}">
-					{getStatusLabel(download.status)}
+				<span class="status-icon" title={getStatusLabel(download.status)}>
+					{#if download.status === 'COMPLETED'}
+						<svg viewBox="0 0 20 20" fill="var(--success)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
+					{:else if download.status === 'FAILED'}
+						<svg viewBox="0 0 20 20" fill="var(--error)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" /></svg>
+					{:else if download.status === 'CANCELLED'}
+						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6.75 9.25a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clip-rule="evenodd" /></svg>
+					{:else if download.status === 'DOWNLOADING'}
+						<svg viewBox="0 0 20 20" fill="var(--accent-primary)" width="18" height="18"><path d="M10 2a.75.75 0 01.75.75v5.59l1.95-2.1a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0L6.2 7.26a.75.75 0 011.1-1.02l1.95 2.1V2.75A.75.75 0 0110 2z" /><path d="M5.273 4.5a1.25 1.25 0 00-1.205.918l-1.523 5.52c-.006.02-.01.041-.015.062H6a1.25 1.25 0 011.173.82l.243.693a.25.25 0 00.235.164h4.698a.25.25 0 00.234-.164l.244-.693A1.25 1.25 0 0114 11h3.47a1.318 1.318 0 00-.015-.062l-1.523-5.52a1.25 1.25 0 00-1.205-.918h-.558a.75.75 0 010-1.5h.558a2.75 2.75 0 012.651 2.019l1.523 5.52c.066.239.099.485.099.733V15a2 2 0 01-2 2H3a2 2 0 01-2-2v-3.228c0-.248.033-.494.099-.733l1.523-5.52A2.75 2.75 0 015.273 3.5h.558a.75.75 0 010 1.5h-.558z" /></svg>
+					{:else if download.status === 'PROCESSING'}
+						<svg viewBox="0 0 20 20" fill="var(--warning)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
+					{:else if download.status === 'FETCHING_INFO'}
+						<svg viewBox="0 0 20 20" fill="var(--info)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
+					{:else if download.status === 'PENDING'}
+						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
+					{/if}
 				</span>
 			</div>
 		</div>
@@ -325,10 +339,19 @@
 		color: var(--success);
 	}
 
-	.status {
-		font-size: 0.75rem;
-		font-weight: 600;
-		white-space: nowrap;
+	.status-icon {
+		display: flex;
+		align-items: center;
+		line-height: 0;
+	}
+
+	.status-icon :global(.spin) {
+		animation: spin 1.5s linear infinite;
+	}
+
+	@keyframes spin {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
 	}
 
 	.uploader {

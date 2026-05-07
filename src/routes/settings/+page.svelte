@@ -39,7 +39,7 @@
 
 	onMount(async () => {
 		if (isAdmin) {
-			await Promise.all([loadSettings(), loadUsers()]);
+			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo()]);
 		}
 	});
 
@@ -70,9 +70,23 @@
 
 	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey'];
 
+	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
+	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
 	let cacheQuotaGB = $derived(settings ? Number(BigInt(settings.cacheQuotaBytes || '10737418240')) / (1024 * 1024 * 1024) : 10);
+	let cacheQuotaExceedsDisk = $derived(diskTotalGB !== null && cacheQuotaGB > diskTotalGB);
 	let libraryEnabled = $derived(settings ? !!settings.libraryPath : false);
 	let jellyfinEnabled = $derived(settings ? !!(settings.jellyfinUrl || settings.jellyfinApiKey) : false);
+
+	async function loadDiskInfo() {
+		try {
+			const res = await fetch('/api/settings/disk');
+			if (res.ok) {
+				diskInfo = await res.json();
+			}
+		} catch {
+			// disk info is best-effort
+		}
+	}
 
 	function updateCacheQuota(gb: number) {
 		if (settings) {
@@ -347,9 +361,16 @@
 								value={cacheQuotaGB}
 								oninput={(e) => updateCacheQuota(parseFloat(e.currentTarget.value) || 0)}
 								min="1"
+								max={diskTotalGB ? Math.floor(diskTotalGB) : undefined}
 								step="1"
 							/>
-							<p class="help-text">Oldest downloads are auto-removed when exceeded</p>
+							{#if cacheQuotaExceedsDisk && diskTotalGB}
+								<p class="help-text error-text">Exceeds total disk space ({diskTotalGB.toFixed(1)} GB)</p>
+							{:else if diskTotalGB}
+								<p class="help-text">{diskTotalGB.toFixed(1)} GB total on disk</p>
+							{:else}
+								<p class="help-text">Oldest downloads are auto-removed when exceeded</p>
+							{/if}
 						</div>
 					</div>
 
@@ -508,7 +529,7 @@
 					</div>
 				{/if}
 
-				<button type="submit" class="btn-primary btn-lg" disabled={saving}>
+				<button type="submit" class="btn-primary btn-lg" disabled={saving || cacheQuotaExceedsDisk}>
 					{#if saving}
 						Saving...
 					{:else}
@@ -877,6 +898,10 @@
 		margin-top: var(--spacing-xs);
 		font-size: 0.875rem;
 		color: var(--text-secondary);
+	}
+
+	.error-text {
+		color: var(--error);
 	}
 
 	.info-box {

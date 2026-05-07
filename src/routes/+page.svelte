@@ -1339,8 +1339,8 @@
 
 	.backfill-menu {
 		margin-top: var(--spacing-md);
-		padding: var(--spacing-lg);
-		background: var(--bg-tertiary);
+		padding: var(--spacing-md);
+		background: var(--bg-elevated);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 		display: flex;
@@ -1352,6 +1352,8 @@
 		display: block;
 		margin-bottom: var(--spacing-sm);
 		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		font-weight: 500;
 	}
 
 	.backfill-date-row {

@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { statfs } from 'fs/promises';
 import { prisma } from './db';
 import { hashPassword, invalidateUsersCache } from './auth';
 
@@ -138,6 +139,15 @@ export async function ensureDefaults(): Promise<void> {
 		// yt-dlp not available in this environment — that's fine
 	}
 
+	// Compute default cache quota as 80% of total disk space
+	let cacheQuotaBytes: bigint | undefined;
+	try {
+		const stats = await statfs('/downloads');
+		cacheQuotaBytes = (BigInt(stats.bsize) * BigInt(stats.blocks) * BigInt(80)) / BigInt(100);
+	} catch {
+		// Fallback handled by schema default (10 GB)
+	}
+
 	// Ensure the settings singleton exists
 	await prisma.settings.upsert({
 		where: { id: 'singleton' },
@@ -151,6 +161,7 @@ export async function ensureDefaults(): Promise<void> {
 			autoUpdateYtdlp: true,
 			updateCheckInterval: 86400,
 			enableArchive: true,
+			...(cacheQuotaBytes !== undefined && { cacheQuotaBytes }),
 		},
 	});
 

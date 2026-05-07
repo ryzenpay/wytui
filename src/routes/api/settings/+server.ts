@@ -3,6 +3,7 @@ import { prisma } from '$lib/server/db';
 import { queueService } from '$lib/server/services/queue.service';
 import { isOidcConfigured, getOidcDisplayName } from '$lib/server/oidc';
 import { resolve, normalize } from 'path';
+import { statfs } from 'fs/promises';
 import type { RequestHandler } from './$types';
 
 const ALLOWED_SETTINGS_FIELDS = new Set([
@@ -117,6 +118,20 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 			if (val < BigInt(0)) {
 				throw error(400, 'Cache quota must be positive');
 			}
+
+			const currentSettings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+			const downloadPath = updates.downloadPath || currentSettings?.downloadPath || '/downloads';
+			try {
+				const stats = await statfs(downloadPath);
+				const totalBytes = BigInt(stats.bsize) * BigInt(stats.blocks);
+				if (val > totalBytes) {
+					const totalGB = Number(totalBytes) / (1024 * 1024 * 1024);
+					throw error(400, `Cache quota exceeds total disk space (${totalGB.toFixed(1)} GB)`);
+				}
+			} catch (e: any) {
+				if (e.status) throw e;
+			}
+
 			updates.cacheQuotaBytes = val;
 		}
 
