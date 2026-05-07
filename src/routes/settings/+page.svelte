@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { showAlert, showConfirm } from '$lib/stores/modal.svelte';
+	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 
 	interface Props {
 		data: {
@@ -367,8 +368,7 @@
 					{#if libraryEnabled}
 						<div class="form-group nested-field">
 							<label for="libraryPath">Video Library Path</label>
-							<input
-								type="text"
+							<PathBrowser
 								id="libraryPath"
 								bind:value={settings.libraryPath}
 								placeholder="/media"
@@ -377,8 +377,7 @@
 
 						<div class="form-group nested-field">
 							<label for="musicLibraryPath">Music Library Path</label>
-							<input
-								type="text"
+							<PathBrowser
 								id="musicLibraryPath"
 								bind:value={settings.musicLibraryPath}
 								placeholder="/media/music"
