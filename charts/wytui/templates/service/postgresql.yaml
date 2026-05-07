@@ -1,0 +1,13 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: wytui-postgresql
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: wytui-postgresql
+  ports:
+  - port: 5432
+    targetPort: 5432
+{{- end }}

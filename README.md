@@ -74,6 +74,27 @@ volumes:
   library:
 ```
 
+### Helm
+
+```bash
+helm install wytui oci://ghcr.io/willuhmjs/wytui
+```
+
+With custom values:
+
+```bash
+helm install wytui oci://ghcr.io/willuhmjs/wytui -f values.yaml
+```
+
+The chart includes a bundled PostgreSQL by default. To use an external database:
+
+```yaml
+postgresql:
+  enabled: false
+  secret:
+    url: "postgresql://user:pass@host:5432/wytui?schema=public"
+```
+
 ### Environment Variables
 
 | Variable | Description |

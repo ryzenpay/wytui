@@ -1,0 +1,33 @@
+name: Package and Publish Helm Chart
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'charts/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+      - name: Package chart
+        run: helm package charts/wytui
+
+      - name: Push chart to GHCR
+        run: helm push wytui-*.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}
