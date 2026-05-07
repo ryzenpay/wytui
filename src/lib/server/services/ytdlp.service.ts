@@ -140,6 +140,15 @@ export class YtdlpService {
 		'--batch-file',
 		'--load-info-json',
 		'--cookies-from-browser',
+		'--cookies',
+		'-o',
+		'--output',
+		'-P',
+		'--paths',
+		'--download-archive',
+		'--write-pages',
+		'--print-to-file',
+		'--output-na-placeholder',
 	];
 
 	private dangerousPatterns = [
@@ -147,6 +156,11 @@ export class YtdlpService {
 		/--config/i,
 		/--batch/i,
 		/--load-info/i,
+		/--output/i,
+		/--cookies/i,
+		/--paths/i,
+		/--download-archive/i,
+		/--print-to-file/i,
 		/[;&|$`]/,
 	];
 

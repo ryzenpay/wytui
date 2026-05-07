@@ -50,10 +50,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Missing required fields: url, name, profileId');
 		}
 
-		// Validate URL format
+		// Validate URL format and protocol
 		try {
-			new URL(data.url);
-		} catch {
+			const urlObj = new URL(data.url);
+			if (!['http:', 'https:'].includes(urlObj.protocol)) {
+				throw error(400, 'Only HTTP(S) URLs are allowed');
+			}
+		} catch (urlErr: any) {
+			if (urlErr.status) throw urlErr;
 			throw error(400, 'Invalid URL format');
 		}
 
