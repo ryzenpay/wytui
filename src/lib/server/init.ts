@@ -187,7 +187,7 @@ export async function ensureDefaults(): Promise<void> {
 		}
 	}
 
-	// Reset orphaned downloads that were active when the server last shut down
+	// Reset interrupted downloads back to PENDING so they get resumed below
 	const orphaned = await prisma.download.updateMany({
 		where: {
 			status: {
@@ -195,15 +195,20 @@ export async function ensureDefaults(): Promise<void> {
 			},
 		},
 		data: {
-			status: 'FAILED',
-			error: 'Interrupted by server restart',
+			status: 'PENDING',
+			error: null,
+			progress: 0,
+			speed: null,
+			eta: null,
+			downloadedBytes: null,
+			totalBytes: null,
 		},
 	});
 	if (orphaned.count > 0) {
-		console.log(`[Init] Reset ${orphaned.count} orphaned download(s) to FAILED`);
+		console.log(`[Init] Reset ${orphaned.count} interrupted download(s) to PENDING`);
 	}
 
-	// Resume downloads that were PENDING when the server shut down
+	// Resume all PENDING downloads
 	const pending = await prisma.download.findMany({
 		where: { status: 'PENDING' },
 		orderBy: { createdAt: 'asc' },
