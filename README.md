@@ -2,7 +2,7 @@
 
 A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with SvelteKit 5. Supports YouTube, TikTok, Twitter, and any yt-dlp compatible URL.
 
-> *wytui* — pronounced "white-ui"
+> *wytui* — pronounced "Y. T."
 
 ## Features
 
