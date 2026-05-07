@@ -175,6 +175,36 @@ export class YtdlpService {
 		return template.replace(/\.\./g, '').replace(/\//g, '_').replace(/\\/g, '_');
 	}
 
+	private isYouTubeUrl(url: string): boolean {
+		try {
+			const host = new URL(url).hostname.toLowerCase();
+			return host.includes('youtube.com') || host.includes('youtu.be') || host.includes('youtube-nocookie.com');
+		} catch {
+			return false;
+		}
+	}
+
+	private static readonly SPONSORBLOCK_FLAGS = new Set([
+		'--sponsorblock-mark',
+		'--sponsorblock-remove',
+		'--sponsorblock-chapter-title',
+		'--sponsorblock-api',
+	]);
+
+	private stripSponsorBlockFlags(flags: string[]): string[] {
+		const result: string[] = [];
+		for (let i = 0; i < flags.length; i++) {
+			if (YtdlpService.SPONSORBLOCK_FLAGS.has(flags[i])) {
+				if (i + 1 < flags.length && !flags[i + 1].startsWith('--')) {
+					i++;
+				}
+				continue;
+			}
+			result.push(flags[i]);
+		}
+		return result;
+	}
+
 	/**
 	 * Build yt-dlp arguments from profile settings
 	 */
@@ -203,7 +233,10 @@ export class YtdlpService {
 
 		// Add custom flags with filtering
 		if (customFlags.length > 0) {
-			const safeFlags = this.filterDangerousFlags(customFlags);
+			let safeFlags = this.filterDangerousFlags(customFlags);
+			if (!this.isYouTubeUrl(url)) {
+				safeFlags = this.stripSponsorBlockFlags(safeFlags);
+			}
 			args.push(...safeFlags);
 		}
 
