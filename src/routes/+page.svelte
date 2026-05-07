@@ -581,7 +581,12 @@
 						</div>
 					{:else}
 						<div class="downloads-list">
-							{#each sseState.downloads as download (download.id)}
+							{#each [...sseState.downloads].sort((a, b) => {
+								const active = ['FETCHING_INFO', 'DOWNLOADING', 'PROCESSING'];
+								const aActive = active.includes(a.status) ? 0 : 1;
+								const bActive = active.includes(b.status) ? 0 : 1;
+								return aActive - bActive;
+							}) as download (download.id)}
 								<DownloadCard {download} {jellyfinUrl} />
 							{/each}
 						</div>
@@ -1195,6 +1200,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-lg);
+		max-height: 70vh;
+		overflow-y: auto;
 	}
 
 	.section {
