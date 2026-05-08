@@ -571,7 +571,8 @@
 								const active = ['FETCHING_INFO', 'DOWNLOADING', 'PROCESSING'];
 								const aActive = active.includes(a.status) ? 0 : 1;
 								const bActive = active.includes(b.status) ? 0 : 1;
-								return aActive - bActive;
+								if (aActive !== bActive) return aActive - bActive;
+								return sseState.downloads.indexOf(b) - sseState.downloads.indexOf(a);
 							}) as download (download.id)}
 								<DownloadCard {download} {jellyfinUrl} />
 							{/each}
