@@ -514,11 +514,16 @@
 								id="authMode"
 								bind:value={settings.authMode}
 							>
-								<option value="password">Password Only</option>
+								<option value="password" disabled={!settings.canUsePasswordOnly}>Password Only{!settings.canUsePasswordOnly ? ' (no admin has a password)' : ''}</option>
 								<option value="both">Password + {settings.oidcDisplayName || 'SSO'}</option>
 								<option value="oidc">{settings.oidcDisplayName || 'SSO'} Only</option>
 							</select>
 							<p class="help-text">Choose which login methods are shown on the sign-in page</p>
+							{#if !settings.canUsePasswordOnly}
+								<div class="info-box warning-box">
+									Password-only mode is unavailable because no admin account has a password set. Set a password for an admin account to enable this option.
+								</div>
+							{/if}
 						</div>
 
 						{#if settings.authMode === 'oidc'}

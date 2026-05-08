@@ -81,6 +81,13 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 				emailVerified: new Date(),
 			},
 		});
+
+		if (isFirstUser) {
+			await prisma.settings.update({
+				where: { id: 'singleton' },
+				data: { authMode: 'oidc' },
+			});
+		}
 	}
 
 	await prisma.account.upsert({

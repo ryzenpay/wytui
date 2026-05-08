@@ -46,11 +46,23 @@ export const GET: RequestHandler = async ({ locals }) => {
 			});
 		}
 
+		let canUsePasswordOnly = true;
+		if (isOidcConfigured()) {
+			const adminWithPassword = await prisma.user.findFirst({
+				where: {
+					isAdmin: true,
+					password: { not: null },
+				},
+			});
+			canUsePasswordOnly = !!adminWithPassword;
+		}
+
 		return json({
 			...settings,
 			cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
 			oidcConfigured: isOidcConfigured(),
 			oidcDisplayName: isOidcConfigured() ? getOidcDisplayName() : null,
+			canUsePasswordOnly,
 		});
 	} catch (e: any) {
 		console.error('Failed to get settings:', e);
@@ -94,6 +106,18 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		if (updates.authMode !== undefined) {
 			if (!['password', 'oidc', 'both'].includes(updates.authMode)) {
 				throw error(400, 'Invalid auth mode');
+			}
+
+			if (updates.authMode === 'password') {
+				const adminWithPassword = await prisma.user.findFirst({
+					where: {
+						isAdmin: true,
+						password: { not: null },
+					},
+				});
+				if (!adminWithPassword) {
+					throw error(400, 'Cannot switch to password-only authentication: no admin accounts have a password set. Create a password for an admin account first.');
+				}
 			}
 		}
 
