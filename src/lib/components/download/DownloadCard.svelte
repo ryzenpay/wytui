@@ -7,6 +7,11 @@
 	let progressPercent = $derived(download.progress?.toFixed(1) || 0);
 	let statusColor = $derived(getStatusColor(download.status));
 	let mediaType = $derived(download.filename?.split('.').pop()?.toUpperCase() || null);
+	let jellyfinQuery = $derived(
+		download.artist
+			? `${download.artist} ${download.title?.split(' - ').pop()?.trim() || download.title || ''}`
+			: download.title || ''
+	);
 
 	function getStatusColor(status: string) {
 		const colors: Record<string, string> = {
@@ -234,7 +239,7 @@
 				{#if download.storagePool === 'library' && jellyfinUrl}
 					<a
 						class="btn btn-sm btn-secondary"
-						href="{jellyfinUrl}/web/#/search.html?query={encodeURIComponent(download.title || '')}"
+						href="{jellyfinUrl}/web/#/search.html?query={encodeURIComponent(jellyfinQuery)}"
 						target="_blank"
 						rel="noopener"
 					>
