@@ -153,15 +153,10 @@ class MusicMetadataService {
 	}
 
 	async resolveAndTag(download: Download): Promise<MusicFileInfo> {
-		let artist = download.artist;
-		let track = download.title;
+		const parsed = this.parseTitle(download.title || '', download.uploader || undefined);
+		let artist = download.artist || parsed.artist;
+		let track = parsed.track;
 		let album = download.album;
-
-		if (!artist || !track) {
-			const parsed = this.parseTitle(download.title || '', download.uploader || undefined);
-			artist = artist || parsed.artist;
-			track = track || parsed.track;
-		}
 
 		let mbResult: MusicBrainzResult | null = null;
 		try {
