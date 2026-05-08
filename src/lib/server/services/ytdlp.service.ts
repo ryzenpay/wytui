@@ -77,6 +77,41 @@ export class YtdlpService {
 	}
 
 	/**
+	 * Fetch channel/playlist name from a URL
+	 */
+	async fetchChannelName(url: string): Promise<string | null> {
+		this.validateUrl(url);
+		return new Promise((resolve) => {
+			const proc = spawn(this.ytdlpPath, [
+				'--flat-playlist',
+				'--playlist-items', '0',
+				'-J',
+				'--no-warnings',
+				url,
+			]);
+			let output = '';
+
+			proc.stdout.on('data', (data) => {
+				output += data.toString();
+			});
+
+			proc.on('close', (code) => {
+				if (code === 0) {
+					try {
+						const info = JSON.parse(output);
+						const name = info.channel || info.uploader || null;
+						resolve(name);
+					} catch {
+						resolve(null);
+					}
+				} else {
+					resolve(null);
+				}
+			});
+		});
+	}
+
+	/**
 	 * Fetch video metadata using -J flag
 	 */
 	async fetchMetadata(url: string): Promise<DownloadMetadata> {

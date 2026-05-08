@@ -379,7 +379,10 @@ class DownloadService {
 				const delay = Math.pow(2, download.retryCount) * 1000;
 				const timeout = setTimeout(() => {
 					this.retryTimeouts.delete(downloadId);
-					this.processDownload(downloadId);
+					this.processDownload(downloadId).catch((retryError) => {
+						console.error(`Retry failed for download ${downloadId}:`, retryError);
+						this.handleDownloadError(downloadId, retryError.message);
+					});
 				}, delay);
 				this.retryTimeouts.set(downloadId, timeout);
 			} else {

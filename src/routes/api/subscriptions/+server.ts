@@ -93,11 +93,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
+		// Resolve channel name if the name is just the URL
+		let resolvedName = data.name;
+		if (resolvedName === data.url) {
+			try {
+				const channelName = await ytdlpService.fetchChannelName(data.url);
+				if (channelName) {
+					resolvedName = channelName;
+				}
+			} catch {
+				// Fall back to the URL as name
+			}
+		}
+
 		// Create subscription with validated data only
 		const subscription = await prisma.subscription.create({
 			data: {
 				url: data.url,
-				name: data.name,
+				name: resolvedName,
 				type: data.type || 'CHANNEL',
 				profileId: data.profileId,
 				checkInterval,
