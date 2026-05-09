@@ -1544,14 +1544,15 @@
 	}
 
 	.section-header h2 {
-		margin-bottom: 0;
+		margin: 0;
+		line-height: 1;
 	}
 
 	.select-btn {
 		padding: var(--spacing-xs) var(--spacing-md);
-		background: transparent;
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		border-radius: var(--border-radius-md);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-md);
 		color: var(--text-secondary);
 		font-size: 0.8rem;
 		font-weight: 500;
@@ -1561,7 +1562,7 @@
 
 	.select-btn:hover {
 		color: var(--text-primary);
-		border-color: rgba(255, 255, 255, 0.3);
+		border-color: rgba(255, 255, 255, 0.2);
 	}
 
 	.select-btn.active {
@@ -1575,7 +1576,8 @@
 		margin-left: 0;
 		margin-right: 0;
 		background: var(--bg-tertiary);
-		border-color: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-md);
 	}
 
 	.completed-filter .tab {
