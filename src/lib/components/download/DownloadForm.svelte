@@ -15,6 +15,7 @@
   let newProfileName = $state("");
 
   // Basic mode stackable options
+  let audioQuality = $state("5");
   let basicOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
 
   // Advanced flag state
@@ -733,6 +734,9 @@
     if (basicOptions.metadata) {
       result.push("--embed-metadata", "--embed-chapters");
     }
+    if (selectedVideoProfileId) {
+      result.push("--audio-quality", audioQuality);
+    }
     const profile = profiles.find((p: any) => p.id === activeProfileId);
     if (saveToLibrary && !(profile?.audioOnly)) {
       result.push("--write-thumbnail");
@@ -928,6 +932,7 @@
 
   function selectVideoProfile(id: string) {
     selectedVideoProfileId = selectedVideoProfileId === id ? null : id;
+    if (selectedVideoProfileId) selectedAudioProfileId = null;
     if (advancedMode) {
       const profile = profiles.find((p) => p.id === activeProfileId);
       if (profile) loadProfileFlags(profile);
@@ -936,7 +941,8 @@
 
   function selectAudioProfile(id: string) {
     selectedAudioProfileId = id;
-    if (advancedMode && !selectedVideoProfileId) {
+    selectedVideoProfileId = null;
+    if (advancedMode) {
       const profile = profiles.find((p) => p.id === id);
       if (profile) loadProfileFlags(profile);
     }
@@ -1022,7 +1028,7 @@
     {#if !advancedMode}
       <div class="profile-quick-select">
         <div class="profile-group">
-          <span class="profile-group-label">Video</span>
+          <span class="profile-group-label">Video + Audio</span>
           <div class="profile-buttons">
             {#each videoProfiles as profile}
               <button
@@ -1039,8 +1045,43 @@
           </div>
         </div>
 
+        {#if selectedVideoProfileId}
+          <div class="profile-group">
+            <span class="profile-group-label">Audio Quality</span>
+            <div class="profile-buttons">
+              <button
+                type="button"
+                class="profile-btn"
+                class:active={audioQuality === "0"}
+                onclick={() => audioQuality = "0"}
+                disabled={loading}
+              >
+                High
+              </button>
+              <button
+                type="button"
+                class="profile-btn"
+                class:active={audioQuality === "5"}
+                onclick={() => audioQuality = "5"}
+                disabled={loading}
+              >
+                Medium
+              </button>
+              <button
+                type="button"
+                class="profile-btn"
+                class:active={audioQuality === "9"}
+                onclick={() => audioQuality = "9"}
+                disabled={loading}
+              >
+                Low
+              </button>
+            </div>
+          </div>
+        {/if}
+
         <div class="profile-group">
-          <span class="profile-group-label">Audio{#if !selectedVideoProfileId} (only){/if}</span>
+          <span class="profile-group-label">Audio (only)</span>
           <div class="profile-buttons">
             {#each audioProfiles as profile}
               <button
@@ -1510,22 +1551,6 @@
       300% 100%;
     animation: rgb-border 8s linear infinite;
     color: var(--text-primary);
-  }
-
-  .audio-quality-select select {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-
-  .audio-quality-select select:focus {
-    outline: none;
-    border-color: var(--accent-primary);
   }
 
   .profile-btn.custom {
