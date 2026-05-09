@@ -323,6 +323,8 @@
 		transition: all var(--transition-normal);
 		flex-shrink: 0;
 		position: relative;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.download-card:hover {
@@ -375,6 +377,9 @@
 
 	.content {
 		padding: var(--spacing-lg);
+		flex: 1;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.header {
@@ -570,6 +575,7 @@
 	.actions {
 		display: flex;
 		gap: var(--spacing-sm);
+		margin-top: auto;
 	}
 
 	@media (max-width: 768px) {

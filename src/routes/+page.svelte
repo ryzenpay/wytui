@@ -137,6 +137,7 @@
 	let libraryConfigured = $state(false);
 	let jellyfinUrl = $state('');
 	let cacheUsage = $state<{ usedBytes: string; quotaBytes: string; percentage: number } | null>(null);
+	let libraryUsage = $state<{ video: { usedBytes: string; count: number } | null; music: { usedBytes: string; count: number } | null } | null>(null);
 	let clearingCache = $state(false);
 
 	function buildOptionsFlags(opts: { sponsorblock: boolean; subtitles: boolean; metadata: boolean }, saveToLibrary = false): string[] {
@@ -249,10 +250,12 @@
 		try {
 			const res = await fetch('/api/library/usage');
 			if (res.ok) {
-				cacheUsage = await res.json();
+				const data = await res.json();
+				cacheUsage = data.cache;
+				libraryUsage = data.library;
 			}
 		} catch (e) {
-			console.error('Failed to load cache usage:', e);
+			console.error('Failed to load usage:', e);
 		}
 	}
 
@@ -734,25 +737,55 @@
 				</div>
 			</div>
 
-			{#if cacheUsage}
-				<div class="cache-usage">
-					<div class="cache-usage-header">
-						<div class="cache-usage-left">
-							<span class="cache-usage-label">Cache Usage</span>
-							<span class="cache-usage-tooltip" data-tooltip="Downloads are stored in a temporary cache. When the cache fills up, the oldest downloads are automatically removed to free space. Save to Library to keep downloads permanently.">?</span>
+			{#if cacheUsage || libraryUsage}
+				<div class="storage-row">
+					{#if cacheUsage}
+						<div class="storage-box">
+							<div class="cache-usage-header">
+								<div class="cache-usage-left">
+									<span class="cache-usage-label">Cache</span>
+									<span class="cache-usage-tooltip" data-tooltip="Downloads are stored in a temporary cache. When the cache fills up, the oldest downloads are automatically removed to free space. Save to Library to keep downloads permanently.">?</span>
+								</div>
+								<div class="cache-usage-right">
+									<span class="cache-usage-value">{formatBytes(cacheUsage.usedBytes)} / {formatBytes(cacheUsage.quotaBytes)}</span>
+									{#if Number(cacheUsage.usedBytes) > 0}
+										<button class="btn btn-sm btn-secondary cache-clear-btn" onclick={clearCache} disabled={clearingCache}>
+											{clearingCache ? 'Clearing...' : 'Clear'}
+										</button>
+									{/if}
+								</div>
+							</div>
+							<div class="cache-usage-bar">
+								<div class="cache-usage-fill" class:warning={cacheUsage.percentage > 80} class:critical={cacheUsage.percentage > 95} style="width: max({cacheUsage.percentage}%, {cacheUsage.percentage > 0 ? '4px' : '0px'})"></div>
+							</div>
 						</div>
-						<div class="cache-usage-right">
-							<span class="cache-usage-value">{formatBytes(cacheUsage.usedBytes)} / {formatBytes(cacheUsage.quotaBytes)}</span>
-							{#if Number(cacheUsage.usedBytes) > 0}
-								<button class="btn btn-sm btn-secondary cache-clear-btn" onclick={clearCache} disabled={clearingCache}>
-									{clearingCache ? 'Clearing...' : 'Clear'}
-								</button>
-							{/if}
+					{/if}
+					{#if libraryUsage?.video}
+						<div class="storage-box">
+							<div class="cache-usage-header">
+								<div class="cache-usage-left">
+									<span class="cache-usage-label">Video Library</span>
+								</div>
+								<div class="cache-usage-right">
+									<span class="cache-usage-value">{formatBytes(libraryUsage.video.usedBytes)}</span>
+									<span class="storage-count">{libraryUsage.video.count} file{libraryUsage.video.count !== 1 ? 's' : ''}</span>
+								</div>
+							</div>
 						</div>
-					</div>
-					<div class="cache-usage-bar">
-						<div class="cache-usage-fill" class:warning={cacheUsage.percentage > 80} class:critical={cacheUsage.percentage > 95} style="width: max({cacheUsage.percentage}%, {cacheUsage.percentage > 0 ? '4px' : '0px'})"></div>
-					</div>
+					{/if}
+					{#if libraryUsage?.music}
+						<div class="storage-box">
+							<div class="cache-usage-header">
+								<div class="cache-usage-left">
+									<span class="cache-usage-label">Music Library</span>
+								</div>
+								<div class="cache-usage-right">
+									<span class="cache-usage-value">{formatBytes(libraryUsage.music.usedBytes)}</span>
+									<span class="storage-count">{libraryUsage.music.count} file{libraryUsage.music.count !== 1 ? 's' : ''}</span>
+								</div>
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 
@@ -1933,12 +1966,24 @@
 		margin-bottom: var(--spacing-lg);
 	}
 
-	.cache-usage {
+	.storage-row {
+		display: flex;
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.storage-box {
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-md) var(--spacing-lg);
-		margin-bottom: var(--spacing-lg);
+		flex: 1;
+		min-width: 0;
+	}
+
+	.storage-count {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
 	}
 
 	.cache-usage-header {
@@ -2143,6 +2188,10 @@
 
 		.tab-header .btn {
 			width: 100%;
+		}
+
+		.storage-row {
+			flex-direction: column;
 		}
 
 		.downloads-layout {

@@ -243,6 +243,41 @@ class LibraryService {
 		};
 	}
 
+	async getLibraryUsage(): Promise<{ video: { usedBytes: string; count: number } | null; music: { usedBytes: string; count: number } | null }> {
+		const settings = await this.getSettings();
+
+		const videoResult = settings.libraryPath ? await prisma.download.aggregate({
+			where: {
+				storagePool: 'library',
+				status: DownloadStatus.COMPLETED,
+				profile: { audioOnly: false },
+			},
+			_sum: { filesize: true },
+			_count: true,
+		}) : null;
+
+		const musicResult = settings.musicLibraryPath ? await prisma.download.aggregate({
+			where: {
+				storagePool: 'library',
+				status: DownloadStatus.COMPLETED,
+				profile: { audioOnly: true },
+			},
+			_sum: { filesize: true },
+			_count: true,
+		}) : null;
+
+		return {
+			video: videoResult ? {
+				usedBytes: (videoResult._sum.filesize ?? BigInt(0)).toString(),
+				count: videoResult._count,
+			} : null,
+			music: musicResult ? {
+				usedBytes: (musicResult._sum.filesize ?? BigInt(0)).toString(),
+				count: musicResult._count,
+			} : null,
+		};
+	}
+
 	async clearCache(): Promise<number> {
 		const candidates = await prisma.download.findMany({
 			where: {

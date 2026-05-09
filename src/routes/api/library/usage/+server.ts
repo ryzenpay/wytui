@@ -8,8 +8,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 			throw error(401, 'Authentication required');
 		}
 
-		const usage = await libraryService.getCacheUsage();
-		return json(usage);
+		const [cache, library] = await Promise.all([
+			libraryService.getCacheUsage(),
+			libraryService.getLibraryUsage(),
+		]);
+		return json({ cache, library });
 	} catch (e: any) {
 		console.error('Failed to get cache usage:', e);
 		if (e.status) throw e;
