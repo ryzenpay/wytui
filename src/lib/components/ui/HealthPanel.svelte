@@ -292,10 +292,18 @@
 		align-items: center;
 	}
 
+	.close-btn {
+		font-size: 1.25rem;
+	}
+
 	.close-btn:hover,
 	.refresh-btn:hover {
 		color: var(--text-primary);
 		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.close-btn:hover {
+		color: var(--error);
 	}
 
 	.refresh-btn:disabled {
