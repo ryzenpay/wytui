@@ -940,10 +940,6 @@
     profiles.filter((p: any) => p.isSystem && p.audioOnly).slice(0, 3),
   );
   let customProfiles = $derived(profiles.filter((p: any) => !p.isSystem));
-  let selectedIsVideoProfile = $derived(() => {
-    const profile = profiles.find((p: any) => p.id === selectedProfileId);
-    return profile && !profile.audioOnly;
-  });
 </script>
 
 <div class="download-form">
@@ -1003,7 +999,6 @@
       <div class="profile-quick-select">
         <div class="profile-group">
           <span class="profile-group-label">Video + Audio</span>
-          <p class="profile-help-text">Complete video with AAC audio</p>
           <div class="profile-buttons">
             {#each videoProfiles as profile}
               <button
@@ -1018,11 +1013,18 @@
               </button>
             {/each}
           </div>
+          <div class="audio-quality-row">
+            <span class="audio-quality-label">Audio Quality</span>
+            <select bind:value={audioQuality} disabled={loading} class="audio-quality-select">
+              <option value="0">High</option>
+              <option value="5">Medium</option>
+              <option value="9">Low</option>
+            </select>
+          </div>
         </div>
 
         <div class="profile-group">
           <span class="profile-group-label">Audio Only</span>
-          <p class="profile-help-text">Extract audio in MP3, FLAC, or AAC</p>
           <div class="profile-buttons">
             {#each audioProfiles as profile}
               <button
@@ -1071,18 +1073,6 @@
           </div>
         </div>
 
-        {#if selectedIsVideoProfile()}
-          <div class="profile-group">
-            <span class="profile-group-label">Audio Quality</span>
-            <div class="audio-quality-select">
-              <select bind:value={audioQuality} disabled={loading}>
-                <option value="0">High</option>
-                <option value="5">Medium</option>
-                <option value="9">Low</option>
-              </select>
-            </div>
-          </div>
-        {/if}
       </div>
     {:else if customProfiles.length > 0}
       <div class="profile-quick-select">
@@ -1438,14 +1428,6 @@
     letter-spacing: 0.05em;
   }
 
-  .profile-help-text {
-    font-size: 0.75rem;
-    color: var(--text-tertiary);
-    margin-top: 2px;
-    margin-bottom: var(--spacing-xs);
-    line-height: 1.3;
-  }
-
   .profile-buttons {
     display: flex;
     gap: var(--spacing-sm);
@@ -1515,7 +1497,21 @@
     color: var(--text-primary);
   }
 
-  .audio-quality-select select {
+  .audio-quality-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+  }
+
+  .audio-quality-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+
+  .audio-quality-select {
+    flex: 1;
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
@@ -1526,7 +1522,7 @@
     transition: all var(--transition-fast);
   }
 
-  .audio-quality-select select:focus {
+  .audio-quality-select:focus {
     outline: none;
     border-color: var(--accent-primary);
   }
