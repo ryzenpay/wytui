@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
 
   let url = $state("");
-  let selectedProfileId = $state("");
+  let selectedVideoProfileId = $state<string | null>(null);
+  let selectedAudioProfileId = $state<string | null>(null);
   let saveToLibrary = $state(false);
   let profiles = $state<any[]>([]);
   let loading = $state(false);
@@ -14,8 +15,8 @@
   let newProfileName = $state("");
 
   // Basic mode stackable options
+  let audioQuality = $state("5");
   let basicOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
-  let audioQuality = $state("0");
 
   // Advanced flag state
   let flags = $state<Record<string, { enabled: boolean; value: string }>>({});
@@ -720,6 +721,8 @@
     expandedCategories = next;
   }
 
+  let activeProfileId = $derived(selectedVideoProfileId ?? selectedAudioProfileId);
+
   function buildBasicFlags(): string[] {
     const result: string[] = [];
     if (basicOptions.sponsorblock) {
@@ -731,12 +734,12 @@
     if (basicOptions.metadata) {
       result.push("--embed-metadata", "--embed-chapters");
     }
-    const profile = profiles.find((p: any) => p.id === selectedProfileId);
+    if (selectedVideoProfileId) {
+      result.push("--audio-quality", audioQuality);
+    }
+    const profile = profiles.find((p: any) => p.id === activeProfileId);
     if (saveToLibrary && !(profile?.audioOnly)) {
       result.push("--write-thumbnail");
-    }
-    if (profile && !profile.audioOnly && audioQuality !== "0") {
-      result.push("--audio-quality", audioQuality);
     }
     return result;
   }
@@ -817,10 +820,15 @@
     if (profilesRes.ok) {
       profiles = await profilesRes.json();
       const defaultProfile = profiles.find((p: any) => p.isDefault);
-      if (defaultProfile) {
-        selectedProfileId = defaultProfile.id;
-        loadProfileFlags(defaultProfile);
+      if (defaultProfile && !defaultProfile.audioOnly) {
+        selectedVideoProfileId = defaultProfile.id;
       }
+      const defaultAudio = profiles.find((p: any) => p.isSystem && p.audioOnly);
+      if (defaultAudio) {
+        selectedAudioProfileId = defaultAudio.id;
+      }
+      const active = profiles.find((p: any) => p.id === activeProfileId);
+      if (active) loadProfileFlags(active);
     }
     if (settingsRes.ok) {
       const settings = await settingsRes.json();
@@ -832,7 +840,7 @@
     e.preventDefault();
     error = "";
 
-    if (!url || !selectedProfileId) {
+    if (!url || !activeProfileId) {
       error = "Please enter a URL and select a profile";
       return;
     }
@@ -840,7 +848,7 @@
     loading = true;
 
     try {
-      const body: any = { url, profileId: selectedProfileId, saveToLibrary };
+      const body: any = { url, profileId: activeProfileId, saveToLibrary };
       if (advancedMode) {
         const cf = buildCustomFlags();
         if (cf.length > 0) body.customFlags = cf;
@@ -893,7 +901,11 @@
       } else {
         profiles = [...profiles, profile];
       }
-      selectedProfileId = profile.id;
+      if (profile.audioOnly) {
+        selectedAudioProfileId = profile.id;
+      } else {
+        selectedVideoProfileId = profile.id;
+      }
       showSaveDialog = false;
       newProfileName = "";
     } catch (e: any) {
@@ -905,32 +917,52 @@
 
   function resetToDefaults() {
     const sysDefault = profiles.find((p: any) => p.isDefault);
-    if (sysDefault) {
-      selectedProfileId = sysDefault.id;
-      loadProfileFlags(sysDefault);
+    if (sysDefault && !sysDefault.audioOnly) {
+      selectedVideoProfileId = sysDefault.id;
     }
+    const defaultAudio = profiles.find((p: any) => p.isSystem && p.audioOnly);
+    if (defaultAudio) {
+      selectedAudioProfileId = defaultAudio.id;
+    }
+    const active = profiles.find((p: any) => p.id === activeProfileId);
+    if (active) loadProfileFlags(active);
     newProfileName = "";
     showSaveDialog = false;
   }
 
-  function selectProfile(id: string) {
-    selectedProfileId = id;
+  function selectVideoProfile(id: string) {
+    selectedVideoProfileId = selectedVideoProfileId === id ? null : id;
+    if (selectedVideoProfileId) selectedAudioProfileId = null;
+    if (advancedMode) {
+      const profile = profiles.find((p) => p.id === activeProfileId);
+      if (profile) loadProfileFlags(profile);
+    }
+  }
+
+  function selectAudioProfile(id: string) {
+    selectedAudioProfileId = id;
+    selectedVideoProfileId = null;
     if (advancedMode) {
       const profile = profiles.find((p) => p.id === id);
       if (profile) loadProfileFlags(profile);
+    }
+  }
+
+  function selectProfile(id: string) {
+    if (activeProfileId === id) {
+      resetToDefaults();
+      return;
+    }
+    const profile = profiles.find((p) => p.id === id);
+    if (profile?.audioOnly) {
+      selectAudioProfile(id);
+    } else {
+      selectVideoProfile(id);
     }
     if (showSaveDialog) {
       const custom = customProfiles.find((p) => p.id === id);
       newProfileName = custom ? custom.name : "";
     }
-  }
-
-  function handleFormClick(e: MouseEvent) {
-    if (!advancedMode) return;
-    if (!customProfiles.some((p) => p.id === selectedProfileId)) return;
-    const target = e.target as HTMLElement;
-    if (target.closest(".advanced-panel, .profile-btn, .mode-toggle")) return;
-    resetToDefaults();
   }
 
   let videoProfiles = $derived(
@@ -943,9 +975,7 @@
 </script>
 
 <div class="download-form">
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <form onsubmit={handleSubmit} onclick={handleFormClick}>
+  <form onsubmit={handleSubmit}>
     <div class="form-header">
       <label for="url">Video URL</label>
       <button
@@ -955,7 +985,7 @@
         onclick={() => {
           advancedMode = !advancedMode;
           if (advancedMode) {
-            const profile = profiles.find((p) => p.id === selectedProfileId);
+            const profile = profiles.find((p) => p.id === activeProfileId);
             if (profile) loadProfileFlags(profile);
           }
         }}
@@ -1004,8 +1034,8 @@
               <button
                 type="button"
                 class="profile-btn"
-                class:active={selectedProfileId === profile.id}
-                onclick={() => selectProfile(profile.id)}
+                class:active={selectedVideoProfileId === profile.id}
+                onclick={() => selectVideoProfile(profile.id)}
                 disabled={loading}
               >
                 {profile.name}{#if profile.isDefault}
@@ -1013,25 +1043,52 @@
               </button>
             {/each}
           </div>
-          <div class="audio-quality-row">
-            <span class="audio-quality-label">Audio Quality</span>
-            <select bind:value={audioQuality} disabled={loading} class="audio-quality-select">
-              <option value="0">High</option>
-              <option value="5">Medium</option>
-              <option value="9">Low</option>
-            </select>
-          </div>
         </div>
 
+        {#if selectedVideoProfileId}
+          <div class="profile-group">
+            <span class="profile-group-label">Audio Quality</span>
+            <div class="profile-buttons">
+              <button
+                type="button"
+                class="profile-btn"
+                class:active={audioQuality === "0"}
+                onclick={() => audioQuality = "0"}
+                disabled={loading}
+              >
+                High
+              </button>
+              <button
+                type="button"
+                class="profile-btn"
+                class:active={audioQuality === "5"}
+                onclick={() => audioQuality = "5"}
+                disabled={loading}
+              >
+                Medium
+              </button>
+              <button
+                type="button"
+                class="profile-btn"
+                class:active={audioQuality === "9"}
+                onclick={() => audioQuality = "9"}
+                disabled={loading}
+              >
+                Low
+              </button>
+            </div>
+          </div>
+        {/if}
+
         <div class="profile-group">
-          <span class="profile-group-label">Audio Only</span>
+          <span class="profile-group-label">Audio (only)</span>
           <div class="profile-buttons">
             {#each audioProfiles as profile}
               <button
                 type="button"
                 class="profile-btn"
-                class:active={selectedProfileId === profile.id}
-                onclick={() => selectProfile(profile.id)}
+                class:active={selectedAudioProfileId === profile.id}
+                onclick={() => selectAudioProfile(profile.id)}
                 disabled={loading}
               >
                 {profile.name}
@@ -1072,7 +1129,6 @@
             </button>
           </div>
         </div>
-
       </div>
     {:else if customProfiles.length > 0}
       <div class="profile-quick-select">
@@ -1083,7 +1139,7 @@
               <button
                 type="button"
                 class="profile-btn custom"
-                class:active={selectedProfileId === profile.id}
+                class:active={activeProfileId === profile.id}
                 onclick={() => selectProfile(profile.id)}
                 disabled={loading}
               >
@@ -1109,7 +1165,7 @@
               class="btn-save-profile"
               onclick={() => {
                 const custom = customProfiles.find(
-                  (p) => p.id === selectedProfileId,
+                  (p) => p.id === activeProfileId,
                 );
                 newProfileName = custom ? custom.name : "";
                 showSaveDialog = !showSaveDialog;
@@ -1495,36 +1551,6 @@
       300% 100%;
     animation: rgb-border 8s linear infinite;
     color: var(--text-primary);
-  }
-
-  .audio-quality-row {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-sm);
-  }
-
-  .audio-quality-label {
-    font-size: 0.75rem;
-    color: var(--text-tertiary);
-    font-weight: 500;
-  }
-
-  .audio-quality-select {
-    flex: 1;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-  }
-
-  .audio-quality-select:focus {
-    outline: none;
-    border-color: var(--accent-primary);
   }
 
   .profile-btn.custom {
