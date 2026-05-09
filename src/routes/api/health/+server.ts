@@ -3,7 +3,8 @@ import { prisma } from '$lib/server/db';
 import { libraryService } from '$lib/server/services/library.service';
 import { queueService } from '$lib/server/services/queue.service';
 import { sseEmitter } from '$lib/server/sse/emitter';
-import { statfs } from 'fs/promises';
+import { statfs, access } from 'fs/promises';
+import { resolve } from 'path';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -45,9 +46,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 		statusMap[row.status] = row._count;
 	}
 
-	let disk: { totalBytes: string; availableBytes: string; percentage: number } | null = null;
+	let disk: { totalBytes: string; usedBytes: string; percentage: number } | null = null;
 	try {
-		const downloadPath = settings?.downloadPath || '/downloads';
+		const downloadPath = resolve(settings?.downloadPath || '/downloads');
+		await access(downloadPath);
 		const stats = await statfs(downloadPath);
 		const totalBytes = stats.bsize * stats.blocks;
 		const availableBytes = stats.bsize * stats.bavail;
@@ -55,10 +57,12 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const percentage = totalBytes > 0 ? Math.round((Number(usedBytes) / Number(totalBytes)) * 100) : 0;
 		disk = {
 			totalBytes: String(totalBytes),
-			availableBytes: String(availableBytes),
+			usedBytes: String(usedBytes),
 			percentage,
 		};
-	} catch {}
+	} catch (e) {
+		console.warn('Failed to read disk stats:', e instanceof Error ? e.message : e);
+	}
 
 	const queueStats = queueService.getStats();
 

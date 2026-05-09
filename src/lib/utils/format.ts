@@ -1,6 +1,6 @@
 export function formatBytes(bytes: string | number): string {
 	const b = Number(bytes);
-	if (b === 0) return '0 B';
+	if (!Number.isFinite(b) || b <= 0) return '0 B';
 	const units = ['B', 'KB', 'MB', 'GB', 'TB'];
 	const i = Math.floor(Math.log(b) / Math.log(1024));
 	return `${(b / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;

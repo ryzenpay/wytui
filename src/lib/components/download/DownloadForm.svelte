@@ -3,7 +3,7 @@
 
   let url = $state("");
   let selectedVideoProfileId = $state<string | null>(null);
-  let selectedAudioProfileId = $state("");
+  let selectedAudioProfileId = $state<string | null>(null);
   let saveToLibrary = $state(false);
   let profiles = $state<any[]>([]);
   let loading = $state(false);

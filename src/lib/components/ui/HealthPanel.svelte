@@ -50,9 +50,14 @@
 		<div class="health-panel" onclick={(e) => e.stopPropagation()}>
 			<div class="panel-header">
 				<h2><i class="bi bi-activity"></i> Application Health</h2>
-				<button class="close-btn" onclick={onClose} aria-label="Close">
-					<i class="bi bi-x-lg"></i>
-				</button>
+				<div class="panel-header-actions">
+					<button class="refresh-btn" onclick={fetchHealth} disabled={loading} aria-label="Refresh">
+						<i class="bi bi-arrow-clockwise" class:spinning={loading}></i>
+					</button>
+					<button class="close-btn" onclick={onClose} aria-label="Close">
+						<i class="bi bi-x-lg"></i>
+					</button>
+				</div>
 			</div>
 
 			{#if loading && !data}
@@ -133,7 +138,7 @@
 								<div class="progress-section">
 									<div class="progress-header">
 										<span class="stat-label">Disk</span>
-										<span class="stat-detail">{formatBytes(String(BigInt(data.storage.disk.totalBytes) - BigInt(data.storage.disk.availableBytes)))} / {formatBytes(data.storage.disk.totalBytes)}</span>
+										<span class="stat-detail">{formatBytes(data.storage.disk.usedBytes)} / {formatBytes(data.storage.disk.totalBytes)}</span>
 									</div>
 									<div class="health-progress">
 										<div
@@ -268,7 +273,14 @@
 		color: var(--accent-primary);
 	}
 
-	.close-btn {
+	.panel-header-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+	}
+
+	.close-btn,
+	.refresh-btn {
 		background: transparent;
 		border: none;
 		color: var(--text-secondary);
@@ -280,9 +292,24 @@
 		align-items: center;
 	}
 
-	.close-btn:hover {
+	.close-btn:hover,
+	.refresh-btn:hover {
 		color: var(--text-primary);
 		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.refresh-btn:disabled {
+		cursor: default;
+		opacity: 0.5;
+	}
+
+	@keyframes spin {
+		from { transform: rotate(0deg); }
+		to { transform: rotate(360deg); }
+	}
+
+	.spinning {
+		animation: spin 0.8s linear infinite;
 	}
 
 	.panel-body {
