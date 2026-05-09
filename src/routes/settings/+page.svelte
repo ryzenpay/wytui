@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { showAlert, showConfirm } from '$lib/stores/modal.svelte';
+	import { showConfirm } from '$lib/stores/modal.svelte';
+	import { addToast } from '$lib/stores/toast.svelte';
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 
 	interface Props {
@@ -155,11 +156,11 @@
 				body: JSON.stringify(payload),
 			});
 			if (res.ok) {
-				await showAlert('Success', 'Settings saved successfully!');
+				addToast('success', 'Settings saved successfully');
 			}
 		} catch (e) {
 			console.error('Failed to save settings:', e);
-			await showAlert('Error', 'Failed to save settings');
+			addToast('error', 'Failed to save settings');
 		} finally {
 			saving = false;
 		}
@@ -184,10 +185,10 @@
 				await loadUsers();
 			} else {
 				const data = await res.json();
-				await showAlert('Error', data.message || 'Failed to update user');
+				addToast('error', data.message || 'Failed to update user');
 			}
 		} catch (e: any) {
-			await showAlert('Error', e.message || 'Failed to update user');
+			addToast('error', e.message || 'Failed to update user');
 		}
 	}
 
@@ -209,10 +210,10 @@
 				await loadUsers();
 			} else {
 				const data = await res.json();
-				await showAlert('Error', data.message || 'Failed to delete user');
+				addToast('error', data.message || 'Failed to delete user');
 			}
 		} catch (e: any) {
-			await showAlert('Error', e.message || 'Failed to delete user');
+			addToast('error', e.message || 'Failed to delete user');
 		}
 	}
 
@@ -286,7 +287,7 @@
 			});
 
 			if (res.ok) {
-				await showAlert('Success', 'Password changed successfully!');
+				addToast('success', 'Password changed successfully');
 				closePasswordChange();
 			} else {
 				const data = await res.json();

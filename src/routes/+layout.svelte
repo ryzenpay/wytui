@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { connectSSE, disconnectSSE, getSSEState } from '$lib/stores/sse.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import Toast from '$lib/components/ui/Toast.svelte';
 	import type { LayoutData } from './$types';
 	import '../app.css';
 
@@ -74,6 +75,7 @@
 </div>
 
 <Modal />
+<Toast />
 
 <style>
 	.app {

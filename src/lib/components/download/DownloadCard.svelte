@@ -2,11 +2,42 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import type { Download } from '$lib/types';
 
-	let { download, jellyfinUrl = '' }: { download: Download & { processingStep?: string }; jellyfinUrl?: string } = $props();
+	let {
+		download,
+		jellyfinUrl = '',
+		selectionMode = false,
+		selected = false,
+		onToggleSelect,
+	}: {
+		download: Download & { processingStep?: string };
+		jellyfinUrl?: string;
+		selectionMode?: boolean;
+		selected?: boolean;
+		onToggleSelect?: () => void;
+	} = $props();
 
 	let progressPercent = $derived(download.progress?.toFixed(1) || 0);
 	let statusColor = $derived(getStatusColor(download.status));
 	let mediaType = $derived(download.filename?.split('.').pop()?.toUpperCase() || null);
+
+	let formattedDuration = $derived.by(() => {
+		if (!download.duration) return null;
+		const s = download.duration;
+		const h = Math.floor(s / 3600);
+		const m = Math.floor((s % 3600) / 60);
+		const sec = s % 60;
+		return h > 0
+			? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+			: `${m}:${String(sec).padStart(2, '0')}`;
+	});
+
+	let formattedSize = $derived.by(() => {
+		if (!download.filesize) return null;
+		const bytes = Number(download.filesize);
+		if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
+		if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(0)} MB`;
+		return `${(bytes / 1024).toFixed(0)} KB`;
+	});
 	let jellyfinQuery = $derived(
 		download.artist
 			? `${download.artist} ${download.title?.split(' - ').pop()?.trim() || download.title || ''}`
@@ -133,7 +164,16 @@
 	}
 </script>
 
-<div class="download-card">
+<div class="download-card" class:selecting={selectionMode} class:selected>
+	{#if selectionMode && download.status === 'COMPLETED'}
+		<button class="select-overlay" onclick={onToggleSelect}>
+			<div class="select-checkbox" class:checked={selected}>
+				{#if selected}
+					<svg viewBox="0 0 16 16" fill="currentColor" width="12" height="12"><path d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2.5-2.5a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z"/></svg>
+				{/if}
+			</div>
+		</button>
+	{/if}
 	{#if download.thumbnail}
 		<div
 			class="thumbnail"
@@ -175,6 +215,20 @@
 
 		{#if download.uploader}
 			<p class="uploader">{download.uploader}</p>
+		{/if}
+
+		{#if download.status === 'COMPLETED' && (formattedDuration || formattedSize || download.format)}
+			<div class="meta-badges">
+				{#if formattedDuration}
+					<span class="meta-badge">{formattedDuration}</span>
+				{/if}
+				{#if formattedSize}
+					<span class="meta-badge">{formattedSize}</span>
+				{/if}
+				{#if download.format}
+					<span class="meta-badge">{download.format}</span>
+				{/if}
+			</div>
 		{/if}
 
 		{#if download.status === 'FETCHING_INFO'}
@@ -271,12 +325,47 @@
 		overflow: hidden;
 		transition: all var(--transition-normal);
 		flex-shrink: 0;
+		position: relative;
 	}
 
 	.download-card:hover {
 		border-color: var(--border-light);
 		transform: translateY(-2px);
 		box-shadow: var(--shadow-md);
+	}
+
+	.download-card.selected {
+		border-color: var(--accent-primary);
+		box-shadow: 0 0 0 1px var(--accent-primary);
+	}
+
+	.select-overlay {
+		position: absolute;
+		top: var(--spacing-sm);
+		left: var(--spacing-sm);
+		z-index: 2;
+		background: transparent;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+	}
+
+	.select-checkbox {
+		width: 22px;
+		height: 22px;
+		border-radius: var(--radius-sm);
+		border: 2px solid rgba(255, 255, 255, 0.4);
+		background: rgba(0, 0, 0, 0.5);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.15s;
+	}
+
+	.select-checkbox.checked {
+		background: var(--accent-primary);
+		border-color: var(--accent-primary);
+		color: white;
 	}
 
 	.thumbnail {
@@ -363,7 +452,25 @@
 	.uploader {
 		color: var(--text-secondary);
 		font-size: 0.875rem;
+		margin-bottom: var(--spacing-sm);
+	}
+
+	.meta-badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-xs);
 		margin-bottom: var(--spacing-md);
+	}
+
+	.meta-badge {
+		font-size: 0.625rem;
+		font-weight: 500;
+		padding: 2px 6px;
+		border-radius: var(--radius-sm);
+		background: rgba(255, 255, 255, 0.06);
+		color: var(--text-secondary);
+		font-family: monospace;
+		letter-spacing: 0.02em;
 	}
 
 	.progress {

@@ -3,7 +3,8 @@
 	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
 	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
 	import { getSSEState, onSSEEvent } from '$lib/stores/sse.svelte';
-	import { showConfirm, showAlert } from '$lib/stores/modal.svelte';
+	import { showConfirm } from '$lib/stores/modal.svelte';
+	import { addToast } from '$lib/stores/toast.svelte';
 
 	let activeTab = $state<'downloads' | 'subscriptions' | 'monitors'>('downloads');
 	let sseState = getSSEState();
@@ -12,12 +13,74 @@
 	let completedDownloads = $state<any[]>([]);
 	let completedLoading = $state(false);
 	let completedFilter = $state<'all' | 'cache' | 'library'>('all');
+	let channelFilter = $state<string>('all');
+	let channelSearch = $state('');
+	let channelDropdownOpen = $state(false);
+	let sortOption = $state<'newest' | 'oldest' | 'largest' | 'smallest' | 'longest' | 'shortest' | 'uploader'>('newest');
+	let sortDropdownOpen = $state(false);
+	let titleSearch = $state('');
+	let selectionMode = $state(false);
+	let selectedIds = $state<Set<string>>(new Set());
+	let bulkActing = $state(false);
 
-	let filteredCompletedDownloads = $derived(
+	let poolFilteredDownloads = $derived(
 		completedFilter === 'all'
 			? completedDownloads
 			: completedDownloads.filter((d) => d.storagePool === completedFilter)
 	);
+
+	let availableChannels = $derived(
+		[...new Set(poolFilteredDownloads.map((d) => d.uploader).filter(Boolean))].sort() as string[]
+	);
+
+	$effect(() => {
+		if (channelFilter !== 'all' && !availableChannels.includes(channelFilter)) {
+			channelFilter = 'all';
+		}
+	});
+
+	let filteredChannelOptions = $derived(
+		channelSearch
+			? availableChannels.filter((c) => c.toLowerCase().includes(channelSearch.toLowerCase()))
+			: availableChannels
+	);
+
+	let filteredCompletedDownloads = $derived.by(() => {
+		let filtered = channelFilter === 'all'
+			? poolFilteredDownloads
+			: poolFilteredDownloads.filter((d) => d.uploader === channelFilter);
+
+		if (titleSearch) {
+			const q = titleSearch.toLowerCase();
+			filtered = filtered.filter((d) => d.title?.toLowerCase().includes(q));
+		}
+
+		const sorted = [...filtered];
+		switch (sortOption) {
+			case 'oldest':
+				sorted.sort((a, b) => new Date(a.completedAt || a.createdAt).getTime() - new Date(b.completedAt || b.createdAt).getTime());
+				break;
+			case 'newest':
+				sorted.sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime());
+				break;
+			case 'largest':
+				sorted.sort((a, b) => Number(b.filesize || 0) - Number(a.filesize || 0));
+				break;
+			case 'smallest':
+				sorted.sort((a, b) => Number(a.filesize || 0) - Number(b.filesize || 0));
+				break;
+			case 'longest':
+				sorted.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+				break;
+			case 'shortest':
+				sorted.sort((a, b) => (a.duration || 0) - (b.duration || 0));
+				break;
+			case 'uploader':
+				sorted.sort((a, b) => (a.uploader || '').localeCompare(b.uploader || ''));
+				break;
+		}
+		return sorted;
+	});
 
 	// Subscriptions state
 	let subscriptions = $state<any[]>([]);
@@ -121,7 +184,14 @@
 			loadSubscriptions();
 		});
 		const unsubBackfill = onSSEEvent('subscription:backfill', ({ name, totalVideos, newVideos }) => {
-			showAlert('Backfill Complete', `Queued ${newVideos} new video${newVideos !== 1 ? 's' : ''} for download from ${name} (${totalVideos} total found).`);
+			addToast('success', `Queued ${newVideos} new video${newVideos !== 1 ? 's' : ''} from ${name} (${totalVideos} total found)`);
+		});
+		const unsubMonitorLive = onSSEEvent('monitor:live', ({ name }) => {
+			addToast('info', `Stream is live: ${name || 'Unknown'}`);
+			loadMonitors();
+		});
+		const unsubMonitorUpdate = onSSEEvent('monitor:update', () => {
+			loadMonitors();
 		});
 
 		return () => {
@@ -129,6 +199,8 @@
 			unsubDeleted();
 			unsubChecked();
 			unsubBackfill();
+			unsubMonitorLive();
+			unsubMonitorUpdate();
 		};
 	});
 
@@ -200,6 +272,73 @@
 			console.error('Failed to clear cache:', e);
 		} finally {
 			clearingCache = false;
+		}
+	}
+
+	function toggleSelection(id: string) {
+		const next = new Set(selectedIds);
+		if (next.has(id)) next.delete(id); else next.add(id);
+		selectedIds = next;
+	}
+
+	function selectAll() {
+		selectedIds = new Set(filteredCompletedDownloads.map((d) => d.id));
+	}
+
+	function deselectAll() {
+		selectedIds = new Set();
+	}
+
+	function exitSelectionMode() {
+		selectionMode = false;
+		selectedIds = new Set();
+	}
+
+	async function bulkDelete() {
+		const count = selectedIds.size;
+		const confirmed = await showConfirm(
+			'Delete Selected',
+			`Delete ${count} download${count !== 1 ? 's' : ''}? This cannot be undone.`,
+			'Delete'
+		);
+		if (!confirmed) return;
+
+		bulkActing = true;
+		try {
+			await Promise.all(
+				[...selectedIds].map((id) => fetch(`/api/downloads/${id}`, { method: 'DELETE' }))
+			);
+			addToast('success', `Deleted ${count} download${count !== 1 ? 's' : ''}`);
+			exitSelectionMode();
+			await loadCompletedDownloads();
+		} catch (e) {
+			addToast('error', 'Failed to delete some downloads');
+		} finally {
+			bulkActing = false;
+		}
+	}
+
+	async function bulkPromote() {
+		const ids = [...selectedIds].filter((id) => {
+			const d = completedDownloads.find((dl) => dl.id === id);
+			return d?.storagePool === 'cache';
+		});
+		if (ids.length === 0) {
+			addToast('info', 'No cache downloads selected to move');
+			return;
+		}
+		bulkActing = true;
+		try {
+			await Promise.all(
+				ids.map((id) => fetch(`/api/downloads/${id}/promote`, { method: 'POST' }))
+			);
+			addToast('success', `Moved ${ids.length} download${ids.length !== 1 ? 's' : ''} to library`);
+			exitSelectionMode();
+			await loadCompletedDownloads();
+		} catch (e) {
+			addToast('error', 'Failed to move some downloads');
+		} finally {
+			bulkActing = false;
 		}
 	}
 
@@ -376,6 +515,20 @@
 		return `${Math.floor(seconds / 86400)}d`;
 	}
 
+	function formatRelativeTime(date: string | Date): string {
+		const ms = Date.now() - new Date(date).getTime();
+		const seconds = Math.floor(ms / 1000);
+		if (seconds < 60) return 'just now';
+		const minutes = Math.floor(seconds / 60);
+		if (minutes < 60) return `${minutes}m ago`;
+		const hours = Math.floor(minutes / 60);
+		if (hours < 24) return `${hours}h ago`;
+		const days = Math.floor(hours / 24);
+		if (days < 30) return `${days}d ago`;
+		const months = Math.floor(days / 30);
+		return `${months}mo ago`;
+	}
+
 	// Monitors functions
 	async function loadMonitors() {
 		monitorsLoading = true;
@@ -531,21 +684,21 @@
 			class:active={activeTab === 'downloads'}
 			onclick={() => (activeTab = 'downloads')}
 		>
-			Downloads
+			Downloads{#if sseState.downloads.length > 0} <span class="tab-count">{sseState.downloads.length}</span>{/if}
 		</button>
 		<button
 			class="tab"
 			class:active={activeTab === 'subscriptions'}
 			onclick={() => (activeTab = 'subscriptions')}
 		>
-			Subscriptions
+			Subscriptions{#if subscriptions.length > 0} <span class="tab-count">{subscriptions.length}</span>{/if}
 		</button>
 		<button
 			class="tab"
 			class:active={activeTab === 'monitors'}
 			onclick={() => (activeTab = 'monitors')}
 		>
-			Monitors
+			Monitors{#if monitors.length > 0} <span class="tab-count">{monitors.length}</span>{/if}
 		</button>
 	</div>
 
@@ -606,6 +759,14 @@
 			<div class="section">
 				<div class="section-header">
 					<h2>Completed ({filteredCompletedDownloads.length})</h2>
+					<button
+						class="btn btn-sm"
+						class:btn-primary={selectionMode}
+						class:btn-secondary={!selectionMode}
+						onclick={() => { if (selectionMode) exitSelectionMode(); else selectionMode = true; }}
+					>
+						{selectionMode ? 'Cancel' : 'Select'}
+					</button>
 					<div class="tabs completed-filter">
 						<button
 							class="tab"
@@ -629,18 +790,147 @@
 							Library
 						</button>
 					</div>
+					{#if availableChannels.length > 1}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="channel-dropdown"
+							onkeydown={(e) => { if (e.key === 'Escape') channelDropdownOpen = false; }}
+						>
+							<button
+								class="channel-dropdown-trigger"
+								onclick={() => { channelDropdownOpen = !channelDropdownOpen; channelSearch = ''; }}
+							>
+								<span class="channel-dropdown-label">{channelFilter === 'all' ? 'All channels' : channelFilter}</span>
+								<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={channelDropdownOpen}>
+									<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+								</svg>
+							</button>
+							{#if channelDropdownOpen}
+								<div class="channel-dropdown-menu">
+									<input
+										type="text"
+										class="channel-dropdown-search"
+										placeholder="Search channels..."
+										bind:value={channelSearch}
+										autofocus
+									/>
+									<div class="channel-dropdown-options">
+										<button
+											class="channel-dropdown-option"
+											class:selected={channelFilter === 'all'}
+											onclick={() => { channelFilter = 'all'; channelDropdownOpen = false; }}
+										>
+											All channels
+										</button>
+										{#each filteredChannelOptions as channel}
+											<button
+												class="channel-dropdown-option"
+												class:selected={channelFilter === channel}
+												onclick={() => { channelFilter = channel; channelDropdownOpen = false; }}
+											>
+												{channel}
+											</button>
+										{/each}
+										{#if filteredChannelOptions.length === 0}
+											<div class="channel-dropdown-empty">No channels found</div>
+										{/if}
+									</div>
+								</div>
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<div class="channel-dropdown-backdrop" onclick={() => (channelDropdownOpen = false)}></div>
+							{/if}
+						</div>
+					{/if}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="sort-dropdown"
+						onkeydown={(e) => { if (e.key === 'Escape') sortDropdownOpen = false; }}
+					>
+						<button
+							class="channel-dropdown-trigger"
+							onclick={() => (sortDropdownOpen = !sortDropdownOpen)}
+						>
+							<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+								<path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+							</svg>
+							<span class="channel-dropdown-label">{
+								({ newest: 'Newest', oldest: 'Oldest', largest: 'Largest', smallest: 'Smallest', longest: 'Longest', shortest: 'Shortest', uploader: 'Uploader' } as Record<string, string>)[sortOption]
+							}</span>
+							<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={sortDropdownOpen}>
+								<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+							</svg>
+						</button>
+						{#if sortDropdownOpen}
+							<div class="channel-dropdown-menu">
+								<div class="channel-dropdown-options">
+									{#each [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['largest', 'Largest first'], ['smallest', 'Smallest first'], ['longest', 'Longest first'], ['shortest', 'Shortest first'], ['uploader', 'Uploader A–Z']] as [value, label]}
+										<button
+											class="channel-dropdown-option"
+											class:selected={sortOption === value}
+											onclick={() => { sortOption = value as typeof sortOption; sortDropdownOpen = false; }}
+										>
+											{label}
+										</button>
+									{/each}
+								</div>
+							</div>
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div class="channel-dropdown-backdrop" onclick={() => (sortDropdownOpen = false)}></div>
+						{/if}
+					</div>
+				</div>
+				<div class="completed-search">
+					<svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+						<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+						<path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+					<input
+						type="text"
+						class="search-input"
+						placeholder="Search by title..."
+						bind:value={titleSearch}
+					/>
+					{#if titleSearch}
+						<button class="search-clear" aria-label="Clear search" onclick={() => (titleSearch = '')}>
+							<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+						</button>
+					{/if}
 				</div>
 				{#if completedLoading}
-					<div class="loading">Loading...</div>
+					<div class="loading">Loading downloads...</div>
 				{:else if filteredCompletedDownloads.length === 0}
 					<div class="empty-state">
 						<p>{completedFilter === 'all' ? 'No completed downloads yet' : `No ${completedFilter} downloads`}</p>
+						<p class="text-muted">{completedFilter === 'all' ? 'Downloads will appear here once they finish' : `Try changing your filters`}</p>
 					</div>
 				{:else}
 					<div class="downloads-grid">
 						{#each filteredCompletedDownloads as download (download.id)}
-							<DownloadCard {download} {jellyfinUrl} />
+							<DownloadCard
+								{download}
+								{jellyfinUrl}
+								{selectionMode}
+								selected={selectedIds.has(download.id)}
+								onToggleSelect={() => toggleSelection(download.id)}
+							/>
 						{/each}
+					</div>
+				{/if}
+
+				{#if selectionMode && selectedIds.size > 0}
+					<div class="bulk-bar">
+						<span class="bulk-count">{selectedIds.size} selected</span>
+						<div class="bulk-actions">
+							<button class="btn btn-sm btn-secondary" onclick={() => { selectedIds.size === filteredCompletedDownloads.length ? deselectAll() : selectAll(); }}>
+								{selectedIds.size === filteredCompletedDownloads.length ? 'Deselect All' : 'Select All'}
+							</button>
+							<button class="btn btn-sm btn-accent" onclick={bulkPromote} disabled={bulkActing}>
+								Move to Library
+							</button>
+							<button class="btn btn-sm btn-danger" onclick={bulkDelete} disabled={bulkActing}>
+								Delete
+							</button>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -816,6 +1106,9 @@
 								<div class="meta">
 									<span>Profile: {sub.profile.name}</span>
 									<span>Check: {formatInterval(sub.checkInterval)}</span>
+									{#if sub.videoCount}
+										<span>{sub.videoCount} video{sub.videoCount !== 1 ? 's' : ''}</span>
+									{/if}
 									{#if sub.saveToLibrary}
 										<span class="library-tag">Library</span>
 									{/if}
@@ -830,9 +1123,11 @@
 									{/if}
 								</div>
 
-								{#if sub.lastChecked}
+								{#if sub.lastChecked || sub.lastVideoDate}
 									<p class="text-muted text-sm">
-										Last checked: {new Date(sub.lastChecked).toLocaleString()}
+										{#if sub.lastChecked}Last checked: {new Date(sub.lastChecked).toLocaleString()}{/if}
+										{#if sub.lastChecked && sub.lastVideoDate} · {/if}
+										{#if sub.lastVideoDate}Latest video: {formatRelativeTime(sub.lastVideoDate)}{/if}
 									</p>
 								{/if}
 
@@ -1110,6 +1405,24 @@
 		background: rgba(255, 255, 255, 0.05);
 	}
 
+	.tab-count {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 18px;
+		height: 18px;
+		padding: 0 5px;
+		border-radius: 9px;
+		background: rgba(255, 255, 255, 0.12);
+		font-size: 0.7rem;
+		font-weight: 600;
+		line-height: 1;
+	}
+
+	.tab.active .tab-count {
+		background: rgba(255, 255, 255, 0.25);
+	}
+
 	.tab.active {
 		background: var(--accent-primary);
 		color: #fff;
@@ -1177,6 +1490,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		gap: var(--spacing-md);
 		margin-bottom: var(--spacing-lg);
 	}
 
@@ -1193,6 +1507,188 @@
 	.completed-filter .tab {
 		padding: var(--spacing-xs) var(--spacing-md);
 		font-size: 0.8rem;
+	}
+
+	.channel-dropdown {
+		position: relative;
+	}
+
+	.channel-dropdown-trigger {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		padding: var(--spacing-xs) var(--spacing-md);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--border-radius-md);
+		color: var(--text-primary);
+		font-size: 0.85rem;
+		cursor: pointer;
+		white-space: nowrap;
+		transition: border-color 0.15s;
+	}
+
+	.channel-dropdown-trigger:hover {
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+
+	.channel-dropdown-chevron {
+		transition: transform 0.15s;
+	}
+
+	.channel-dropdown-chevron.open {
+		transform: rotate(180deg);
+	}
+
+	.channel-dropdown-menu {
+		position: absolute;
+		top: calc(100% + 4px);
+		right: 0;
+		min-width: 220px;
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--border-radius-md);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		z-index: 100;
+		overflow: hidden;
+	}
+
+	.channel-dropdown-search {
+		width: 100%;
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: transparent;
+		border: none;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		color: var(--text-primary);
+		font-size: 0.85rem;
+		outline: none;
+	}
+
+	.channel-dropdown-search::placeholder {
+		color: var(--text-secondary);
+	}
+
+	.channel-dropdown-options {
+		max-height: 200px;
+		overflow-y: auto;
+		padding: var(--spacing-xs) 0;
+	}
+
+	.channel-dropdown-option {
+		display: block;
+		width: 100%;
+		padding: var(--spacing-xs) var(--spacing-md);
+		background: transparent;
+		border: none;
+		color: var(--text-primary);
+		font-size: 0.85rem;
+		text-align: left;
+		cursor: pointer;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.channel-dropdown-option:hover {
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.channel-dropdown-option.selected {
+		color: var(--accent-primary);
+	}
+
+	.channel-dropdown-empty {
+		padding: var(--spacing-sm) var(--spacing-md);
+		color: var(--text-secondary);
+		font-size: 0.85rem;
+	}
+
+	.channel-dropdown-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 99;
+	}
+
+	.sort-dropdown {
+		position: relative;
+	}
+
+	.completed-search {
+		position: relative;
+		display: flex;
+		align-items: center;
+		margin-bottom: var(--spacing-md);
+	}
+
+	.search-icon {
+		position: absolute;
+		left: var(--spacing-md);
+		color: var(--text-tertiary);
+		pointer-events: none;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) calc(var(--spacing-md) + 24px);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--border-radius-md);
+		color: var(--text-primary);
+		font-size: 0.875rem;
+		transition: border-color 0.15s;
+	}
+
+	.search-input:focus {
+		outline: none;
+		border-color: var(--accent-primary);
+	}
+
+	.search-input::placeholder {
+		color: var(--text-tertiary);
+	}
+
+	.search-clear {
+		position: absolute;
+		right: var(--spacing-sm);
+		display: flex;
+		align-items: center;
+		padding: 4px;
+		background: transparent;
+		border: none;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+	}
+
+	.search-clear:hover {
+		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.bulk-bar {
+		position: sticky;
+		bottom: var(--spacing-lg);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-sm) var(--spacing-lg);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--border-radius-md);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		margin-top: var(--spacing-lg);
+		z-index: 50;
+	}
+
+	.bulk-count {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--text-primary);
+	}
+
+	.bulk-actions {
+		display: flex;
+		gap: var(--spacing-sm);
 	}
 
 	.section h2 {

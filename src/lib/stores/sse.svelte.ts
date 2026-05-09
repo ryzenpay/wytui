@@ -113,6 +113,16 @@ export function connectSSE() {
 		dispatchCallbacks('subscription:checked', data);
 	});
 
+	eventSource.addEventListener('monitor:live', (e) => {
+		const data = JSON.parse(e.data);
+		dispatchCallbacks('monitor:live', data);
+	});
+
+	eventSource.addEventListener('monitor:update', (e) => {
+		const data = JSON.parse(e.data);
+		dispatchCallbacks('monitor:update', data);
+	});
+
 	eventSource.addEventListener('ping', () => {
 		// Heartbeat, do nothing
 	});
