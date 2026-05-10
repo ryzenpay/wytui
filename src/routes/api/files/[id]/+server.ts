@@ -35,7 +35,7 @@ async function validateFilePath(filepath: string, allowedDir: string): Promise<v
  * GET /api/files/[id]
  * Download completed file
  */
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET: RequestHandler = async ({ params, locals, request }) => {
 	try {
 		console.log('[File Download] Request for:', params.id);
 		console.log('[File Download] User session:', locals.session?.user?.id || 'none');
@@ -86,14 +86,21 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const filename = sanitizeFilename(download.filename || 'download');
 		const mimeType = getMimeType(download.filepath);
 
+		// Detect mobile device from User-Agent
+		const userAgent = request.headers.get('user-agent') || '';
+		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+
 		// Create readable stream
 		const stream = createReadStream(download.filepath);
+
+		// Use inline for desktop to display in browser, attachment for mobile
+		const disposition = isMobile ? 'attachment' : 'inline';
 
 		return new Response(stream as any, {
 			headers: {
 				'Content-Type': mimeType,
 				'Content-Length': stats.size.toString(),
-				'Content-Disposition': `attachment; filename="${filename}"`,
+				'Content-Disposition': `${disposition}; filename="${filename}"`,
 			},
 		});
 	} catch (e: any) {
