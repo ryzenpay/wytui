@@ -20,6 +20,7 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'cacheQuotaBytes',
 	'jellyfinUrl',
 	'jellyfinApiKey',
+	'maxDurationSeconds',
 ]);
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -165,6 +166,13 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 				throw error(400, 'maxConcurrentDownloads must be between 1 and 20');
 			}
 			queueService.setMaxConcurrent(val);
+		}
+
+		if (updates.maxDurationSeconds !== undefined) {
+			const val = Number(updates.maxDurationSeconds);
+			if (!Number.isInteger(val) || val < 0) {
+				throw error(400, 'maxDurationSeconds must be a non-negative integer');
+			}
 		}
 
 		const settings = await prisma.settings.update({

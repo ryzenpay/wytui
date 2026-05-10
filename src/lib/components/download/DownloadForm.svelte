@@ -848,7 +848,12 @@
     loading = true;
 
     try {
-      const body: any = { url, profileId: activeProfileId, saveToLibrary };
+      // Parse URLs - one per line
+      const urls = url.trim().split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      const body: any = { profileId: activeProfileId, saveToLibrary };
       if (advancedMode) {
         const cf = buildCustomFlags();
         if (cf.length > 0) body.customFlags = cf;
@@ -857,15 +862,32 @@
         if (bf.length > 0) body.customFlags = bf;
       }
 
-      const res = await fetch("/api/downloads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      // If single URL, use original API
+      if (urls.length === 1) {
+        body.url = urls[0];
+        const res = await fetch("/api/downloads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to create download");
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || "Failed to create download");
+        }
+      } else {
+        // Batch submission
+        body.urls = urls;
+        const res = await fetch("/api/downloads/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || "Failed to create batch download");
+        }
       }
 
       url = "";
@@ -1001,10 +1023,15 @@
       <textarea
         id="url"
         bind:value={url}
-        placeholder="Paste YouTube, TikTok, Twitter, or any supported URL..."
+        placeholder="Paste YouTube, TikTok, Twitter, or any supported URL...&#10;&#10;Tip: Paste multiple URLs (one per line) for batch download"
         rows="3"
         disabled={loading}
       ></textarea>
+      {#if url.trim().split('\n').filter(line => line.trim()).length > 1}
+        <p class="batch-hint">
+          {url.trim().split('\n').filter(line => line.trim()).length} URLs detected
+        </p>
+      {/if}
     </div>
 
     {#if libraryConfigured}
@@ -1847,6 +1874,13 @@
     color: var(--error);
     font-size: 0.875rem;
     margin-bottom: var(--spacing-md);
+  }
+
+  .batch-hint {
+    margin-top: var(--spacing-xs);
+    font-size: 0.75rem;
+    color: var(--accent-primary);
+    font-weight: 500;
   }
 
   button[type="submit"] {

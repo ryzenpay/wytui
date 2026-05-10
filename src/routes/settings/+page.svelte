@@ -20,10 +20,12 @@
 
 	let settings = $state<any>(null);
 	let users = $state<any[]>([]);
+	let analytics = $state<any>(null);
 	let loading = $state(true);
 	let saving = $state(false);
+	let analyticsLoading = $state(false);
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
-	let activeTab = $state<'general' | 'users'>('general');
+	let activeTab = $state<'general' | 'users' | 'analytics'>('general');
 
 	// Create user form
 	let showCreateUser = $state(false);
@@ -43,6 +45,20 @@
 			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo()]);
 		}
 	});
+
+	async function loadAnalytics() {
+		analyticsLoading = true;
+		try {
+			const res = await fetch('/api/analytics');
+			if (res.ok) {
+				analytics = await res.json();
+			}
+		} catch (e) {
+			console.error('Failed to load analytics:', e);
+		} finally {
+			analyticsLoading = false;
+		}
+	}
 
 	async function loadSettings() {
 		loading = true;
@@ -69,7 +85,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -263,6 +279,14 @@
 		passwordError = '';
 	}
 
+	function formatBytes(bytes: number): string {
+		if (bytes === 0) return '0 B';
+		const k = 1024;
+		const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+	}
+
 	async function changePassword() {
 		passwordError = '';
 
@@ -312,6 +336,16 @@
 				onclick={() => (activeTab = 'general')}
 			>
 				General
+			</button>
+			<button
+				class="tab"
+				class:active={activeTab === 'analytics'}
+				onclick={() => {
+					activeTab = 'analytics';
+					if (!analytics) loadAnalytics();
+				}}
+			>
+				Analytics
 			</button>
 			<button
 				class="tab"
@@ -408,15 +442,33 @@
 						</div>
 					{/if}
 
-					<div class="form-group">
-						<label for="maxConcurrent">Max Concurrent Downloads</label>
-						<input
-							type="number"
-							id="maxConcurrent"
-							bind:value={settings.maxConcurrentDownloads}
-							min="1"
-							max="10"
-						/>
+					<div class="form-row">
+						<div class="form-group">
+							<label for="maxConcurrent">Max Concurrent Downloads</label>
+							<input
+								type="number"
+								id="maxConcurrent"
+								bind:value={settings.maxConcurrentDownloads}
+								min="1"
+								max="10"
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="maxDuration">Max Duration (hours)</label>
+							<input
+								type="number"
+								id="maxDuration"
+								value={settings.maxDurationSeconds ? Math.round(settings.maxDurationSeconds / 3600) : 3}
+								oninput={(e) => {
+									const hours = parseFloat(e.currentTarget.value) || 3;
+									settings.maxDurationSeconds = Math.round(hours * 3600);
+								}}
+								min="0"
+								step="0.5"
+							/>
+							<p class="help-text">Skip downloads longer than this (0 = no limit)</p>
+						</div>
 					</div>
 
 					<div class="form-group">
@@ -543,6 +595,123 @@
 					{/if}
 				</button>
 			</form>
+		{/if}
+
+		{#if activeTab === 'analytics'}
+			{#if analyticsLoading}
+				<div class="loading">Loading analytics...</div>
+			{:else if analytics}
+				<div class="settings-section">
+					<div class="section-header">
+						<h2>Analytics Overview</h2>
+						<button class="btn-secondary btn-sm" onclick={loadAnalytics}>
+							Refresh
+						</button>
+					</div>
+
+					<div class="analytics-grid">
+						<div class="stat-card">
+							<div class="stat-label">Total Downloads</div>
+							<div class="stat-value">{analytics.overview.totalDownloads.toLocaleString()}</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-label">Completed</div>
+							<div class="stat-value success">{analytics.overview.completedDownloads.toLocaleString()}</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-label">Failed</div>
+							<div class="stat-value error">{analytics.overview.failedDownloads.toLocaleString()}</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-label">Active</div>
+							<div class="stat-value">{analytics.overview.activeDownloads.toLocaleString()}</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-label">Success Rate</div>
+							<div class="stat-value">{analytics.overview.successRate}%</div>
+						</div>
+						<div class="stat-card">
+							<div class="stat-label">Avg File Size</div>
+							<div class="stat-value">{formatBytes(analytics.avgFilesize)}</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Storage Usage</h2>
+					<div class="storage-bars">
+						<div class="storage-row">
+							<span class="storage-label">Cache</span>
+							<div class="storage-bar">
+								<div class="storage-fill cache" style="width: {Math.min(100, (Number(analytics.storage.cacheBytes) / Number(analytics.storage.cacheQuotaBytes)) * 100)}%"></div>
+							</div>
+							<span class="storage-value">{formatBytes(Number(analytics.storage.cacheBytes))} / {formatBytes(Number(analytics.storage.cacheQuotaBytes))}</span>
+						</div>
+						<div class="storage-row">
+							<span class="storage-label">Library</span>
+							<div class="storage-bar">
+								<div class="storage-fill library" style="width: {Math.min(100, (Number(analytics.storage.libraryBytes) / Number(analytics.storage.totalBytes)) * 100)}%"></div>
+							</div>
+							<span class="storage-value">{formatBytes(Number(analytics.storage.libraryBytes))}</span>
+						</div>
+						<div class="storage-row">
+							<span class="storage-label">Total</span>
+							<div class="storage-bar">
+								<div class="storage-fill total" style="width: 100%"></div>
+							</div>
+							<span class="storage-value">{formatBytes(Number(analytics.storage.totalBytes))}</span>
+						</div>
+					</div>
+				</div>
+
+				<div class="analytics-columns">
+					<div class="settings-section">
+						<h2>Top Uploaders</h2>
+						<div class="top-list">
+							{#each analytics.topUploaders as uploader}
+								<div class="top-item">
+									<span class="top-name">{uploader.uploader}</span>
+									<span class="top-count">{uploader.count}</span>
+								</div>
+							{/each}
+							{#if analytics.topUploaders.length === 0}
+								<div class="empty-state">No data yet</div>
+							{/if}
+						</div>
+					</div>
+
+					<div class="settings-section">
+						<h2>Active Subscriptions</h2>
+						<div class="top-list">
+							{#each analytics.activeSubscriptions as sub}
+								<div class="top-item">
+									<span class="top-name">{sub.name}</span>
+									<span class="top-count">{sub.downloadCount}</span>
+								</div>
+							{/each}
+							{#if analytics.activeSubscriptions.length === 0}
+								<div class="empty-state">No subscriptions yet</div>
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Downloads Per Day (Last 30 Days)</h2>
+					<div class="chart">
+						{#each analytics.downloadsPerDay as day}
+							<div class="chart-bar-container">
+								<div class="chart-bar" style="height: {Math.min(100, (day.count / Math.max(...analytics.downloadsPerDay.map(d => d.count))) * 100)}%"></div>
+								<div class="chart-label">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+								<div class="chart-value">{day.count}</div>
+							</div>
+						{/each}
+						{#if analytics.downloadsPerDay.length === 0}
+							<div class="empty-state">No downloads in the last 30 days</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
 		{/if}
 
 		{#if activeTab === 'users'}
@@ -1124,6 +1293,180 @@
 		border: 1px solid var(--accent-primary);
 	}
 
+	/* Analytics styles */
+	.analytics-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.stat-card {
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-lg);
+		text-align: center;
+	}
+
+	.stat-label {
+		font-size: 0.75rem;
+		color: var(--text-secondary);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-bottom: var(--spacing-sm);
+	}
+
+	.stat-value {
+		font-size: 1.75rem;
+		font-weight: 700;
+		color: var(--text-primary);
+	}
+
+	.stat-value.success {
+		color: var(--success, #22c55e);
+	}
+
+	.stat-value.error {
+		color: var(--error);
+	}
+
+	.storage-bars {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-md);
+	}
+
+	.storage-row {
+		display: grid;
+		grid-template-columns: 80px 1fr 120px;
+		gap: var(--spacing-md);
+		align-items: center;
+	}
+
+	.storage-label {
+		font-size: 0.875rem;
+		color: var(--text-secondary);
+		font-weight: 500;
+	}
+
+	.storage-bar {
+		height: 24px;
+		background: var(--bg-tertiary);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+		position: relative;
+	}
+
+	.storage-fill {
+		height: 100%;
+		transition: width 0.3s ease;
+	}
+
+	.storage-fill.cache {
+		background: linear-gradient(90deg, #3b82f6, #60a5fa);
+	}
+
+	.storage-fill.library {
+		background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+	}
+
+	.storage-fill.total {
+		background: linear-gradient(90deg, #10b981, #34d399);
+	}
+
+	.storage-value {
+		font-size: 0.875rem;
+		color: var(--text-primary);
+		font-weight: 500;
+		text-align: right;
+	}
+
+	.analytics-columns {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: var(--spacing-lg);
+	}
+
+	.top-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.top-item {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.05);
+		border-radius: var(--radius-sm);
+	}
+
+	.top-name {
+		font-size: 0.875rem;
+		color: var(--text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.top-count {
+		font-size: 0.875rem;
+		color: var(--text-secondary);
+		font-weight: 600;
+		background: var(--bg-secondary);
+		padding: 2px 8px;
+		border-radius: 10px;
+		min-width: 30px;
+		text-align: center;
+	}
+
+	.chart {
+		display: flex;
+		gap: 4px;
+		height: 200px;
+		align-items: flex-end;
+		padding: var(--spacing-md);
+		background: var(--bg-tertiary);
+		border-radius: var(--radius-md);
+		overflow-x: auto;
+	}
+
+	.chart-bar-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--spacing-xs);
+		min-width: 40px;
+		height: 100%;
+		justify-content: flex-end;
+	}
+
+	.chart-bar {
+		width: 100%;
+		min-height: 2px;
+		background: linear-gradient(180deg, var(--accent-primary), rgba(59, 130, 246, 0.6));
+		border-radius: 2px 2px 0 0;
+		transition: height 0.3s ease;
+	}
+
+	.chart-label {
+		font-size: 0.625rem;
+		color: var(--text-tertiary);
+		writing-mode: vertical-rl;
+		text-orientation: mixed;
+		white-space: nowrap;
+		transform: rotate(180deg);
+	}
+
+	.chart-value {
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+		font-weight: 600;
+	}
+
 	/* Modal styles */
 	.modal-overlay {
 		position: fixed;
@@ -1196,6 +1539,19 @@
 	@media (max-width: 768px) {
 		.page {
 			padding: 0 var(--spacing-sm);
+		}
+
+		.analytics-grid {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.analytics-columns {
+			grid-template-columns: 1fr;
+		}
+
+		.storage-row {
+			grid-template-columns: 60px 1fr 90px;
+			gap: var(--spacing-sm);
 		}
 
 		.tabs {
