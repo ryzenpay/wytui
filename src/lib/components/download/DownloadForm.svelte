@@ -822,10 +822,10 @@
       const defaultProfile = profiles.find((p: any) => p.isDefault);
       if (defaultProfile && !defaultProfile.audioOnly) {
         selectedVideoProfileId = defaultProfile.id;
-      }
-      const defaultAudio = profiles.find((p: any) => p.isSystem && p.audioOnly);
-      if (defaultAudio) {
-        selectedAudioProfileId = defaultAudio.id;
+        selectedAudioProfileId = null;
+      } else if (defaultProfile?.audioOnly) {
+        selectedAudioProfileId = defaultProfile.id;
+        selectedVideoProfileId = null;
       }
       const active = profiles.find((p: any) => p.id === activeProfileId);
       if (active) loadProfileFlags(active);
@@ -941,10 +941,10 @@
     const sysDefault = profiles.find((p: any) => p.isDefault);
     if (sysDefault && !sysDefault.audioOnly) {
       selectedVideoProfileId = sysDefault.id;
-    }
-    const defaultAudio = profiles.find((p: any) => p.isSystem && p.audioOnly);
-    if (defaultAudio) {
-      selectedAudioProfileId = defaultAudio.id;
+      selectedAudioProfileId = null;
+    } else if (sysDefault?.audioOnly) {
+      selectedAudioProfileId = sysDefault.id;
+      selectedVideoProfileId = null;
     }
     const active = profiles.find((p: any) => p.id === activeProfileId);
     if (active) loadProfileFlags(active);
