@@ -833,6 +833,9 @@
     if (settingsRes.ok) {
       const settings = await settingsRes.json();
       libraryConfigured = !!(settings.libraryPath || settings.musicLibraryPath);
+      if (libraryConfigured) {
+        saveToLibrary = true;
+      }
     }
   });
 
@@ -891,7 +894,7 @@
       }
 
       url = "";
-      saveToLibrary = false;
+      saveToLibrary = libraryConfigured;
     } catch (e: any) {
       error = e.message;
     } finally {

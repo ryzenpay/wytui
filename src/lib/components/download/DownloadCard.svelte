@@ -125,6 +125,7 @@
 			copied = true;
 			setTimeout(() => (copied = false), 1500);
 		} catch {
+			// fallback
 			const ta = document.createElement('textarea');
 			ta.value = download.url;
 			ta.style.position = 'fixed';

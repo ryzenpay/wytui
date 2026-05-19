@@ -20,6 +20,7 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'cacheQuotaBytes',
 	'jellyfinUrl',
 	'jellyfinApiKey',
+	'jellyfinExternalUrl',
 	'maxDurationSeconds',
 ]);
 

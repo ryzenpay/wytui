@@ -239,7 +239,7 @@
 			if (settingsRes.ok) {
 				const settings = await settingsRes.json();
 				libraryConfigured = !!settings.libraryPath;
-				jellyfinUrl = settings.jellyfinUrl || '';
+				jellyfinUrl = settings.jellyfinExternalUrl || settings.jellyfinUrl || '';
 				if (libraryConfigured) {
 					subFormSaveToLibrary = true;
 				}
@@ -384,7 +384,7 @@
 
 			if (res.ok) {
 				subFormUrl = '';
-				subFormSaveToLibrary = false;
+				subFormSaveToLibrary = libraryConfigured;
 				subFormOptions = { sponsorblock: false, subtitles: false, metadata: false };
 				showSubsForm = false;
 				await loadSubscriptions();
