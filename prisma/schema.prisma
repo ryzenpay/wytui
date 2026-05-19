@@ -281,8 +281,9 @@ model Settings {
   cacheQuotaBytes BigInt    @default(10737418240) // 10 GB
 
   // Jellyfin integration
-  jellyfinUrl     String?
-  jellyfinApiKey  String?
+  jellyfinUrl         String?
+  jellyfinApiKey      String?
+  jellyfinExternalUrl String?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

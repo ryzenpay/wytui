@@ -69,7 +69,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'jellyfinExternalUrl'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -117,6 +117,7 @@
 		} else {
 			settings.jellyfinUrl = null;
 			settings.jellyfinApiKey = null;
+			settings.jellyfinExternalUrl = null;
 		}
 	}
 
@@ -305,21 +306,32 @@
 
 <div class="page">
 	{#if isAdmin}
-		<div class="tabs">
-			<button
-				class="tab"
-				class:active={activeTab === 'general'}
-				onclick={() => (activeTab = 'general')}
-			>
-				General
-			</button>
-			<button
-				class="tab"
-				class:active={activeTab === 'users'}
-				onclick={() => (activeTab = 'users')}
-			>
-				Users
-			</button>
+		<div class="tabs-wrapper">
+			<a href="/" class="back-arrow" aria-label="Back to home">
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+			</a>
+			<div class="tabs">
+				<button
+					class="tab"
+					class:active={activeTab === 'general'}
+					onclick={() => (activeTab = 'general')}
+				>
+					General
+				</button>
+				<button
+					class="tab"
+					class:active={activeTab === 'users'}
+					onclick={() => (activeTab = 'users')}
+				>
+					Users
+				</button>
+			</div>
+		</div>
+	{:else}
+		<div class="tabs-wrapper">
+			<a href="/" class="back-arrow" aria-label="Back to home">
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+			</a>
 		</div>
 	{/if}
 
@@ -467,6 +479,17 @@
 									placeholder="Enter API key"
 								/>
 								<p class="help-text">Dashboard > API Keys in Jellyfin</p>
+							</div>
+
+							<div class="form-group">
+								<label for="jellyfinExternalUrl">External URL</label>
+								<input
+									type="text"
+									id="jellyfinExternalUrl"
+									bind:value={settings.jellyfinExternalUrl}
+									placeholder="https://jellyfin.example.com"
+								/>
+								<p class="help-text">Public URL used for "Open in Jellyfin" links. Defaults to Server URL if empty.</p>
 							</div>
 						</div>
 						<div class="jellyfin-test nested-field">
@@ -749,18 +772,40 @@
 		width: 100%;
 	}
 
+	.tabs-wrapper {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-2xl);
+	}
+
+	.back-arrow {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		border-radius: var(--radius-md);
+		color: var(--text-secondary);
+		transition: all var(--transition-fast);
+		text-decoration: none;
+	}
+
+	.back-arrow:hover {
+		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.08);
+	}
+
 	.tabs {
 		display: flex;
 		justify-content: center;
 		gap: 4px;
-		margin-bottom: var(--spacing-2xl);
 		background: var(--bg-secondary);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		padding: 4px;
 		width: fit-content;
-		margin-left: auto;
-		margin-right: auto;
 	}
 
 	.tab {

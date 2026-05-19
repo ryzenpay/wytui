@@ -117,6 +117,27 @@
 	}
 
 	let promoting = $state(false);
+	let copied = $state(false);
+
+	async function copyUrl() {
+		try {
+			await navigator.clipboard.writeText(download.url);
+			copied = true;
+			setTimeout(() => (copied = false), 1500);
+		} catch {
+			// fallback
+			const ta = document.createElement('textarea');
+			ta.value = download.url;
+			ta.style.position = 'fixed';
+			ta.style.opacity = '0';
+			document.body.appendChild(ta);
+			ta.select();
+			document.execCommand('copy');
+			document.body.removeChild(ta);
+			copied = true;
+			setTimeout(() => (copied = false), 1500);
+		}
+	}
 
 	async function promoteToLibrary() {
 		promoting = true;
@@ -185,6 +206,18 @@
 		<div class="header">
 			<h3>{download.title || download.url}</h3>
 			<div class="header-badges">
+				<button
+					class="copy-url-btn"
+					class:copied
+					onclick={copyUrl}
+					title={copied ? 'Copied!' : 'Copy source URL'}
+				>
+					{#if copied}
+						<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+					{:else}
+						<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5zm4.03-.78a.75.75 0 011.06 0L15 10.38V7.75a.75.75 0 011.5 0v4.5a.75.75 0 01-.75.75h-4.5a.75.75 0 010-1.5h2.63L8.28 5.78a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>
+					{/if}
+				</button>
 				{#if mediaType}
 					<span class="media-badge">{mediaType}</span>
 				{/if}
@@ -434,6 +467,34 @@
 	.pool-badge.library {
 		background: rgba(16, 185, 129, 0.15);
 		color: var(--success);
+	}
+
+	.copy-url-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: none;
+		border: none;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		padding: 2px;
+		border-radius: var(--radius-sm);
+		transition: all var(--transition-fast);
+		opacity: 0;
+	}
+
+	.download-card:hover .copy-url-btn {
+		opacity: 1;
+	}
+
+	.copy-url-btn:hover {
+		color: var(--accent-primary);
+		background: var(--bg-tertiary);
+	}
+
+	.copy-url-btn.copied {
+		color: var(--success);
+		opacity: 1;
 	}
 
 	.status-icon {
