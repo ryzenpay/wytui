@@ -156,6 +156,16 @@ class DownloadService {
 		try {
 			const metadata = await ytdlpService.fetchMetadata(download.url);
 
+			// Check duration limit
+			const settings = await this.getSettings();
+			if (settings.maxDurationSeconds && metadata.duration) {
+				if (metadata.duration > settings.maxDurationSeconds) {
+					throw new Error(
+						`Video duration (${Math.round(metadata.duration / 60)} min) exceeds limit (${Math.round(settings.maxDurationSeconds / 60)} min)`
+					);
+				}
+			}
+
 			const updated = await this.updateDownload(downloadId, {
 				title: metadata.title,
 				thumbnail: metadata.thumbnail,

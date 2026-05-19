@@ -15,7 +15,7 @@
   let newProfileName = $state("");
 
   // Basic mode stackable options
-  let audioQuality = $state("5");
+  let audioQuality = $state("0");
   let basicOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
 
   // Advanced flag state
@@ -118,7 +118,7 @@
           label: "Audio quality",
           type: "text",
           placeholder: "0 (best) to 10 (worst) or 128K",
-          defaultValue: "5",
+          defaultValue: "0",
         },
       ],
     },
@@ -822,10 +822,10 @@
       const defaultProfile = profiles.find((p: any) => p.isDefault);
       if (defaultProfile && !defaultProfile.audioOnly) {
         selectedVideoProfileId = defaultProfile.id;
-      }
-      const defaultAudio = profiles.find((p: any) => p.isSystem && p.audioOnly);
-      if (defaultAudio) {
-        selectedAudioProfileId = defaultAudio.id;
+        selectedAudioProfileId = null;
+      } else if (defaultProfile?.audioOnly) {
+        selectedAudioProfileId = defaultProfile.id;
+        selectedVideoProfileId = null;
       }
       const active = profiles.find((p: any) => p.id === activeProfileId);
       if (active) loadProfileFlags(active);
@@ -851,7 +851,12 @@
     loading = true;
 
     try {
-      const body: any = { url, profileId: activeProfileId, saveToLibrary };
+      // Parse URLs - one per line
+      const urls = url.trim().split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
+      const body: any = { profileId: activeProfileId, saveToLibrary };
       if (advancedMode) {
         const cf = buildCustomFlags();
         if (cf.length > 0) body.customFlags = cf;
@@ -860,15 +865,32 @@
         if (bf.length > 0) body.customFlags = bf;
       }
 
-      const res = await fetch("/api/downloads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      // If single URL, use original API
+      if (urls.length === 1) {
+        body.url = urls[0];
+        const res = await fetch("/api/downloads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Failed to create download");
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || "Failed to create download");
+        }
+      } else {
+        // Batch submission
+        body.urls = urls;
+        const res = await fetch("/api/downloads/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.message || "Failed to create batch download");
+        }
       }
 
       url = "";
@@ -922,10 +944,10 @@
     const sysDefault = profiles.find((p: any) => p.isDefault);
     if (sysDefault && !sysDefault.audioOnly) {
       selectedVideoProfileId = sysDefault.id;
-    }
-    const defaultAudio = profiles.find((p: any) => p.isSystem && p.audioOnly);
-    if (defaultAudio) {
-      selectedAudioProfileId = defaultAudio.id;
+      selectedAudioProfileId = null;
+    } else if (sysDefault?.audioOnly) {
+      selectedAudioProfileId = sysDefault.id;
+      selectedVideoProfileId = null;
     }
     const active = profiles.find((p: any) => p.id === activeProfileId);
     if (active) loadProfileFlags(active);
@@ -1004,10 +1026,15 @@
       <textarea
         id="url"
         bind:value={url}
-        placeholder="Paste YouTube, TikTok, Twitter, or any supported URL..."
+        placeholder="Paste YouTube, TikTok, Twitter, or any supported URL (batch input supported)"
         rows="3"
         disabled={loading}
       ></textarea>
+      {#if url.trim().split('\n').filter(line => line.trim()).length > 1}
+        <p class="batch-hint">
+          {url.trim().split('\n').filter(line => line.trim()).length} URLs detected
+        </p>
+      {/if}
     </div>
 
     {#if libraryConfigured}
@@ -1852,6 +1879,13 @@
     margin-bottom: var(--spacing-md);
   }
 
+  .batch-hint {
+    margin-top: var(--spacing-xs);
+    font-size: 0.75rem;
+    color: var(--accent-primary);
+    font-weight: 500;
+  }
+
   button[type="submit"] {
     width: 100%;
   }
@@ -1885,6 +1919,32 @@
     .btn-save-profile,
     .btn-clear-flags {
       flex: 1;
+    }
+
+    .save-dialog {
+      flex-wrap: wrap;
+    }
+
+    .save-dialog input {
+      width: 100%;
+    }
+
+    .save-dialog .btn-sm {
+      flex: 1;
+    }
+
+    .flag-toggle {
+      flex-wrap: wrap;
+    }
+
+    .flag-code {
+      order: 3;
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .category-docs {
+      opacity: 1;
     }
   }
 </style>

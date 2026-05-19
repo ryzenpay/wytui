@@ -285,6 +285,9 @@ model Settings {
   jellyfinApiKey      String?
   jellyfinExternalUrl String?
 
+  // Download limits
+  maxDurationSeconds Int? @default(10800) // 3 hours default
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
