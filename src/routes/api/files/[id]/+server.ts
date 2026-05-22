@@ -17,19 +17,6 @@ function sanitizeFilename(filename: string): string {
 		.trim();
 }
 
-/**
- * Validate file path to prevent directory traversal
- */
-async function validateFilePath(filepath: string, allowedDir: string): Promise<void> {
-	// Normalize and resolve paths
-	const normalizedPath = normalize(resolve(filepath));
-	const normalizedAllowedDir = normalize(resolve(allowedDir));
-
-	// Check if file is within allowed directory
-	if (!normalizedPath.startsWith(normalizedAllowedDir)) {
-		throw new Error('Access denied: file path outside allowed directory');
-	}
-}
 
 /**
  * GET /api/files/[id]
@@ -75,8 +62,18 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 		const settings = await prisma.settings.findUnique({
 			where: { id: 'singleton' },
 		});
-		const allowedDir = settings?.downloadPath || '/downloads';
-		await validateFilePath(download.filepath, allowedDir);
+		const allowedDirs = [
+			settings?.downloadPath || '/downloads',
+			...(settings?.libraryPath ? [settings.libraryPath] : []),
+			...(settings?.musicLibraryPath ? [settings.musicLibraryPath] : []),
+		];
+		const normalizedPath = normalize(resolve(download.filepath));
+		const allowed = allowedDirs.some((dir) =>
+			normalizedPath.startsWith(normalize(resolve(dir)))
+		);
+		if (!allowed) {
+			throw new Error('Access denied: file path outside allowed directory');
+		}
 
 		if (!existsSync(download.filepath)) {
 			throw error(404, 'File no longer exists on disk');
