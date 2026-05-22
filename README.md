@@ -1,16 +1,28 @@
 # wytui
 
-A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with SvelteKit 5. Supports YouTube, TikTok, Twitter, and any yt-dlp compatible URL.
+A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with SvelteKit 5. Download videos from any yt-dlp compatible platform.
 
 > *wytui* — pronounced "Y. T."
+
+## ⚠️ Legal Disclaimer
+
+**This software is provided for educational and personal use only.** Users are solely responsible for ensuring their use complies with all applicable laws, terms of service, and copyright regulations.
+
+- Only download content you have the legal right to download
+- Respect copyright laws and content creators' rights
+- Do not use this tool to violate any platform's Terms of Service
+- The developers assume no liability for misuse of this software
+- Downloading copyrighted material without permission may be illegal in your jurisdiction
+
+**By using this software, you agree to use it responsibly and in compliance with all applicable laws.**
 
 ## Features
 
 - **Download profiles** — Pre-configured presets (4K, 1080p, 720p, 480p, MP3, AAC, FLAC) and custom profiles
 - **Two-tier storage** — Temporary cache with configurable quota + permanent library organized by uploader
 - **Jellyfin integration** — Auto library scan, thumbnail artwork, and deep-link to Jellyfin search
-- **Subscriptions** — Monitor channels/playlists, auto-download new videos on a schedule; backfill by date or download entire channel
-- **Livestream monitors** — Watch YouTube Live and Twitch streams, auto-download when live
+- **Subscriptions** — Monitor channels/playlists, auto-download new content on a schedule; backfill by date or download entire channels
+- **Livestream monitors** — Watch livestreams, auto-download when live
 - **File reconciliation** — Automatically detects and removes DB records for files deleted externally (e.g. via Jellyfin)
 - **Real-time progress** — Server-Sent Events for live download status
 - **OIDC authentication** — OpenID Connect SSO with admin/user roles
@@ -82,6 +94,31 @@ Users who sign in via OIDC are created with a default `user` role. An admin can 
 - **Real-time**: Server-Sent Events (SSE)
 - **Styling**: Custom dark theme CSS
 
+## Additional Terms
+
+### Intended Use
+
+This software is intended for:
+- Archiving your own content
+- Downloading content explicitly licensed for redistribution
+- Educational purposes and research
+- Accessing content you have legal rights to
+
+### Prohibited Use
+
+Do not use this software to:
+- Download copyrighted content without authorization
+- Circumvent digital rights management (DRM)
+- Violate platform Terms of Service
+- Redistribute copyrighted material
+- Engage in piracy or copyright infringement
+
+### No Warranty
+
+This software is provided "as is" without warranty of any kind. The authors and contributors are not responsible for how you use this software or any consequences of its use.
+
 ## License
 
-MIT
+MIT License - See LICENSE file for details.
+
+**Note**: The MIT license applies to this software's code only. It does not grant rights to download, use, or distribute third-party content. Users must independently ensure they have appropriate rights to any content they download.
