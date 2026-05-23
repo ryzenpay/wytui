@@ -2,20 +2,6 @@
 
 A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with SvelteKit 5. Download videos from any yt-dlp compatible platform.
 
-> *wytui* — pronounced "Y. T."
-
-## ⚠️ Legal Disclaimer
-
-**This software is provided for educational and personal use only.** Users are solely responsible for ensuring their use complies with all applicable laws, terms of service, and copyright regulations.
-
-- Only download content you have the legal right to download
-- Respect copyright laws and content creators' rights
-- Do not use this tool to violate any platform's Terms of Service
-- The developers assume no liability for misuse of this software
-- Downloading copyrighted material without permission may be illegal in your jurisdiction
-
-**By using this software, you agree to use it responsibly and in compliance with all applicable laws.**
-
 ## Features
 
 - **Download profiles** — Pre-configured presets (4K, 1080p, 720p, 480p, MP3, AAC, FLAC) and custom profiles
@@ -94,31 +80,10 @@ Users who sign in via OIDC are created with a default `user` role. An admin can 
 - **Real-time**: Server-Sent Events (SSE)
 - **Styling**: Custom dark theme CSS
 
-## Additional Terms
+## Legal Disclaimer
 
-### Intended Use
-
-This software is intended for:
-- Archiving your own content
-- Downloading content explicitly licensed for redistribution
-- Educational purposes and research
-- Accessing content you have legal rights to
-
-### Prohibited Use
-
-Do not use this software to:
-- Download copyrighted content without authorization
-- Circumvent digital rights management (DRM)
-- Violate platform Terms of Service
-- Redistribute copyrighted material
-- Engage in piracy or copyright infringement
-
-### No Warranty
-
-This software is provided "as is" without warranty of any kind. The authors and contributors are not responsible for how you use this software or any consequences of its use.
+This software is provided "as is" for personal and educational use. Users are solely responsible for ensuring their use complies with all applicable laws, terms of service, and copyright regulations. The developers assume no liability for misuse.
 
 ## License
 
-MIT License - See LICENSE file for details.
-
-**Note**: The MIT license applies to this software's code only. It does not grant rights to download, use, or distribute third-party content. Users must independently ensure they have appropriate rights to any content they download.
+MIT License — see LICENSE file for details. The MIT license covers this software's code only; it does not grant rights to any third-party content.
