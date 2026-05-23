@@ -20,6 +20,27 @@
 	let statusColor = $derived(getStatusColor(download.status));
 	let mediaType = $derived(download.filename?.split('.').pop()?.toUpperCase() || null);
 
+	const VIDEO_EXTENSIONS = new Set(['MP4', 'WEBM', 'MKV', 'FLV', 'MOV', 'AVI']);
+	let isPreviewable = $derived(
+		download.status === 'COMPLETED' && mediaType !== null && VIDEO_EXTENSIONS.has(mediaType)
+	);
+	let showPreview = $state(false);
+	let videoEl = $state<HTMLVideoElement | null>(null);
+
+	function handleThumbnailEnter() {
+		if (!isPreviewable || isMobileDevice()) return;
+		showPreview = true;
+	}
+
+	function handleThumbnailLeave() {
+		showPreview = false;
+		if (videoEl) {
+			videoEl.pause();
+			videoEl.removeAttribute('src');
+			videoEl.load();
+		}
+	}
+
 	let formattedDuration = $derived.by(() => {
 		if (!download.duration) return null;
 		const s = download.duration;
@@ -196,10 +217,30 @@
 		</button>
 	{/if}
 	{#if download.thumbnail}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="thumbnail"
 			style="background-image: url({download.thumbnail})"
-		></div>
+			onmouseenter={handleThumbnailEnter}
+			onmouseleave={handleThumbnailLeave}
+		>
+			{#if isPreviewable}
+				<div class="preview-hint">
+					<svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>
+				</div>
+			{/if}
+			{#if showPreview}
+				<video
+					bind:this={videoEl}
+					class="video-preview"
+					src="/api/files/{download.id}"
+					muted
+					autoplay
+					loop
+					preload="none"
+				></video>
+			{/if}
+		</div>
 	{/if}
 
 	<div class="content">
@@ -406,6 +447,38 @@
 		background-size: cover;
 		background-position: center;
 		background-color: var(--bg-tertiary);
+		position: relative;
+	}
+
+	.preview-hint {
+		position: absolute;
+		bottom: 8px;
+		left: 8px;
+		background: rgba(0, 0, 0, 0.6);
+		border-radius: 50%;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		transition: opacity var(--transition-fast);
+		pointer-events: none;
+		z-index: 2;
+	}
+
+	.thumbnail:hover .preview-hint {
+		opacity: 1;
+	}
+
+	.video-preview {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		z-index: 1;
 	}
 
 	.content {

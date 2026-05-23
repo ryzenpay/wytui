@@ -81,10 +81,27 @@
 
 	<footer class="footer">
 		<div class="container">
-			<a href="https://github.com/willuhmjs/wytui" target="_blank" rel="noopener noreferrer" class="footer-link">
-				<i class="bi bi-github"></i>
-				<span>GitHub</span>
-			</a>
+			<div class="footer-links">
+				<span class="footer-brand">
+					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 128 128">
+						<defs>
+							<linearGradient id="footer-g" x1="0%" y1="0%" x2="100%" y2="100%">
+								<stop offset="0%" stop-color="#7c3aed"/>
+								<stop offset="100%" stop-color="#3b82f6"/>
+							</linearGradient>
+						</defs>
+						<rect width="128" height="128" rx="28" fill="url(#footer-g)"/>
+						<path d="M64 30 L64 78 M44 62 L64 82 L84 62" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+						<path d="M38 94 L90 94" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
+					</svg>
+					<span>wytui</span>
+				</span>
+				<span class="footer-divider"></span>
+				<a href="https://github.com/willuhmjs/wytui" target="_blank" rel="noopener noreferrer" class="footer-link">
+					<i class="bi bi-github"></i>
+					<span>GitHub</span>
+				</a>
+			</div>
 		</div>
 	</footer>
 </div>
@@ -239,6 +256,27 @@
 	.footer .container {
 		display: flex;
 		justify-content: center;
+	}
+
+	.footer-links {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-md);
+	}
+
+	.footer-brand {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+		color: var(--text-secondary);
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.footer-divider {
+		width: 1px;
+		height: 14px;
+		background: var(--border);
 	}
 
 	.footer-link {

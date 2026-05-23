@@ -755,7 +755,34 @@
     },
   ];
 
+  let flagSearch = $state('');
   let expandedCategories = $state<Set<string>>(new Set());
+
+  let filteredCategories = $derived.by(() => {
+    const q = flagSearch.trim().toLowerCase();
+    if (!q) return FLAG_DEFINITIONS;
+    return FLAG_DEFINITIONS
+      .map(cat => {
+        const categoryMatch = cat.category.toLowerCase().includes(q);
+        const matchingFlags = cat.flags.filter(f =>
+          categoryMatch ||
+          f.label.toLowerCase().includes(q) ||
+          f.flag.toLowerCase().includes(q)
+        );
+        if (matchingFlags.length === 0) return null;
+        return { ...cat, flags: categoryMatch ? cat.flags : matchingFlags };
+      })
+      .filter((cat): cat is NonNullable<typeof cat> => cat !== null);
+  });
+
+  let effectiveExpandedCategories = $derived.by(() => {
+    if (!flagSearch.trim()) return expandedCategories;
+    const expanded = new Set(expandedCategories);
+    for (const cat of filteredCategories) {
+      expanded.add(cat.category);
+    }
+    return expanded;
+  });
 
   function toggleCategory(cat: string) {
     const next = new Set(expandedCategories);
@@ -1312,8 +1339,28 @@
           </div>
         {/if}
 
-        {#each FLAG_DEFINITIONS as category}
-          {@const isExpanded = expandedCategories.has(category.category)}
+        <div class="flag-search">
+          <svg class="flag-search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <input
+            type="text"
+            bind:value={flagSearch}
+            placeholder="Search flags..."
+            class="flag-search-input"
+          />
+          {#if flagSearch}
+            <button type="button" class="flag-search-clear" onclick={() => flagSearch = ''} title="Clear search">
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"/>
+              </svg>
+            </button>
+          {/if}
+        </div>
+
+        {#each filteredCategories as category}
+          {@const isExpanded = effectiveExpandedCategories.has(category.category)}
           {@const activeCount = category.flags.filter(
             (f) => flags[f.key]?.enabled && !f.defaultValue,
           ).length}
@@ -1453,6 +1500,9 @@
             {/if}
           </div>
         {/each}
+        {#if filteredCategories.length === 0 && flagSearch}
+          <div class="flag-search-empty">No flags matching "{flagSearch}"</div>
+        {/if}
       </div>
     {/if}
 
@@ -1783,6 +1833,57 @@
 
   .btn-cancel:hover {
     background: var(--bg-hover);
+  }
+
+  /* Flag search */
+  .flag-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .flag-search-icon {
+    position: absolute;
+    left: calc(var(--spacing-md) + 4px);
+    color: var(--text-tertiary);
+    pointer-events: none;
+  }
+
+  .flag-search-input {
+    width: 100%;
+    padding: var(--spacing-xs) var(--spacing-sm) var(--spacing-xs) calc(var(--spacing-md) + 18px);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.8125rem;
+    outline: none;
+  }
+
+  .flag-search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .flag-search-clear {
+    display: flex;
+    align-items: center;
+    padding: 2px;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+  }
+
+  .flag-search-clear:hover {
+    color: var(--text-primary);
+  }
+
+  .flag-search-empty {
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 0.8125rem;
   }
 
   /* Categories */
