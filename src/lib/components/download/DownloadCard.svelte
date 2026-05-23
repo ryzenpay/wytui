@@ -26,6 +26,7 @@
 	);
 	let showPreview = $state(false);
 	let videoEl = $state<HTMLVideoElement | null>(null);
+	let thumbnailFailed = $state(false);
 
 	function handleThumbnailEnter() {
 		if (!isPreviewable || isMobileDevice()) return;
@@ -220,11 +221,18 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="thumbnail"
-			style={download.thumbnail ? `background-image: url(${download.thumbnail})` : ''}
 			onmouseenter={handleThumbnailEnter}
 			onmouseleave={handleThumbnailLeave}
 		>
-			{#if !download.thumbnail && isPreviewable}
+			{#if download.thumbnail && !thumbnailFailed}
+				<img
+					class="thumbnail-img"
+					src={download.thumbnail}
+					alt=""
+					onerror={() => thumbnailFailed = true}
+				/>
+			{/if}
+			{#if (!download.thumbnail || thumbnailFailed) && isPreviewable}
 				<video
 					class="video-preview"
 					src="/api/files/{download.id}#t=0.1"
@@ -447,13 +455,18 @@
 	.thumbnail {
 		width: 100%;
 		height: 180px;
-		background-size: cover;
-		background-position: center;
 		background-color: var(--bg-tertiary);
 		position: relative;
+		overflow: hidden;
 	}
 
-.video-preview {
+	.thumbnail-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.video-preview {
 		position: absolute;
 		top: 0;
 		left: 0;
