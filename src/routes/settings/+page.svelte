@@ -23,6 +23,9 @@
 	let analytics = $state<any>(null);
 	let loading = $state(true);
 	let saving = $state(false);
+	let settingsLoaded = $state(false);
+	let settingsSnapshot = $state('');
+	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let analyticsLoading = $state(false);
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
 	let activeTab = $state<'general' | 'users' | 'analytics'>('general');
@@ -72,6 +75,8 @@
 			const res = await fetch('/api/settings');
 			if (res.ok) {
 				settings = await res.json();
+				settingsSnapshot = JSON.stringify(settings);
+				settingsLoaded = true;
 			}
 		} catch (e) {
 			console.error('Failed to load settings:', e);
@@ -178,8 +183,8 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
 			});
-			if (res.ok) {
-				addToast('success', 'Settings saved successfully');
+			if (!res.ok) {
+				addToast('error', 'Failed to save settings');
 			}
 		} catch (e) {
 			console.error('Failed to save settings:', e);
@@ -188,6 +193,19 @@
 			saving = false;
 		}
 	}
+
+	function debouncedSave() {
+		clearTimeout(saveTimeout);
+		saveTimeout = setTimeout(() => saveSettings(), 800);
+	}
+
+	$effect(() => {
+		if (!settingsLoaded || !settings) return;
+		const current = JSON.stringify(settings);
+		if (current === settingsSnapshot) return;
+		settingsSnapshot = current;
+		debouncedSave();
+	});
 
 	async function toggleAdmin(user: any) {
 		const confirmed = await showConfirm(
@@ -434,7 +452,7 @@
 		<div class="loading">Loading...</div>
 	{:else}
 		{#if activeTab === 'general' && settings}
-			<form onsubmit={(e) => { e.preventDefault(); saveSettings(); }}>
+			<div class="general-settings">
 				<div class="settings-section">
 					<h2>Storage</h2>
 
@@ -660,14 +678,7 @@
 					</div>
 				{/if}
 
-				<button type="submit" class="btn-primary btn-lg" disabled={saving || cacheQuotaExceedsDisk}>
-					{#if saving}
-						Saving...
-					{:else}
-						Save Settings
-					{/if}
-				</button>
-			</form>
+			</div>
 
 			<div class="api-docs-link">
 				<a href="/docs" class="btn-secondary btn-lg">
@@ -927,49 +938,49 @@
 					{/if}
 				</div>
 			</div>
+
+			<div class="settings-section api-keys-section">
+				<h2>API Keys</h2>
+				<p class="text-muted">Create keys for programmatic access. Use as <code>Authorization: Bearer &lt;key&gt;</code></p>
+
+				{#if newKeyResult}
+					<div class="info-box warning-box">
+						<strong>Copy your key now — it won't be shown again:</strong>
+						<code class="api-key-display">{newKeyResult}</code>
+						<button class="btn-secondary btn-sm" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }}>Copy</button>
+						<button class="btn-secondary btn-sm" onclick={() => newKeyResult = null}>Dismiss</button>
+					</div>
+				{/if}
+
+				<div class="create-key-form">
+					<input type="text" bind:value={newKeyName} placeholder="Key name (e.g. CI/CD)" />
+					<button class="btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
+				</div>
+
+				{#if apiKeys.length > 0}
+					<div class="api-keys-list">
+						{#each apiKeys as key}
+							<div class="api-key-item">
+								<div class="api-key-info">
+									<span class="api-key-name">{key.name}</span>
+									<code class="api-key-prefix">{key.keyPrefix}...</code>
+									<span class="api-key-meta">
+										Created {new Date(key.createdAt).toLocaleDateString()}
+										{#if key.lastUsedAt}
+											· Last used {new Date(key.lastUsedAt).toLocaleDateString()}
+										{/if}
+									</span>
+								</div>
+								<button class="btn-danger btn-sm" onclick={() => revokeApiKey(key.id)}>Revoke</button>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-muted">No API keys yet.</p>
+				{/if}
+			</div>
 		{/if}
 	{/if}
-
-	<div class="settings-section api-keys-section">
-		<h2>API Keys</h2>
-		<p class="text-muted">Create keys for programmatic access. Use as <code>Authorization: Bearer &lt;key&gt;</code></p>
-
-		{#if newKeyResult}
-			<div class="info-box warning-box">
-				<strong>Copy your key now — it won't be shown again:</strong>
-				<code class="api-key-display">{newKeyResult}</code>
-				<button class="btn-secondary btn-sm" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }}>Copy</button>
-				<button class="btn-secondary btn-sm" onclick={() => newKeyResult = null}>Dismiss</button>
-			</div>
-		{/if}
-
-		<div class="create-key-form">
-			<input type="text" bind:value={newKeyName} placeholder="Key name (e.g. CI/CD)" />
-			<button class="btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
-		</div>
-
-		{#if apiKeys.length > 0}
-			<div class="api-keys-list">
-				{#each apiKeys as key}
-					<div class="api-key-item">
-						<div class="api-key-info">
-							<span class="api-key-name">{key.name}</span>
-							<code class="api-key-prefix">{key.keyPrefix}...</code>
-							<span class="api-key-meta">
-								Created {new Date(key.createdAt).toLocaleDateString()}
-								{#if key.lastUsedAt}
-									· Last used {new Date(key.lastUsedAt).toLocaleDateString()}
-								{/if}
-							</span>
-						</div>
-						<button class="btn-danger btn-sm" onclick={() => revokeApiKey(key.id)}>Revoke</button>
-					</div>
-				{/each}
-			</div>
-		{:else}
-			<p class="text-muted">No API keys yet.</p>
-		{/if}
-	</div>
 </div>
 
 	<!-- Password Change Modal -->
@@ -1104,7 +1115,7 @@
 		color: var(--text-secondary);
 	}
 
-	form {
+	.general-settings {
 		max-width: 800px;
 	}
 
