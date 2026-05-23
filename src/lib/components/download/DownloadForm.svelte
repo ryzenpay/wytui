@@ -24,6 +24,7 @@
 
   type SavedPrefs = {
     profileId: string | null;
+    saveToLibrary: boolean;
     sponsorblock: boolean;
     subtitles: boolean;
     metadata: boolean;
@@ -67,17 +68,32 @@
       const mode = getMode(isAudio, saveToLibrary);
       const prefs: SavedPrefs = {
         profileId: isAudio ? selectedAudioProfileId : selectedVideoProfileId,
+        saveToLibrary,
         sponsorblock: basicOptions.sponsorblock,
         subtitles: basicOptions.subtitles,
         metadata: basicOptions.metadata,
         audioQuality,
       };
       allPrefs[mode] = prefs;
-      fetch("/api/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, prefs }),
-      }).catch(() => {});
+      const otherMode = getMode(isAudio, !saveToLibrary);
+      if (allPrefs[otherMode]) {
+        allPrefs[otherMode] = { ...allPrefs[otherMode], saveToLibrary };
+      }
+      const saves = [
+        fetch("/api/preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode, prefs }),
+        }),
+      ];
+      if (allPrefs[otherMode]) {
+        saves.push(fetch("/api/preferences", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: otherMode, prefs: allPrefs[otherMode] }),
+        }));
+      }
+      Promise.all(saves).catch(() => {});
     }, 500);
   }
 
@@ -950,17 +966,12 @@
     const isAudio = !!selectedAudioProfileId;
     const libraryMode = getMode(isAudio, true);
     const cacheMode = getMode(isAudio, false);
-    const hasLibraryPrefs = !!allPrefs[libraryMode];
-    const hasCachePrefs = !!allPrefs[cacheMode];
+    const libraryPrefs = allPrefs[libraryMode] as SavedPrefs | undefined;
+    const cachePrefs = allPrefs[cacheMode] as SavedPrefs | undefined;
 
-    if (hasLibraryPrefs || hasCachePrefs) {
-      if (libraryConfigured && hasLibraryPrefs) {
-        saveToLibrary = true;
-      } else if (hasCachePrefs) {
-        saveToLibrary = false;
-      } else {
-        saveToLibrary = true;
-      }
+    if (libraryPrefs || cachePrefs) {
+      const anyPrefs = libraryPrefs ?? cachePrefs;
+      saveToLibrary = libraryConfigured && (anyPrefs?.saveToLibrary ?? true);
       applyModePrefsWithProfile(isAudio);
     } else if (libraryConfigured) {
       saveToLibrary = true;
