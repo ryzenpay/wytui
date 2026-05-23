@@ -2,13 +2,37 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { monitorService } from '$lib/server/services/monitor.service';
 import { ytdlpService } from '$lib/server/services/ytdlp.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/monitors
- * List monitors
- */
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/monitors', 'GET', {
+	summary: 'List monitors',
+	tags: ['Monitors'],
+	auth: true,
+	responses: {
+		200: {
+			description: 'Array of monitor objects with profile info',
+			schema: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'string' },
+						url: { type: 'string' },
+						name: { type: 'string' },
+						type: { type: 'string', enum: ['YOUTUBE_LIVE', 'TWITCH'] },
+						enabled: { type: 'boolean' },
+						isLive: { type: 'boolean' },
+						autoDownload: { type: 'boolean' },
+						profileId: { type: 'string' },
+						customFlags: { type: 'array', items: { type: 'string' } },
+						createdAt: { type: 'string', format: 'date-time' },
+					},
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	try {
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
@@ -26,15 +50,42 @@ export const GET: RequestHandler = async ({ locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to list monitors');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * POST /api/monitors
- * Create monitor
- */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST = apiRoute('/api/monitors', 'POST', {
+	summary: 'Create a monitor',
+	tags: ['Monitors'],
+	auth: true,
+	body: {
+		url: { type: 'string', required: true, description: 'Stream URL' },
+		name: { type: 'string', required: true, description: 'Monitor name' },
+		profileId: { type: 'string', required: true, description: 'Download profile ID' },
+		type: { type: 'string', required: true, description: 'Monitor type', enum: ['YOUTUBE_LIVE', 'TWITCH'] },
+		autoDownload: { type: 'boolean', description: 'Auto-download when live' },
+		customFlags: { type: 'array', description: 'Custom yt-dlp flags' },
+	},
+	responses: {
+		201: {
+			description: 'Created monitor object',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					name: { type: 'string' },
+					type: { type: 'string', enum: ['YOUTUBE_LIVE', 'TWITCH'] },
+					enabled: { type: 'boolean' },
+					isLive: { type: 'boolean' },
+					autoDownload: { type: 'boolean' },
+					profileId: { type: 'string' },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+	},
+}, async ({ request, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
@@ -61,7 +112,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Invalid monitor type');
 		}
 
-		// Validate custom flags
 		const customFlags = Array.isArray(data.customFlags) ? data.customFlags : [];
 		if (customFlags.length > 0) {
 			const badFlag = ytdlpService.findDangerousFlag(customFlags);
@@ -82,7 +132,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			include: { profile: true },
 		});
 
-		// Start monitoring
 		await monitorService.startMonitor(monitor);
 
 		return json(monitor, { status: 201 });
@@ -91,4 +140,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to create monitor');
 	}
-};
+}) satisfies RequestHandler;

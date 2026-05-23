@@ -3,31 +3,31 @@ import { prisma } from '$lib/server/db';
 import { createReadStream, existsSync } from 'fs';
 import { stat } from 'fs/promises';
 import { resolve, normalize } from 'path';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * Sanitize filename for Content-Disposition header
- */
 function sanitizeFilename(filename: string): string {
-	// Remove or replace dangerous characters
 	return filename
-		.replace(/[^\w\s.-]/g, '_')  // Replace special chars
-		.replace(/\.\./g, '_')        // Remove path traversal
-		.replace(/["\n\r]/g, '')      // Remove quotes and newlines
+		.replace(/[^\w\s.-]/g, '_')
+		.replace(/\.\./g, '_')
+		.replace(/["\n\r]/g, '')
 		.trim();
 }
 
-
-/**
- * GET /api/files/[id]
- * Download completed file
- */
-export const GET: RequestHandler = async ({ params, locals, request }) => {
+export const GET = apiRoute('/api/files/[id]', 'GET', {
+	summary: 'Download a completed file',
+	tags: ['Downloads'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Download ID' } },
+	responses: {
+		200: { description: 'Binary file stream' },
+		404: { description: 'File not found' },
+	},
+}, async ({ params, locals, request }) => {
 	try {
 		console.log('[File Download] Request for:', params.id);
 		console.log('[File Download] User session:', locals.session?.user?.id || 'none');
 
-		// Require authentication first
 		if (!locals.session?.user?.id) {
 			console.log('[File Download] 401: No authentication');
 			throw error(401, 'Authentication required');
@@ -48,7 +48,6 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 			throw error(404, 'File not found');
 		}
 
-		// Check ownership or admin status
 		if (download.userId !== locals.session.user.id && !locals.session.user.isAdmin) {
 			console.log('[File Download] 403: User ID mismatch', {
 				sessionUserId: locals.session.user.id,
@@ -58,7 +57,6 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 			throw error(403, 'Access denied');
 		}
 
-		// Validate file path to prevent directory traversal
 		const settings = await prisma.settings.findUnique({
 			where: { id: 'singleton' },
 		});
@@ -83,14 +81,11 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 		const filename = sanitizeFilename(download.filename || 'download');
 		const mimeType = getMimeType(download.filepath);
 
-		// Detect mobile device from User-Agent
 		const userAgent = request.headers.get('user-agent') || '';
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
-		// Create readable stream
 		const stream = createReadStream(download.filepath);
 
-		// Use inline for desktop to display in browser, attachment for mobile
 		const disposition = isMobile ? 'attachment' : 'inline';
 
 		return new Response(stream as any, {
@@ -105,7 +100,7 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to download file');
 	}
-};
+}) satisfies RequestHandler;
 
 function getMimeType(filepath: string): string {
 	const ext = filepath.split('.').pop()?.toLowerCase();

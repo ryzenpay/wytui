@@ -32,6 +32,11 @@
 	let newUser = $state({ email: '', password: '', name: '', isAdmin: false });
 	let createUserError = $state('');
 
+	// API Keys
+	let apiKeys = $state<any[]>([]);
+	let newKeyName = $state('');
+	let newKeyResult = $state<string | null>(null);
+
 	// Password change form
 	let passwordChangeUserId = $state<string | null>(null);
 	let passwordForm = $state({
@@ -41,6 +46,7 @@
 	let passwordError = $state('');
 
 	onMount(async () => {
+		loadApiKeys();
 		if (isAdmin) {
 			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo()]);
 		}
@@ -286,6 +292,49 @@
 		const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+	}
+
+	async function loadApiKeys() {
+		try {
+			const res = await fetch('/api/keys');
+			if (res.ok) apiKeys = await res.json();
+		} catch {
+			// best-effort
+		}
+	}
+
+	async function createApiKey() {
+		if (!newKeyName.trim()) return;
+		try {
+			const res = await fetch('/api/keys', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: newKeyName }),
+			});
+			if (res.ok) {
+				const data = await res.json();
+				newKeyResult = data.key;
+				newKeyName = '';
+				await loadApiKeys();
+				addToast('success', 'API key created');
+			}
+		} catch {
+			addToast('error', 'Failed to create API key');
+		}
+	}
+
+	async function revokeApiKey(id: string) {
+		const confirmed = await showConfirm('Revoke API Key', 'This key will stop working immediately.', 'Revoke');
+		if (!confirmed) return;
+		try {
+			const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' });
+			if (res.ok) {
+				await loadApiKeys();
+				addToast('success', 'API key revoked');
+			}
+		} catch {
+			addToast('error', 'Failed to revoke key');
+		}
 	}
 
 	async function changePassword() {
@@ -619,6 +668,13 @@
 					{/if}
 				</button>
 			</form>
+
+			<div class="api-docs-link">
+				<a href="/docs" class="btn-secondary btn-lg">
+					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+					API Documentation
+				</a>
+			</div>
 		{/if}
 
 		{#if activeTab === 'analytics'}
@@ -873,6 +929,47 @@
 			</div>
 		{/if}
 	{/if}
+
+	<div class="settings-section api-keys-section">
+		<h2>API Keys</h2>
+		<p class="text-muted">Create keys for programmatic access. Use as <code>Authorization: Bearer &lt;key&gt;</code></p>
+
+		{#if newKeyResult}
+			<div class="info-box warning-box">
+				<strong>Copy your key now — it won't be shown again:</strong>
+				<code class="api-key-display">{newKeyResult}</code>
+				<button class="btn-secondary btn-sm" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }}>Copy</button>
+				<button class="btn-secondary btn-sm" onclick={() => newKeyResult = null}>Dismiss</button>
+			</div>
+		{/if}
+
+		<div class="create-key-form">
+			<input type="text" bind:value={newKeyName} placeholder="Key name (e.g. CI/CD)" />
+			<button class="btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
+		</div>
+
+		{#if apiKeys.length > 0}
+			<div class="api-keys-list">
+				{#each apiKeys as key}
+					<div class="api-key-item">
+						<div class="api-key-info">
+							<span class="api-key-name">{key.name}</span>
+							<code class="api-key-prefix">{key.keyPrefix}...</code>
+							<span class="api-key-meta">
+								Created {new Date(key.createdAt).toLocaleDateString()}
+								{#if key.lastUsedAt}
+									· Last used {new Date(key.lastUsedAt).toLocaleDateString()}
+								{/if}
+							</span>
+						</div>
+						<button class="btn-danger btn-sm" onclick={() => revokeApiKey(key.id)}>Revoke</button>
+					</div>
+				{/each}
+			</div>
+		{:else}
+			<p class="text-muted">No API keys yet.</p>
+		{/if}
+	</div>
 </div>
 
 	<!-- Password Change Modal -->
@@ -1319,6 +1416,85 @@
 	.btn-lg {
 		padding: var(--spacing-md) var(--spacing-xl);
 		margin-top: var(--spacing-xl);
+	}
+
+	.api-docs-link {
+		margin-top: var(--spacing-xl);
+		padding-top: var(--spacing-xl);
+		border-top: 1px solid var(--border-primary);
+	}
+
+	.api-docs-link a {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		text-decoration: none;
+		color: var(--text-secondary);
+	}
+
+	.api-docs-link a:hover {
+		color: var(--text-primary);
+	}
+
+	.api-keys-section {
+		margin-top: var(--spacing-xl);
+	}
+
+	.create-key-form {
+		display: flex;
+		gap: var(--spacing-sm);
+		margin-bottom: var(--spacing-md);
+	}
+
+	.create-key-form input {
+		flex: 1;
+	}
+
+	.api-key-display {
+		display: block;
+		margin: var(--spacing-sm) 0;
+		padding: var(--spacing-sm);
+		background: var(--bg-tertiary);
+		border-radius: var(--radius-sm);
+		word-break: break-all;
+		font-size: 0.85rem;
+	}
+
+	.api-keys-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.api-key-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border-primary);
+		border-radius: var(--radius-md);
+	}
+
+	.api-key-info {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		flex-wrap: wrap;
+	}
+
+	.api-key-name {
+		font-weight: 500;
+	}
+
+	.api-key-prefix {
+		font-size: 0.85rem;
+		color: var(--text-secondary);
+	}
+
+	.api-key-meta {
+		font-size: 0.8rem;
+		color: var(--text-tertiary);
 	}
 
 	.btn-primary:disabled,

@@ -1,13 +1,40 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { ytdlpService } from '$lib/server/services/ytdlp.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/profiles
- * List all download profiles
- */
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/profiles', 'GET', {
+	summary: 'List download profiles',
+	tags: ['Profiles'],
+	auth: true,
+	responses: {
+		200: {
+			description: 'Array of system and user profiles',
+			schema: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'string' },
+						name: { type: 'string' },
+						description: { type: 'string', nullable: true },
+						format: { type: 'string', nullable: true },
+						quality: { type: 'string', nullable: true },
+						codec: { type: 'string', nullable: true },
+						audioOnly: { type: 'boolean' },
+						audioFormat: { type: 'string', nullable: true },
+						audioBitrate: { type: 'string', nullable: true },
+						customFlags: { type: 'array', items: { type: 'string' } },
+						isSystem: { type: 'boolean' },
+						isDefault: { type: 'boolean' },
+						userId: { type: 'string', nullable: true },
+					},
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	try {
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
@@ -26,13 +53,68 @@ export const GET: RequestHandler = async ({ locals }) => {
 		console.error('Failed to list profiles:', e);
 		throw error(500, e.message || 'Failed to list profiles');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * POST /api/profiles
- * Create or update custom profile (upserts by name per user)
- */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST = apiRoute('/api/profiles', 'POST', {
+	summary: 'Create or update a custom profile',
+	tags: ['Profiles'],
+	auth: true,
+	body: {
+		name: { type: 'string', required: true, description: 'Profile name' },
+		description: { type: 'string', description: 'Profile description' },
+		format: { type: 'string', description: 'Output format' },
+		quality: { type: 'string', description: 'Quality preset' },
+		codec: { type: 'string', description: 'Video codec' },
+		audioOnly: { type: 'boolean', description: 'Audio-only download' },
+		audioFormat: { type: 'string', description: 'Audio format' },
+		audioBitrate: { type: 'string', description: 'Audio bitrate' },
+		customFlags: { type: 'array', description: 'Custom yt-dlp flags' },
+	},
+	responses: {
+		201: {
+			description: 'Created profile',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					name: { type: 'string' },
+					description: { type: 'string', nullable: true },
+					format: { type: 'string', nullable: true },
+					quality: { type: 'string', nullable: true },
+					codec: { type: 'string', nullable: true },
+					audioOnly: { type: 'boolean' },
+					audioFormat: { type: 'string', nullable: true },
+					audioBitrate: { type: 'string', nullable: true },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					isSystem: { type: 'boolean' },
+					isDefault: { type: 'boolean' },
+					userId: { type: 'string', nullable: true },
+				},
+			},
+		},
+		200: {
+			description: 'Updated existing profile',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					name: { type: 'string' },
+					description: { type: 'string', nullable: true },
+					format: { type: 'string', nullable: true },
+					quality: { type: 'string', nullable: true },
+					codec: { type: 'string', nullable: true },
+					audioOnly: { type: 'boolean' },
+					audioFormat: { type: 'string', nullable: true },
+					audioBitrate: { type: 'string', nullable: true },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					isSystem: { type: 'boolean' },
+					isDefault: { type: 'boolean' },
+					userId: { type: 'string', nullable: true },
+				},
+			},
+		},
+	},
+}, async ({ request, locals }) => {
 	try {
 		const userId = locals.session?.user?.id;
 		if (!userId) {
@@ -89,4 +171,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to create profile');
 	}
-};
+}) satisfies RequestHandler;

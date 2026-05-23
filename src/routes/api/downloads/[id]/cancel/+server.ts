@@ -1,14 +1,27 @@
 import { json, error } from '@sveltejs/kit';
 import { downloadService } from '$lib/server/services/download.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * POST /api/downloads/[id]/cancel
- * Cancel download
- */
-export const POST: RequestHandler = async ({ params, locals }) => {
+export const POST = apiRoute('/api/downloads/[id]/cancel', 'POST', {
+	summary: 'Cancel a download',
+	tags: ['Downloads'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Download ID' } },
+	responses: {
+		200: {
+			description: 'Download cancelled',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+				},
+			},
+		},
+		404: { description: 'Download not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
@@ -19,7 +32,6 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			throw error(404, 'Download not found');
 		}
 
-		// Check ownership or admin
 		if (download.userId !== locals.session.user.id && !locals.session.user.isAdmin) {
 			throw error(403, 'Access denied');
 		}
@@ -31,4 +43,4 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to cancel download');
 	}
-};
+}) satisfies RequestHandler;

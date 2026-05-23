@@ -5,9 +5,31 @@ import { queueService } from '$lib/server/services/queue.service';
 import { sseEmitter } from '$lib/server/sse/emitter';
 import { statfs, access } from 'fs/promises';
 import { resolve } from 'path';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/health', 'GET', {
+	summary: 'Get system health status',
+	tags: ['System'],
+	auth: true,
+	responses: {
+		200: {
+			description: 'System health including downloads, queue, storage, and uptime',
+			schema: {
+				type: 'object',
+				properties: {
+					connection: { type: 'object', properties: { sseClients: { type: 'integer' } } },
+					downloads: { type: 'object', properties: { active: { type: 'integer' }, queued: { type: 'integer' }, completed: { type: 'integer' }, failed: { type: 'integer' } } },
+					queue: { type: 'object', properties: { metadata: { type: 'integer' }, downloads: { type: 'integer' }, active: { type: 'integer' }, maxConcurrent: { type: 'integer' } } },
+					storage: { type: 'object', properties: { cache: { type: 'object' }, library: { type: 'object' }, disk: { type: 'object', nullable: true } } },
+					system: { type: 'object', properties: { ytdlpVersion: { type: 'string', nullable: true }, uptimeMs: { type: 'integer' } } },
+					subscriptions: { type: 'object', properties: { total: { type: 'integer' }, active: { type: 'integer' } } },
+					monitors: { type: 'object', properties: { total: { type: 'integer' }, enabled: { type: 'integer' }, live: { type: 'integer' } } },
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	if (!locals.session?.user?.id) {
 		throw error(401, 'Authentication required');
 	}
@@ -101,4 +123,4 @@ export const GET: RequestHandler = async ({ locals }) => {
 			live: monitorLive,
 		},
 	});
-};
+}) satisfies RequestHandler;

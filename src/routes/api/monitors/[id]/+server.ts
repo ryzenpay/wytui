@@ -2,15 +2,37 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { monitorService } from '$lib/server/services/monitor.service';
 import { ytdlpService } from '$lib/server/services/ytdlp.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/monitors/[id]
- * Get monitor
- */
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET = apiRoute('/api/monitors/[id]', 'GET', {
+	summary: 'Get monitor by ID',
+	tags: ['Monitors'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Monitor ID' } },
+	responses: {
+		200: {
+			description: 'Monitor object with profile',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					name: { type: 'string' },
+					type: { type: 'string', enum: ['YOUTUBE_LIVE', 'TWITCH'] },
+					enabled: { type: 'boolean' },
+					isLive: { type: 'boolean' },
+					autoDownload: { type: 'boolean' },
+					profileId: { type: 'string' },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+		404: { description: 'Monitor not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
@@ -30,20 +52,49 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to get monitor');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * PATCH /api/monitors/[id]
- * Update monitor
- */
-export const PATCH: RequestHandler = async ({ params, request, locals }) => {
+export const PATCH = apiRoute('/api/monitors/[id]', 'PATCH', {
+	summary: 'Update a monitor',
+	tags: ['Monitors'],
+	auth: 'admin',
+	params: { id: { type: 'string', description: 'Monitor ID' } },
+	body: {
+		name: { type: 'string', description: 'Monitor name' },
+		url: { type: 'string', description: 'Stream URL' },
+		type: { type: 'string', description: 'Monitor type', enum: ['YOUTUBE_LIVE', 'TWITCH'] },
+		enabled: { type: 'boolean', description: 'Enable/disable monitor' },
+		autoDownload: { type: 'boolean', description: 'Auto-download when live' },
+		profileId: { type: 'string', description: 'Download profile ID' },
+		customFlags: { type: 'array', description: 'Custom yt-dlp flags' },
+	},
+	responses: {
+		200: {
+			description: 'Updated monitor object',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					name: { type: 'string' },
+					type: { type: 'string', enum: ['YOUTUBE_LIVE', 'TWITCH'] },
+					enabled: { type: 'boolean' },
+					isLive: { type: 'boolean' },
+					autoDownload: { type: 'boolean' },
+					profileId: { type: 'string' },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+		404: { description: 'Monitor not found' },
+	},
+}, async ({ params, request, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
 
-		// Check ownership first
 		const existing = await prisma.monitor.findUnique({
 			where: { id: params.id },
 		});
@@ -113,20 +164,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to update monitor');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * DELETE /api/monitors/[id]
- * Delete monitor
- */
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE = apiRoute('/api/monitors/[id]', 'DELETE', {
+	summary: 'Delete a monitor',
+	tags: ['Monitors'],
+	auth: 'admin',
+	params: { id: { type: 'string', description: 'Monitor ID' } },
+	responses: {
+		200: {
+			description: 'Monitor deleted',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+				},
+			},
+		},
+		404: { description: 'Monitor not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
 
-		// Check ownership first
 		const existing = await prisma.monitor.findUnique({
 			where: { id: params.id },
 		});
@@ -139,7 +201,6 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			throw error(403, 'Admin access required');
 		}
 
-		// Stop monitoring first
 		monitorService.stopMonitor(params.id);
 
 		await prisma.monitor.delete({
@@ -152,4 +213,4 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to delete monitor');
 	}
-};
+}) satisfies RequestHandler;

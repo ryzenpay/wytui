@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { createHash, randomBytes } from 'crypto';
 import type { Cookies } from '@sveltejs/kit';
 
 const SESSION_COOKIE_NAME = 'wytui.session-token';
@@ -97,6 +98,37 @@ export async function hasUsers(): Promise<boolean> {
 
 export function invalidateUsersCache(): void {
 	usersExistCache = null;
+}
+
+export function hashApiKey(key: string): string {
+	return createHash('sha256').update(key).digest('hex');
+}
+
+export function generateApiKey(): { key: string; hash: string; prefix: string } {
+	const key = `wytui_${randomBytes(32).toString('hex')}`;
+	const hash = hashApiKey(key);
+	const prefix = key.slice(0, 14);
+	return { key, hash, prefix };
+}
+
+export async function resolveApiKey(key: string): Promise<SessionUser | null> {
+	const hash = hashApiKey(key);
+	const apiKey = await prisma.apiKey.findUnique({
+		where: { keyHash: hash },
+		include: { user: true },
+	});
+	if (!apiKey) return null;
+
+	prisma.apiKey.update({
+		where: { id: apiKey.id },
+		data: { lastUsedAt: new Date() },
+	}).catch(() => {});
+
+	return {
+		id: apiKey.user.id,
+		email: apiKey.user.email,
+		isAdmin: apiKey.user.isAdmin,
+	};
 }
 
 /**

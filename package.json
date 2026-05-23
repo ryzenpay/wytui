@@ -27,7 +27,8 @@
 		"node-cron": "^4.2.1",
 		"openid-client": "^6.8.4",
 		"p-limit": "^6.1.0",
-		"pg": "^8.13.1"
+		"pg": "^8.13.1",
+		"swagger-ui-dist": "^5.32.6"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",
@@ -40,6 +41,7 @@
 		"@types/node": "^22.10.2",
 		"@types/node-cron": "^3.0.11",
 		"@types/pg": "^8.11.10",
+		"@types/swagger-ui-dist": "^3.30.6",
 		"prisma": "^7.4.2",
 		"svelte": "^5.55.4",
 		"svelte-check": "^4.4.6",

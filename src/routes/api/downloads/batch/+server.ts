@@ -1,13 +1,35 @@
 import { json, error } from '@sveltejs/kit';
 import { downloadService } from '$lib/server/services/download.service';
 import { prisma } from '$lib/server/db';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * POST /api/downloads/batch
- * Create multiple downloads from an array of URLs
- */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST = apiRoute('/api/downloads/batch', 'POST', {
+	summary: 'Create multiple downloads',
+	tags: ['Downloads'],
+	auth: true,
+	body: {
+		urls: { type: 'array', required: true, description: 'Array of URLs (max 100)' },
+		profileId: { type: 'string', required: true, description: 'Download profile ID' },
+		saveToLibrary: { type: 'boolean', description: 'Save to library instead of cache' },
+		customFlags: { type: 'array', description: 'Custom yt-dlp flags' },
+	},
+	responses: {
+		201: {
+			description: 'Batch result with succeeded/failed counts',
+			schema: {
+				type: 'object',
+				properties: {
+					total: { type: 'integer' },
+					succeeded: { type: 'integer' },
+					failed: { type: 'integer' },
+					results: { type: 'array', items: { type: 'object' } },
+					errors: { type: 'array', items: { type: 'object' } },
+				},
+			},
+		},
+	},
+}, async ({ request, locals }) => {
 	try {
 		const { urls, profileId, saveToLibrary, customFlags } = await request.json();
 
@@ -23,7 +45,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Maximum 100 URLs allowed per batch');
 		}
 
-		// Validate all URLs first
 		for (const url of urls) {
 			if (!url || typeof url !== 'string') {
 				throw error(400, 'All URLs must be valid strings');
@@ -42,7 +63,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const flags: string[] = Array.isArray(customFlags) ? customFlags : [];
 		const userId = locals.session?.user?.id;
 
-		// Verify profile exists and user has access
 		const profile = await prisma.downloadProfile.findUnique({
 			where: { id: profileId },
 		});
@@ -53,7 +73,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(403, 'Cannot use another user\'s profile');
 		}
 
-		// Create all downloads
 		const results = [];
 		const errors = [];
 
@@ -85,4 +104,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to create batch download');
 	}
-};
+}) satisfies RequestHandler;

@@ -1,20 +1,32 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { subscriptionService } from '$lib/server/services/subscription.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * POST /api/subscriptions/[id]/check
- * Manually trigger subscription check
- */
-export const POST: RequestHandler = async ({ params, locals }) => {
+export const POST = apiRoute('/api/subscriptions/[id]/check', 'POST', {
+	summary: 'Manually trigger subscription check',
+	tags: ['Subscriptions'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Subscription ID' } },
+	responses: {
+		200: {
+			description: 'Check triggered',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+				},
+			},
+		},
+		404: { description: 'Subscription not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
 
-		// Check ownership first
 		const existing = await prisma.subscription.findUnique({
 			where: { id: params.id },
 		});
@@ -34,4 +46,4 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to check subscription');
 	}
-};
+}) satisfies RequestHandler;

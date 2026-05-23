@@ -2,15 +2,39 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { subscriptionService } from '$lib/server/services/subscription.service';
 import { ytdlpService } from '$lib/server/services/ytdlp.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/subscriptions/[id]
- * Get subscription
- */
-export const GET: RequestHandler = async ({ params, locals }) => {
+export const GET = apiRoute('/api/subscriptions/[id]', 'GET', {
+	summary: 'Get subscription by ID',
+	tags: ['Subscriptions'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Subscription ID' } },
+	responses: {
+		200: {
+			description: 'Subscription with profile and recent downloads',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					name: { type: 'string' },
+					type: { type: 'string', enum: ['CHANNEL', 'PLAYLIST', 'USER'] },
+					enabled: { type: 'boolean' },
+					checkInterval: { type: 'integer' },
+					autoDownload: { type: 'boolean' },
+					saveToLibrary: { type: 'boolean' },
+					profileId: { type: 'string' },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					userId: { type: 'string', nullable: true },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+		404: { description: 'Subscription not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
@@ -24,7 +48,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			throw error(404, 'Subscription not found');
 		}
 
-		// Check ownership or admin
 		if (subscription.userId !== locals.session.user.id && !locals.session.user.isAdmin) {
 			throw error(403, 'Access denied');
 		}
@@ -35,20 +58,53 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to get subscription');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * PATCH /api/subscriptions/[id]
- * Update subscription
- */
-export const PATCH: RequestHandler = async ({ params, request, locals }) => {
+export const PATCH = apiRoute('/api/subscriptions/[id]', 'PATCH', {
+	summary: 'Update a subscription',
+	tags: ['Subscriptions'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Subscription ID' } },
+	body: {
+		name: { type: 'string', description: 'Subscription name' },
+		url: { type: 'string', description: 'Channel/playlist URL' },
+		type: { type: 'string', description: 'Subscription type', enum: ['CHANNEL', 'PLAYLIST', 'USER'] },
+		enabled: { type: 'boolean', description: 'Enable/disable subscription' },
+		checkInterval: { type: 'integer', description: 'Check interval (60-86400s)', minimum: 60, maximum: 86400 },
+		autoDownload: { type: 'boolean', description: 'Auto-download new videos' },
+		saveToLibrary: { type: 'boolean', description: 'Save to library' },
+		profileId: { type: 'string', description: 'Download profile ID' },
+		customFlags: { type: 'array', description: 'Custom yt-dlp flags' },
+	},
+	responses: {
+		200: {
+			description: 'Updated subscription',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					name: { type: 'string' },
+					type: { type: 'string', enum: ['CHANNEL', 'PLAYLIST', 'USER'] },
+					enabled: { type: 'boolean' },
+					checkInterval: { type: 'integer' },
+					autoDownload: { type: 'boolean' },
+					saveToLibrary: { type: 'boolean' },
+					profileId: { type: 'string' },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					userId: { type: 'string', nullable: true },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+		404: { description: 'Subscription not found' },
+	},
+}, async ({ params, request, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
 
-		// Check ownership first
 		const existing = await prisma.subscription.findUnique({
 			where: { id: params.id },
 		});
@@ -112,7 +168,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			include: { profile: true },
 		});
 
-		// Reschedule if enabled or check interval changed
 		if (body.enabled !== undefined || body.checkInterval !== undefined) {
 			if (subscription.enabled) {
 				await subscriptionService.scheduleSubscription(subscription);
@@ -127,20 +182,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to update subscription');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * DELETE /api/subscriptions/[id]
- * Delete subscription
- */
-export const DELETE: RequestHandler = async ({ params, locals }) => {
+export const DELETE = apiRoute('/api/subscriptions/[id]', 'DELETE', {
+	summary: 'Delete a subscription',
+	tags: ['Subscriptions'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Subscription ID' } },
+	responses: {
+		200: {
+			description: 'Subscription deleted',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+				},
+			},
+		},
+		404: { description: 'Subscription not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
 
-		// Check ownership first
 		const existing = await prisma.subscription.findUnique({
 			where: { id: params.id },
 		});
@@ -153,7 +219,6 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			throw error(403, 'Access denied');
 		}
 
-		// Unschedule first
 		subscriptionService.unscheduleSubscription(params.id);
 
 		await prisma.subscription.delete({
@@ -166,4 +231,4 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to delete subscription');
 	}
-};
+}) satisfies RequestHandler;

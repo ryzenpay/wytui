@@ -1,9 +1,30 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { subscriptionService } from '$lib/server/services/subscription.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const POST = apiRoute('/api/subscriptions/[id]/backfill', 'POST', {
+	summary: 'Backfill subscription videos',
+	tags: ['Subscriptions'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Subscription ID' } },
+	body: {
+		dateAfter: { type: 'string', description: 'ISO date to backfill from' },
+	},
+	responses: {
+		200: {
+			description: 'Backfill started',
+			schema: {
+				type: 'object',
+				properties: {
+					started: { type: 'boolean' },
+				},
+			},
+		},
+		404: { description: 'Subscription not found' },
+	},
+}, async ({ params, request, locals }) => {
 	try {
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
@@ -44,4 +65,4 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to backfill subscription');
 	}
-};
+}) satisfies RequestHandler;

@@ -1,4 +1,4 @@
-import { hasUsers, verifySessionToken } from '$lib/server/auth';
+import { hasUsers, verifySessionToken, resolveApiKey } from '$lib/server/auth';
 import { jobScheduler } from '$lib/server/jobs/scheduler';
 import { ensureDefaults } from '$lib/server/init';
 import { redirect, type Handle } from '@sveltejs/kit';
@@ -14,36 +14,52 @@ const initPromise = ensureDefaults()
 // Session and protection middleware
 export const handle: Handle = async ({ event, resolve }) => {
 	await initPromise;
-	// Parse session from cookie
-	const sessionToken = event.cookies.get('wytui.session-token');
+	// Try Bearer token auth first (API keys)
+	const authHeader = event.request.headers.get('authorization');
+	if (authHeader?.startsWith('Bearer ')) {
+		const apiKeyUser = await resolveApiKey(authHeader.slice(7));
+		if (apiKeyUser) {
+			event.locals.session = {
+				user: {
+					id: apiKeyUser.id,
+					email: apiKeyUser.email,
+					name: undefined,
+					isAdmin: apiKeyUser.isAdmin,
+				},
+			};
+		}
+	}
 
-	if (sessionToken) {
-		const sessionData = verifySessionToken(sessionToken);
+	// Fall back to cookie session
+	if (!event.locals.session?.user) {
+		const sessionToken = event.cookies.get('wytui.session-token');
 
-		if (sessionData) {
-			// Get fresh user data from database
-			const user = await prisma.user.findUnique({
-				where: { id: sessionData.userId },
-			});
+		if (sessionToken) {
+			const sessionData = verifySessionToken(sessionToken);
 
-			if (user) {
-				event.locals.session = {
-					user: {
-						id: user.id,
-						email: user.email,
-						name: user.name ?? undefined,
-						isAdmin: user.isAdmin,
-					},
-				};
+			if (sessionData) {
+				const user = await prisma.user.findUnique({
+					where: { id: sessionData.userId },
+				});
+
+				if (user) {
+					event.locals.session = {
+						user: {
+							id: user.id,
+							email: user.email,
+							name: user.name ?? undefined,
+							isAdmin: user.isAdmin,
+						},
+					};
+				}
+			} else {
+				event.cookies.delete('wytui.session-token', { path: '/' });
 			}
-		} else {
-			// Invalid or expired session token, clear it
-			event.cookies.delete('wytui.session-token', { path: '/' });
 		}
 	}
 
 	// Public paths that don't require authentication
-	const publicPaths = ['/setup', '/api/setup', '/auth'];
+	const publicPaths = ['/setup', '/api/setup', '/auth', '/api/docs', '/docs'];
 
 	// Check if path is public
 	const isPublicPath = publicPaths.some((path) => event.url.pathname.startsWith(path));

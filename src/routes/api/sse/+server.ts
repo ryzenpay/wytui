@@ -1,21 +1,17 @@
 import { sseEmitter } from '$lib/server/sse/emitter';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/sse
- * Server-Sent Events stream
- */
-export const GET: RequestHandler = async ({ request, locals }) => {
-	// Generate unique client ID
+export const GET = apiRoute('/api/sse', 'GET', {
+	summary: 'Server-Sent Events stream',
+	tags: ['System'],
+	auth: 'optional',
+	responses: { 200: { description: 'SSE event stream' } },
+}, async ({ request, locals }) => {
 	const clientId = crypto.randomUUID();
-
-	// Get user ID from session
 	const userId = locals.session?.user?.id;
-
-	// Create SSE stream
 	const stream = sseEmitter.registerClient(clientId, userId);
 
-	// Handle client disconnect
 	request.signal.addEventListener('abort', () => {
 		sseEmitter.removeClient(clientId);
 	});
@@ -25,7 +21,7 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 			'Content-Type': 'text/event-stream',
 			'Cache-Control': 'no-cache',
 			'Connection': 'keep-alive',
-			'X-Accel-Buffering': 'no', // Disable nginx buffering
+			'X-Accel-Buffering': 'no',
 		},
 	});
-};
+}) satisfies RequestHandler;

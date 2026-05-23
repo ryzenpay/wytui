@@ -1,15 +1,40 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { hashPassword, validatePassword, invalidateUsersCache } from '$lib/server/auth';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/users
- * List all users (admin only)
- */
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/users', 'GET', {
+	summary: 'List all users',
+	tags: ['Users'],
+	auth: 'admin',
+	responses: {
+		200: {
+			description: 'Array of users with download/subscription counts',
+			schema: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'string' },
+						email: { type: 'string' },
+						name: { type: 'string' },
+						isAdmin: { type: 'boolean' },
+						createdAt: { type: 'string', format: 'date-time' },
+						_count: {
+							type: 'object',
+							properties: {
+								downloads: { type: 'integer' },
+								subscriptions: { type: 'integer' },
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	try {
-		// Check if user is admin
 		if (!locals.session?.user?.isAdmin) {
 			throw error(403, 'Admin access required');
 		}
@@ -37,33 +62,51 @@ export const GET: RequestHandler = async ({ locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to list users');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * POST /api/users
- * Create a new user (admin only)
- */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST = apiRoute('/api/users', 'POST', {
+	summary: 'Create a new user',
+	tags: ['Users'],
+	auth: 'admin',
+	body: {
+		email: { type: 'string', required: true, description: 'User email' },
+		password: { type: 'string', required: true, description: 'User password' },
+		name: { type: 'string', required: true, description: 'Display name' },
+		isAdmin: { type: 'boolean', description: 'Grant admin privileges' },
+	},
+	responses: {
+		201: {
+			description: 'Created user',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					email: { type: 'string' },
+					name: { type: 'string' },
+					isAdmin: { type: 'boolean' },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+		400: { description: 'Invalid input or user exists' },
+	},
+}, async ({ request, locals }) => {
 	try {
-		// Check if user is admin
 		if (!locals.session?.user?.isAdmin) {
 			throw error(403, 'Admin access required');
 		}
 
 		const { email, password, name, isAdmin } = await request.json();
 
-		// Validation
 		if (!email || !password || !name) {
 			throw error(400, 'Email, password, and name are required');
 		}
 
-		// Validate password strength
 		const passwordValidation = validatePassword(password);
 		if (!passwordValidation.valid) {
 			throw error(400, passwordValidation.error!);
 		}
 
-		// Check if user already exists
 		const existing = await prisma.user.findUnique({
 			where: { email },
 		});
@@ -72,10 +115,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'User with this email already exists');
 		}
 
-		// Hash password
 		const hashedPassword = await hashPassword(password);
 
-		// Create user
 		const user = await prisma.user.create({
 			data: {
 				email,
@@ -99,4 +140,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to create user');
 	}
-};
+}) satisfies RequestHandler;

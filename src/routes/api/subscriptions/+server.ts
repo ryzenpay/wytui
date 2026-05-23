@@ -2,15 +2,40 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { subscriptionService } from '$lib/server/services/subscription.service';
 import { ytdlpService } from '$lib/server/services/ytdlp.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/subscriptions
- * List subscriptions
- */
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/subscriptions', 'GET', {
+	summary: 'List subscriptions',
+	tags: ['Subscriptions'],
+	auth: true,
+	responses: {
+		200: {
+			description: 'Array of user subscriptions with profile info',
+			schema: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						id: { type: 'string' },
+						url: { type: 'string' },
+						name: { type: 'string' },
+						type: { type: 'string', enum: ['CHANNEL', 'PLAYLIST', 'USER'] },
+						enabled: { type: 'boolean' },
+						checkInterval: { type: 'integer' },
+						autoDownload: { type: 'boolean' },
+						saveToLibrary: { type: 'boolean' },
+						profileId: { type: 'string' },
+						customFlags: { type: 'array', items: { type: 'string' } },
+						userId: { type: 'string', nullable: true },
+						createdAt: { type: 'string', format: 'date-time' },
+					},
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
@@ -29,15 +54,46 @@ export const GET: RequestHandler = async ({ locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to list subscriptions');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * POST /api/subscriptions
- * Create subscription
- */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST = apiRoute('/api/subscriptions', 'POST', {
+	summary: 'Create a subscription',
+	tags: ['Subscriptions'],
+	auth: true,
+	body: {
+		url: { type: 'string', required: true, description: 'Channel/playlist URL' },
+		name: { type: 'string', required: true, description: 'Subscription name' },
+		profileId: { type: 'string', required: true, description: 'Download profile ID' },
+		type: { type: 'string', description: 'Subscription type', enum: ['CHANNEL', 'PLAYLIST', 'USER'] },
+		checkInterval: { type: 'integer', description: 'Check interval in seconds (60-86400)', minimum: 60, maximum: 86400, default: 1800 },
+		autoDownload: { type: 'boolean', description: 'Auto-download new videos' },
+		saveToLibrary: { type: 'boolean', description: 'Save to library' },
+		customFlags: { type: 'array', description: 'Custom yt-dlp flags' },
+	},
+	responses: {
+		201: {
+			description: 'Created subscription',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					name: { type: 'string' },
+					type: { type: 'string', enum: ['CHANNEL', 'PLAYLIST', 'USER'] },
+					enabled: { type: 'boolean' },
+					checkInterval: { type: 'integer' },
+					autoDownload: { type: 'boolean' },
+					saveToLibrary: { type: 'boolean' },
+					profileId: { type: 'string' },
+					customFlags: { type: 'array', items: { type: 'string' } },
+					userId: { type: 'string', nullable: true },
+					createdAt: { type: 'string', format: 'date-time' },
+				},
+			},
+		},
+	},
+}, async ({ request, locals }) => {
 	try {
-		// Require authentication
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
 		}
@@ -45,12 +101,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const data = await request.json();
 		const userId = locals.session.user.id;
 
-		// Validate required fields
 		if (!data.url || !data.name || !data.profileId) {
 			throw error(400, 'Missing required fields: url, name, profileId');
 		}
 
-		// Validate URL format and protocol
 		try {
 			const urlObj = new URL(data.url);
 			if (!['http:', 'https:'].includes(urlObj.protocol)) {
@@ -61,13 +115,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Invalid URL format');
 		}
 
-		// Validate subscription type
 		const validTypes = ['CHANNEL', 'PLAYLIST', 'USER'];
 		if (data.type && !validTypes.includes(data.type)) {
 			throw error(400, 'Invalid subscription type');
 		}
 
-		// Validate profile ownership
 		const profile = await prisma.downloadProfile.findUnique({
 			where: { id: data.profileId },
 		});
@@ -78,13 +130,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(403, 'Cannot use another user\'s profile');
 		}
 
-		// Validate types and ranges
 		const checkInterval = parseInt(data.checkInterval) || 1800;
 		if (checkInterval < 60 || checkInterval > 86400) {
 			throw error(400, 'Check interval must be between 60 and 86400 seconds');
 		}
 
-		// Validate custom flags
 		const customFlags = Array.isArray(data.customFlags) ? data.customFlags : [];
 		if (customFlags.length > 0) {
 			const badFlag = ytdlpService.findDangerousFlag(customFlags);
@@ -93,7 +143,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Resolve channel name if the name is just the URL
 		let resolvedName = data.name;
 		if (resolvedName === data.url) {
 			try {
@@ -106,7 +155,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		// Create subscription with validated data only
 		const subscription = await prisma.subscription.create({
 			data: {
 				url: data.url,
@@ -123,10 +171,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			include: { profile: true },
 		});
 
-		// Schedule the subscription
 		await subscriptionService.scheduleSubscription(subscription);
 
-		// Seed archive with existing videos so only future uploads are downloaded
 		subscriptionService.seedArchive(subscription.id).catch((err) =>
 			console.error(`[Subscriptions] Failed to seed archive for ${subscription.name}:`, err)
 		);
@@ -137,4 +183,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to create subscription');
 	}
-};
+}) satisfies RequestHandler;

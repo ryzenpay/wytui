@@ -1,7 +1,29 @@
 import { json, error } from '@sveltejs/kit';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST = apiRoute('/api/settings/jellyfin-test', 'POST', {
+	summary: 'Test Jellyfin connection',
+	tags: ['Settings'],
+	auth: 'admin',
+	body: {
+		url: { type: 'string', required: true, description: 'Jellyfin server URL' },
+		apiKey: { type: 'string', required: true, description: 'Jellyfin API key' },
+	},
+	responses: {
+		200: {
+			description: 'Connection test result with server name',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+					serverName: { type: 'string' },
+					error: { type: 'string' },
+				},
+			},
+		},
+	},
+}, async ({ request, locals }) => {
 	if (!locals.session?.user?.isAdmin) {
 		throw error(403, 'Admin access required');
 	}
@@ -29,4 +51,4 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const message = e.name === 'TimeoutError' ? 'Connection timed out' : (e.message || 'Connection failed');
 		return json({ success: false, error: message });
 	}
-};
+}) satisfies RequestHandler;

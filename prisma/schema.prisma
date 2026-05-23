@@ -23,6 +23,7 @@ model User {
   downloads     Download[]
   profiles      DownloadProfile[]
   subscriptions Subscription[]
+  apiKeys       ApiKey[]
 
   @@map("users")
 }
@@ -64,6 +65,20 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  keyHash   String    @unique
+  keyPrefix String
+  name      String
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastUsedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("api_keys")
 }
 
 // Download profiles (quality presets + custom)

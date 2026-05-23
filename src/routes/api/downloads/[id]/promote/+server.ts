@@ -1,9 +1,45 @@
 import { json, error } from '@sveltejs/kit';
 import { downloadService } from '$lib/server/services/download.service';
 import { libraryService } from '$lib/server/services/library.service';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ params, locals }) => {
+export const POST = apiRoute('/api/downloads/[id]/promote', 'POST', {
+	summary: 'Promote download to library',
+	tags: ['Downloads'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Download ID' } },
+	responses: {
+		200: {
+			description: 'Updated download object',
+			schema: {
+				type: 'object',
+				properties: {
+					id: { type: 'string' },
+					url: { type: 'string' },
+					status: { type: 'string', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] },
+					title: { type: 'string', nullable: true },
+					thumbnail: { type: 'string', nullable: true },
+					duration: { type: 'integer', nullable: true },
+					uploader: { type: 'string', nullable: true },
+					progress: { type: 'number' },
+					speed: { type: 'string', nullable: true },
+					eta: { type: 'string', nullable: true },
+					filename: { type: 'string', nullable: true },
+					filepath: { type: 'string', nullable: true },
+					filesize: { type: 'string', nullable: true },
+					profileId: { type: 'string' },
+					userId: { type: 'string', nullable: true },
+					storagePool: { type: 'string', enum: ['cache', 'library'] },
+					createdAt: { type: 'string', format: 'date-time' },
+					completedAt: { type: 'string', format: 'date-time', nullable: true },
+				},
+			},
+		},
+		400: { description: 'Download must be completed' },
+		404: { description: 'Download not found' },
+	},
+}, async ({ params, locals }) => {
 	try {
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
@@ -32,4 +68,4 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to promote download');
 	}
-};
+}) satisfies RequestHandler;

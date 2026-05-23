@@ -4,6 +4,7 @@ import { queueService } from '$lib/server/services/queue.service';
 import { isOidcConfigured, getOidcDisplayName } from '$lib/server/oidc';
 import { resolve, normalize } from 'path';
 import { statfs } from 'fs/promises';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
 const ALLOWED_SETTINGS_FIELDS = new Set([
@@ -24,7 +25,35 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'maxDurationSeconds',
 ]);
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/settings', 'GET', {
+	summary: 'Get application settings',
+	description: 'Returns limited settings for regular users, full settings for admins',
+	tags: ['Settings'],
+	auth: true,
+	responses: {
+		200: {
+			description: 'Settings object (scope varies by role)',
+			schema: {
+				type: 'object',
+				properties: {
+					maxConcurrentDownloads: { type: 'integer' },
+					downloadPath: { type: 'string' },
+					ytdlpPath: { type: 'string' },
+					autoUpdateYtdlp: { type: 'boolean' },
+					enableArchive: { type: 'boolean' },
+					authMode: { type: 'string' },
+					libraryPath: { type: 'string', nullable: true },
+					musicLibraryPath: { type: 'string', nullable: true },
+					cacheQuotaBytes: { type: 'string' },
+					jellyfinUrl: { type: 'string', nullable: true },
+					jellyfinApiKey: { type: 'string', nullable: true },
+					oidcConfigured: { type: 'boolean' },
+					maxDurationSeconds: { type: 'integer', nullable: true },
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	try {
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
@@ -71,9 +100,53 @@ export const GET: RequestHandler = async ({ locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to get settings');
 	}
-};
+}) satisfies RequestHandler;
 
-export const PATCH: RequestHandler = async ({ request, locals }) => {
+export const PATCH = apiRoute('/api/settings', 'PATCH', {
+	summary: 'Update application settings',
+	tags: ['Settings'],
+	auth: 'admin',
+	body: {
+		maxConcurrentDownloads: { type: 'integer', description: 'Max concurrent downloads (1-20)', minimum: 1, maximum: 20 },
+		downloadPath: { type: 'string', description: 'Download directory path' },
+		ytdlpPath: { type: 'string', description: 'Path to yt-dlp binary' },
+		autoUpdateYtdlp: { type: 'boolean', description: 'Auto-update yt-dlp' },
+		updateCheckInterval: { type: 'integer', description: 'Update check interval (seconds)' },
+		enableArchive: { type: 'boolean', description: 'Enable download archive' },
+		archivePath: { type: 'string', description: 'Archive file path' },
+		authMode: { type: 'string', description: 'Authentication mode', enum: ['password', 'oidc', 'both'] },
+		libraryPath: { type: 'string', description: 'Library directory path' },
+		musicLibraryPath: { type: 'string', description: 'Music library path' },
+		cacheQuotaBytes: { type: 'string', description: 'Cache quota in bytes' },
+		jellyfinUrl: { type: 'string', description: 'Jellyfin server URL' },
+		jellyfinApiKey: { type: 'string', description: 'Jellyfin API key' },
+		jellyfinExternalUrl: { type: 'string', description: 'Jellyfin external URL' },
+		maxDurationSeconds: { type: 'integer', description: 'Max download duration (0 = unlimited)', minimum: 0 },
+	},
+	responses: {
+		200: {
+			description: 'Updated settings object',
+			schema: {
+				type: 'object',
+				properties: {
+					maxConcurrentDownloads: { type: 'integer' },
+					downloadPath: { type: 'string' },
+					ytdlpPath: { type: 'string' },
+					autoUpdateYtdlp: { type: 'boolean' },
+					enableArchive: { type: 'boolean' },
+					authMode: { type: 'string' },
+					libraryPath: { type: 'string', nullable: true },
+					musicLibraryPath: { type: 'string', nullable: true },
+					cacheQuotaBytes: { type: 'string' },
+					jellyfinUrl: { type: 'string', nullable: true },
+					jellyfinApiKey: { type: 'string', nullable: true },
+					oidcConfigured: { type: 'boolean' },
+					maxDurationSeconds: { type: 'integer', nullable: true },
+				},
+			},
+		},
+	},
+}, async ({ request, locals }) => {
 	try {
 		if (!locals.session?.user?.isAdmin) {
 			throw error(403, 'Admin access required');
@@ -190,4 +263,4 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to update settings');
 	}
-};
+}) satisfies RequestHandler;

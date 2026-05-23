@@ -1,9 +1,27 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { statfs } from 'fs/promises';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/settings/disk', 'GET', {
+	summary: 'Get disk space info',
+	tags: ['Settings'],
+	auth: 'admin',
+	responses: {
+		200: {
+			description: 'Disk total and available bytes',
+			schema: {
+				type: 'object',
+				properties: {
+					totalBytes: { type: 'string' },
+					availableBytes: { type: 'string' },
+				},
+			},
+		},
+		500: { description: 'Could not determine disk space' },
+	},
+}, async ({ locals }) => {
 	if (!locals.session?.user?.isAdmin) {
 		throw error(403, 'Admin access required');
 	}
@@ -23,4 +41,4 @@ export const GET: RequestHandler = async ({ locals }) => {
 	} catch {
 		throw error(500, 'Could not determine disk space for download path');
 	}
-};
+}) satisfies RequestHandler;

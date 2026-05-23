@@ -1,14 +1,32 @@
 import { json, error } from '@sveltejs/kit';
 import { createFirstAdmin, hasUsers, issueSessionCookie } from '$lib/server/auth';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * POST /api/setup
- * Create first admin user
- */
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST = apiRoute('/api/setup', 'POST', {
+	summary: 'Create first admin user',
+	tags: ['System'],
+	auth: false,
+	body: {
+		email: { type: 'string', required: true, description: 'Admin email' },
+		password: { type: 'string', required: true, description: 'Admin password' },
+		name: { type: 'string', required: true, description: 'Admin display name' },
+	},
+	responses: {
+		200: {
+			description: 'Admin account created',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+					message: { type: 'string' },
+				},
+			},
+		},
+		400: { description: 'Setup already completed or invalid input' },
+	},
+}, async ({ request, cookies }) => {
 	try {
-		// Check if users already exist
 		const usersExist = await hasUsers();
 		if (usersExist) {
 			throw error(400, 'Setup already completed. Users exist.');
@@ -16,7 +34,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		const { email, password, name } = await request.json();
 
-		// Validation
 		if (!email || !password || !name) {
 			throw error(400, 'Email, password, and name are required');
 		}
@@ -25,13 +42,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			throw error(400, 'Password is required');
 		}
 
-		// Validate email format
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		if (!emailRegex.test(email)) {
 			throw error(400, 'Invalid email format');
 		}
 
-		// Create first admin and sign them in
 		const user = await createFirstAdmin(email, password, name);
 		issueSessionCookie(cookies, user);
 
@@ -41,16 +56,28 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to create admin account');
 	}
-};
+}) satisfies RequestHandler;
 
-/**
- * GET /api/setup
- * Check if setup is required
- */
-export const GET: RequestHandler = async () => {
+export const GET = apiRoute('/api/setup', 'GET', {
+	summary: 'Check if setup is required',
+	tags: ['System'],
+	auth: false,
+	responses: {
+		200: {
+			description: 'Setup status',
+			schema: {
+				type: 'object',
+				properties: {
+					setupRequired: { type: 'boolean' },
+					usersExist: { type: 'boolean' },
+				},
+			},
+		},
+	},
+}, async () => {
 	const usersExist = await hasUsers();
 	return json({
 		setupRequired: !usersExist,
 		usersExist,
 	});
-};
+}) satisfies RequestHandler;

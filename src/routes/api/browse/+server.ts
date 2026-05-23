@@ -1,9 +1,30 @@
 import { json, error } from '@sveltejs/kit';
 import { readdir, stat } from 'fs/promises';
 import { resolve, normalize, dirname, basename } from 'path';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from '@sveltejs/kit';
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET = apiRoute('/api/browse', 'GET', {
+	summary: 'Browse server directories',
+	tags: ['System'],
+	auth: 'admin',
+	query: {
+		path: { type: 'string', description: 'Directory path to browse', default: '/' },
+	},
+	responses: {
+		200: {
+			description: 'Directory listing with parent, current path, and subdirectories',
+			schema: {
+				type: 'object',
+				properties: {
+					parent: { type: 'string' },
+					current: { type: 'string' },
+					dirs: { type: 'array', items: { type: 'string' } },
+				},
+			},
+		},
+	},
+}, async ({ url, locals }) => {
 	if (!locals.session?.user?.isAdmin) {
 		throw error(403, 'Admin access required');
 	}
@@ -45,4 +66,4 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 		throw error(500, 'Failed to browse directory');
 	}
-};
+});

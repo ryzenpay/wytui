@@ -1,13 +1,31 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { DownloadStatus } from '@prisma/client';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * GET /api/analytics
- * Get analytics data for admin dashboard
- */
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET = apiRoute('/api/analytics', 'GET', {
+	summary: 'Get analytics data',
+	tags: ['System'],
+	auth: 'admin',
+	responses: {
+		200: {
+			description: 'Analytics overview with download stats, storage, and trends',
+			schema: {
+				type: 'object',
+				properties: {
+					overview: { type: 'object', properties: { totalDownloads: { type: 'integer' }, completedDownloads: { type: 'integer' }, failedDownloads: { type: 'integer' }, activeDownloads: { type: 'integer' }, successRate: { type: 'number' } } },
+					storage: { type: 'object', properties: { cacheBytes: { type: 'string' }, libraryBytes: { type: 'string' }, totalBytes: { type: 'string' }, cacheQuotaBytes: { type: 'string' } } },
+					downloadsPerDay: { type: 'array', items: { type: 'object', properties: { date: { type: 'string' }, count: { type: 'integer' } } } },
+					topUploaders: { type: 'array', items: { type: 'object', properties: { uploader: { type: 'string' }, count: { type: 'integer' } } } },
+					activeSubscriptions: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, downloadCount: { type: 'integer' } } } },
+					avgFilesize: { type: 'number' },
+					downloadsByFormat: { type: 'array', items: { type: 'object', properties: { format: { type: 'string' }, count: { type: 'integer' } } } },
+				},
+			},
+		},
+	},
+}, async ({ locals }) => {
 	try {
 		if (!locals.session?.user?.isAdmin) {
 			throw error(403, 'Admin access required');
@@ -192,4 +210,4 @@ export const GET: RequestHandler = async ({ locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to get analytics');
 	}
-};
+}) satisfies RequestHandler;

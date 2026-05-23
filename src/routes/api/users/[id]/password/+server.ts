@@ -1,15 +1,32 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { hashPassword, validatePassword } from '$lib/server/auth';
+import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-/**
- * PATCH /api/users/[id]/password
- * Change user password
- * - Admins can change any non-admin user's password
- * - Users can change their own password
- */
-export const PATCH: RequestHandler = async ({ params, request, locals }) => {
+export const PATCH = apiRoute('/api/users/[id]/password', 'PATCH', {
+	summary: 'Change user password',
+	description: 'Users can change their own password. Admins can change non-admin passwords.',
+	tags: ['Users'],
+	auth: true,
+	params: { id: { type: 'string', description: 'Target user ID' } },
+	body: {
+		newPassword: { type: 'string', required: true, description: 'New password' },
+	},
+	responses: {
+		200: {
+			description: 'Password changed',
+			schema: {
+				type: 'object',
+				properties: {
+					success: { type: 'boolean' },
+					message: { type: 'string' },
+				},
+			},
+		},
+		404: { description: 'User not found' },
+	},
+}, async ({ params, request, locals }) => {
 	try {
 		const currentUser = locals.session?.user;
 		if (!currentUser) {
@@ -28,7 +45,6 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			throw error(400, passwordValidation.error!);
 		}
 
-		// Get target user
 		const targetUser = await prisma.user.findUnique({
 			where: { id: targetUserId },
 			select: {
@@ -44,20 +60,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const isChangingOwnPassword = currentUser.id === targetUserId;
 		const isAdminChangingOtherPassword = currentUser.isAdmin && !isChangingOwnPassword;
 
-		// Authorization checks
 		if (!isChangingOwnPassword && !currentUser.isAdmin) {
 			throw error(403, 'You can only change your own password');
 		}
 
-		// Admins cannot change other admins' passwords
 		if (isAdminChangingOtherPassword && targetUser.isAdmin) {
 			throw error(403, 'Cannot change another admin\'s password');
 		}
 
-		// Hash new password
 		const hashedPassword = await hashPassword(newPassword);
 
-		// Update password
 		await prisma.user.update({
 			where: { id: targetUserId },
 			data: { password: hashedPassword },
@@ -69,4 +81,4 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (e.status) throw e;
 		throw error(500, e.message || 'Failed to change password');
 	}
-};
+}) satisfies RequestHandler;
