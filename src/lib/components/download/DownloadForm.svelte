@@ -21,6 +21,49 @@
   // Advanced flag state
   let flags = $state<Record<string, { enabled: boolean; value: string }>>({});
 
+  type LastUsedPrefs = {
+    profileId: string | null;
+    saveToLibrary: boolean;
+    sponsorblock: boolean;
+    subtitles: boolean;
+    metadata: boolean;
+    audioQuality: string;
+  };
+
+  const LAST_USED_VIDEO_KEY = "wytui_lastUsed_video";
+  const LAST_USED_AUDIO_KEY = "wytui_lastUsed_audio";
+
+  function saveLastUsedPrefs(isAudio: boolean) {
+    const key = isAudio ? LAST_USED_AUDIO_KEY : LAST_USED_VIDEO_KEY;
+    const prefs: LastUsedPrefs = {
+      profileId: isAudio ? selectedAudioProfileId : selectedVideoProfileId,
+      saveToLibrary,
+      sponsorblock: basicOptions.sponsorblock,
+      subtitles: basicOptions.subtitles,
+      metadata: basicOptions.metadata,
+      audioQuality,
+    };
+    try { localStorage.setItem(key, JSON.stringify(prefs)); } catch {}
+  }
+
+  function loadLastUsedPrefs(isAudio: boolean): LastUsedPrefs | null {
+    const key = isAudio ? LAST_USED_AUDIO_KEY : LAST_USED_VIDEO_KEY;
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function applyLastUsedPrefs(isAudio: boolean) {
+    const prefs = loadLastUsedPrefs(isAudio);
+    if (!prefs) return;
+    if (libraryConfigured) saveToLibrary = prefs.saveToLibrary;
+    basicOptions.sponsorblock = prefs.sponsorblock;
+    basicOptions.subtitles = prefs.subtitles;
+    basicOptions.metadata = prefs.metadata;
+    audioQuality = prefs.audioQuality;
+  }
+
   type FlagType = "bool" | "text" | "number" | "select";
   type FlagDef = {
     key: string;
@@ -837,6 +880,19 @@
         saveToLibrary = true;
       }
     }
+
+    const isAudio = !!selectedAudioProfileId;
+    const lastUsed = loadLastUsedPrefs(isAudio);
+    if (lastUsed) {
+      if (lastUsed.profileId) {
+        const exists = profiles.find((p: any) => p.id === lastUsed.profileId);
+        if (exists) {
+          if (isAudio) selectedAudioProfileId = lastUsed.profileId;
+          else { selectedVideoProfileId = lastUsed.profileId; selectedAudioProfileId = null; }
+        }
+      }
+      applyLastUsedPrefs(isAudio);
+    }
   });
 
   async function handleSubmit(e: Event) {
@@ -893,6 +949,8 @@
         }
       }
 
+      const isAudio = !!selectedAudioProfileId;
+      saveLastUsedPrefs(isAudio);
       url = "";
       saveToLibrary = libraryConfigured;
     } catch (e: any) {
@@ -956,8 +1014,12 @@
   }
 
   function selectVideoProfile(id: string) {
+    const wasAudio = !!selectedAudioProfileId;
     selectedVideoProfileId = selectedVideoProfileId === id ? null : id;
-    if (selectedVideoProfileId) selectedAudioProfileId = null;
+    if (selectedVideoProfileId) {
+      selectedAudioProfileId = null;
+      if (wasAudio) applyLastUsedPrefs(false);
+    }
     if (advancedMode) {
       const profile = profiles.find((p) => p.id === activeProfileId);
       if (profile) loadProfileFlags(profile);
@@ -965,8 +1027,10 @@
   }
 
   function selectAudioProfile(id: string) {
+    const wasVideo = !!selectedVideoProfileId;
     selectedAudioProfileId = id;
     selectedVideoProfileId = null;
+    if (wasVideo) applyLastUsedPrefs(true);
     if (advancedMode) {
       const profile = profiles.find((p) => p.id === id);
       if (profile) loadProfileFlags(profile);
@@ -1043,7 +1107,13 @@
           type="checkbox"
           bind:checked={saveToLibrary}
           onchange={() => {
-            if (saveToLibrary) {
+            const isAudio = !!selectedAudioProfileId;
+            const prefs = loadLastUsedPrefs(isAudio);
+            if (saveToLibrary && prefs) {
+              basicOptions.sponsorblock = prefs.sponsorblock;
+              basicOptions.subtitles = prefs.subtitles;
+              basicOptions.metadata = prefs.metadata;
+            } else if (saveToLibrary) {
               basicOptions.sponsorblock = true;
               basicOptions.subtitles = true;
               basicOptions.metadata = true;
