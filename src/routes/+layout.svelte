@@ -9,7 +9,6 @@
 	import '../app.css';
 
 	let { children, data }: { children: any; data: LayoutData } = $props();
-	let logoHovered = $state(false);
 	let healthPanelOpen = $state(false);
 	let sseState = getSSEState();
 
@@ -40,13 +39,8 @@
 	<header class="header">
 		<div class="container">
 			<nav class="nav">
-				<a
-					href="/"
-					class="logo"
-					onmouseenter={() => logoHovered = true}
-					onmouseleave={() => logoHovered = false}
-				>
-					<h1>{logoHovered ? '/ˈwaɪti/' : 'wytui'}</h1>
+				<a href="/" class="logo">
+					<h1>wytui</h1>
 				</a>
 				<div class="nav-links">
 					<button
@@ -144,9 +138,11 @@
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
 		cursor: pointer;
-		transition: all var(--transition-fast);
-		min-width: 110px;
-		text-align: center;
+		transition: opacity var(--transition-fast);
+	}
+
+	.logo:hover h1 {
+		opacity: 0.8;
 	}
 
 	.nav-links {
