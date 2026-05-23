@@ -216,18 +216,21 @@
 			</div>
 		</button>
 	{/if}
-	{#if download.thumbnail}
+	{#if download.thumbnail || isPreviewable}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="thumbnail"
-			style="background-image: url({download.thumbnail})"
+			style={download.thumbnail ? `background-image: url(${download.thumbnail})` : ''}
 			onmouseenter={handleThumbnailEnter}
 			onmouseleave={handleThumbnailLeave}
 		>
-			{#if isPreviewable}
-				<div class="preview-hint">
-					<svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>
-				</div>
+			{#if !download.thumbnail && isPreviewable}
+				<video
+					class="video-preview"
+					src="/api/files/{download.id}#t=0.1"
+					muted
+					preload="metadata"
+				></video>
 			{/if}
 			{#if showPreview}
 				<video
@@ -450,28 +453,7 @@
 		position: relative;
 	}
 
-	.preview-hint {
-		position: absolute;
-		bottom: 8px;
-		left: 8px;
-		background: rgba(0, 0, 0, 0.6);
-		border-radius: 50%;
-		width: 32px;
-		height: 32px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		opacity: 0;
-		transition: opacity var(--transition-fast);
-		pointer-events: none;
-		z-index: 2;
-	}
-
-	.thumbnail:hover .preview-hint {
-		opacity: 1;
-	}
-
-	.video-preview {
+.video-preview {
 		position: absolute;
 		top: 0;
 		left: 0;
