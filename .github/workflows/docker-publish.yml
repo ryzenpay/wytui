@@ -45,7 +45,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          context: git
 
       - name: Build and push by digest
         id: build
@@ -105,7 +105,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          context: git
           tags: |
             type=ref,event=branch
             type=ref,event=pr
