@@ -1421,7 +1421,7 @@
 	.api-docs-link {
 		margin-top: var(--spacing-xl);
 		padding-top: var(--spacing-xl);
-		border-top: 1px solid var(--border-primary);
+		border-top: 1px solid var(--border);
 	}
 
 	.api-docs-link a {
@@ -1472,7 +1472,7 @@
 		justify-content: space-between;
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: var(--bg-secondary);
-		border: 1px solid var(--border-primary);
+		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 	}
 

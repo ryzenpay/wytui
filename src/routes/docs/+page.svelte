@@ -42,7 +42,7 @@
 		align-items: center;
 		gap: var(--spacing-lg);
 		padding: var(--spacing-lg) var(--spacing-xl);
-		border-bottom: 1px solid var(--border-primary);
+		border-bottom: 1px solid var(--border);
 	}
 
 	.back-link {
@@ -108,16 +108,16 @@
 	:global(.swagger-ui .opblock-tag),
 	:global(.swagger-ui .opblock-tag a) {
 		color: var(--text-primary) !important;
-		border-bottom-color: var(--border-primary) !important;
+		border-bottom-color: var(--border) !important;
 	}
 
 	:global(.swagger-ui .opblock) {
-		border-color: var(--border-primary);
+		border-color: var(--border);
 		background: var(--bg-secondary);
 	}
 
 	:global(.swagger-ui .opblock .opblock-summary) {
-		border-bottom-color: var(--border-primary);
+		border-bottom-color: var(--border);
 	}
 
 	:global(.swagger-ui .opblock .opblock-section-header) {
@@ -130,20 +130,20 @@
 
 	:global(.swagger-ui .btn) {
 		color: var(--text-primary);
-		border-color: var(--border-primary);
+		border-color: var(--border);
 	}
 
 	:global(.swagger-ui select) {
 		background: var(--bg-tertiary);
 		color: var(--text-primary);
-		border-color: var(--border-primary);
+		border-color: var(--border);
 	}
 
 	:global(.swagger-ui input[type=text]),
 	:global(.swagger-ui textarea) {
 		background: var(--bg-tertiary);
 		color: var(--text-primary);
-		border-color: var(--border-primary);
+		border-color: var(--border);
 	}
 
 	:global(.swagger-ui .model-box) {
@@ -151,11 +151,11 @@
 	}
 
 	:global(.swagger-ui section.models) {
-		border-color: var(--border-primary);
+		border-color: var(--border);
 	}
 
 	:global(.swagger-ui section.models.is-open h4) {
-		border-bottom-color: var(--border-primary);
+		border-bottom-color: var(--border);
 	}
 
 	:global(.swagger-ui .response-col_description__inner div.markdown p) {
@@ -164,6 +164,6 @@
 
 	:global(.swagger-ui .scheme-container) {
 		box-shadow: none;
-		border-bottom: 1px solid var(--border-primary);
+		border-bottom: 1px solid var(--border);
 	}
 </style>
