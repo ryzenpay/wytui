@@ -171,6 +171,7 @@ class DownloadService {
 				thumbnail: metadata.thumbnail,
 				duration: metadata.duration,
 				uploader: metadata.uploader,
+				channelUrl: metadata.channelUrl,
 				uploadDate: metadata.uploadDate,
 				format: metadata.format,
 				filesize: metadata.filesize,

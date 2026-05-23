@@ -4,6 +4,7 @@ import { DownloadStatus } from '@prisma/client';
 import { copyFile, unlink, mkdir, access, writeFile } from 'fs/promises';
 import { join, basename, resolve, extname } from 'path';
 import { musicMetadataService } from './music-metadata.service';
+import { ytdlpService } from './ytdlp.service';
 
 function sanitizeFilename(name: string): string {
 	return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Unknown';
@@ -98,6 +99,8 @@ class LibraryService {
 			}
 		}
 
+		await this.ensureChannelArt(resolve(targetLibrary, artistDir), download.channelUrl);
+
 		await prisma.download.update({
 			where: { id: download.id },
 			data: {
@@ -157,6 +160,9 @@ class LibraryService {
 			} catch {}
 		}
 
+		const uploaderPath = resolve(targetLibrary, uploaderDir);
+		await this.ensureChannelArt(uploaderPath, download.channelUrl);
+
 		await prisma.download.update({
 			where: { id: download.id },
 			data: {
@@ -164,6 +170,23 @@ class LibraryService {
 				filepath: destPath,
 			},
 		});
+	}
+
+	private async ensureChannelArt(dirPath: string, channelUrl?: string | null): Promise<void> {
+		if (!channelUrl) return;
+		const folderJpg = join(dirPath, 'folder.jpg');
+		try {
+			await access(folderJpg);
+			return;
+		} catch {}
+		try {
+			const buffer = await ytdlpService.fetchChannelThumbnail(channelUrl);
+			if (buffer) {
+				await writeFile(folderJpg, buffer);
+			}
+		} catch (err) {
+			console.error('[LibraryService] Failed to fetch channel art:', err);
+		}
 	}
 
 	async enforceCacheQuota(): Promise<void> {

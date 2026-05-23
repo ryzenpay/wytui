@@ -24,6 +24,7 @@ model User {
   profiles      DownloadProfile[]
   subscriptions Subscription[]
   apiKeys       ApiKey[]
+  preferences   UserPreference[]
 
   @@map("users")
 }
@@ -126,6 +127,7 @@ model Download {
   thumbnail   String?
   duration    Int?      // seconds
   uploader    String?
+  channelUrl  String?
   uploadDate  DateTime?
   format      String?   // resolved format string
   filesize    BigInt?   // bytes (estimated)
@@ -307,6 +309,19 @@ model Settings {
   updatedAt   DateTime  @updatedAt
 
   @@map("settings")
+}
+
+model UserPreference {
+  id     String @id @default(cuid())
+  userId String
+  mode   String // "video_library", "video_cache", "audio_library", "audio_cache"
+  prefs  Json   // { profileId, sponsorblock, subtitles, metadata, audioQuality }
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mode])
+  @@index([userId])
+  @@map("user_preferences")
 }
 
 // Archive entries (tracks completed downloads for deduplication)

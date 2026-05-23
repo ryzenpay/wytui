@@ -16,6 +16,7 @@ export interface DownloadMetadata {
 	thumbnail?: string;
 	duration?: number;
 	uploader?: string;
+	channelUrl?: string;
 	uploadDate?: Date;
 	format?: string;
 	filesize?: bigint;

@@ -22,47 +22,74 @@
   let flags = $state<Record<string, { enabled: boolean; value: string }>>({});
   let initialized = $state(false);
 
-  type LastUsedPrefs = {
+  type SavedPrefs = {
     profileId: string | null;
-    saveToLibrary: boolean;
     sponsorblock: boolean;
     subtitles: boolean;
     metadata: boolean;
     audioQuality: string;
   };
 
-  const LAST_USED_VIDEO_KEY = "wytui_lastUsed_video";
-  const LAST_USED_AUDIO_KEY = "wytui_lastUsed_audio";
+  let allPrefs = $state<Record<string, SavedPrefs>>({});
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
-  function saveLastUsedPrefs(isAudio: boolean) {
-    const key = isAudio ? LAST_USED_AUDIO_KEY : LAST_USED_VIDEO_KEY;
-    const prefs: LastUsedPrefs = {
-      profileId: isAudio ? selectedAudioProfileId : selectedVideoProfileId,
-      saveToLibrary,
-      sponsorblock: basicOptions.sponsorblock,
-      subtitles: basicOptions.subtitles,
-      metadata: basicOptions.metadata,
-      audioQuality,
-    };
-    try { localStorage.setItem(key, JSON.stringify(prefs)); } catch {}
+  function getMode(isAudio: boolean, library: boolean): string {
+    return `${isAudio ? "audio" : "video"}_${library ? "library" : "cache"}`;
   }
 
-  function loadLastUsedPrefs(isAudio: boolean): LastUsedPrefs | null {
-    const key = isAudio ? LAST_USED_AUDIO_KEY : LAST_USED_VIDEO_KEY;
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-  }
-
-  function applyLastUsedPrefs(isAudio: boolean) {
-    const prefs = loadLastUsedPrefs(isAudio);
+  function applyPrefs(mode: string) {
+    const prefs = allPrefs[mode];
     if (!prefs) return;
-    if (libraryConfigured) saveToLibrary = prefs.saveToLibrary;
     basicOptions.sponsorblock = prefs.sponsorblock;
     basicOptions.subtitles = prefs.subtitles;
     basicOptions.metadata = prefs.metadata;
     audioQuality = prefs.audioQuality;
+  }
+
+  function applyModePrefsWithProfile(isAudio: boolean) {
+    const mode = getMode(isAudio, saveToLibrary);
+    const prefs = allPrefs[mode];
+    if (!prefs) return;
+    if (prefs.profileId) {
+      const exists = profiles.find((p: any) => p.id === prefs.profileId);
+      if (exists) {
+        if (isAudio) { selectedAudioProfileId = prefs.profileId; selectedVideoProfileId = null; }
+        else { selectedVideoProfileId = prefs.profileId; selectedAudioProfileId = null; }
+      }
+    }
+    applyPrefs(mode);
+  }
+
+  function persistPrefs() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const isAudio = !!selectedAudioProfileId;
+      const mode = getMode(isAudio, saveToLibrary);
+      const prefs: SavedPrefs = {
+        profileId: isAudio ? selectedAudioProfileId : selectedVideoProfileId,
+        sponsorblock: basicOptions.sponsorblock,
+        subtitles: basicOptions.subtitles,
+        metadata: basicOptions.metadata,
+        audioQuality,
+      };
+      allPrefs[mode] = prefs;
+      fetch("/api/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode, prefs }),
+      }).catch(() => {});
+    }, 500);
+  }
+
+  let optionsNonDefault = $derived(
+    basicOptions.sponsorblock || basicOptions.subtitles || basicOptions.metadata || audioQuality !== "0"
+  );
+
+  function resetOptions() {
+    basicOptions.sponsorblock = false;
+    basicOptions.subtitles = false;
+    basicOptions.metadata = false;
+    audioQuality = "0";
   }
 
   $effect(() => {
@@ -72,8 +99,7 @@
     basicOptions.metadata;
     audioQuality;
     if (!initialized) return;
-    const isAudio = !!selectedAudioProfileId;
-    saveLastUsedPrefs(isAudio);
+    persistPrefs();
   });
 
   type FlagType = "bool" | "text" | "number" | "select";
@@ -895,9 +921,10 @@
   );
 
   onMount(async () => {
-    const [profilesRes, settingsRes] = await Promise.all([
+    const [profilesRes, settingsRes, prefsRes] = await Promise.all([
       fetch("/api/profiles"),
       fetch("/api/settings"),
+      fetch("/api/preferences"),
     ]);
     if (profilesRes.ok) {
       profiles = await profilesRes.json();
@@ -916,18 +943,25 @@
       const settings = await settingsRes.json();
       libraryConfigured = !!(settings.libraryPath || settings.musicLibraryPath);
     }
+    if (prefsRes.ok) {
+      allPrefs = await prefsRes.json();
+    }
 
     const isAudio = !!selectedAudioProfileId;
-    const lastUsed = loadLastUsedPrefs(isAudio);
-    if (lastUsed) {
-      if (lastUsed.profileId) {
-        const exists = profiles.find((p: any) => p.id === lastUsed.profileId);
-        if (exists) {
-          if (isAudio) selectedAudioProfileId = lastUsed.profileId;
-          else { selectedVideoProfileId = lastUsed.profileId; selectedAudioProfileId = null; }
-        }
+    const libraryMode = getMode(isAudio, true);
+    const cacheMode = getMode(isAudio, false);
+    const hasLibraryPrefs = !!allPrefs[libraryMode];
+    const hasCachePrefs = !!allPrefs[cacheMode];
+
+    if (hasLibraryPrefs || hasCachePrefs) {
+      if (libraryConfigured && hasLibraryPrefs) {
+        saveToLibrary = true;
+      } else if (hasCachePrefs) {
+        saveToLibrary = false;
+      } else {
+        saveToLibrary = true;
       }
-      applyLastUsedPrefs(isAudio);
+      applyModePrefsWithProfile(isAudio);
     } else if (libraryConfigured) {
       saveToLibrary = true;
     }
@@ -989,10 +1023,7 @@
         }
       }
 
-      const isAudio = !!selectedAudioProfileId;
-      saveLastUsedPrefs(isAudio);
       url = "";
-      saveToLibrary = libraryConfigured;
     } catch (e: any) {
       error = e.message;
     } finally {
@@ -1058,7 +1089,7 @@
     selectedVideoProfileId = selectedVideoProfileId === id ? null : id;
     if (selectedVideoProfileId) {
       selectedAudioProfileId = null;
-      if (wasAudio) applyLastUsedPrefs(false);
+      if (wasAudio) applyModePrefsWithProfile(false);
     }
     if (advancedMode) {
       const profile = profiles.find((p) => p.id === activeProfileId);
@@ -1070,7 +1101,7 @@
     const wasVideo = !!selectedVideoProfileId;
     selectedAudioProfileId = id;
     selectedVideoProfileId = null;
-    if (wasVideo) applyLastUsedPrefs(true);
+    if (wasVideo) applyModePrefsWithProfile(true);
     if (advancedMode) {
       const profile = profiles.find((p) => p.id === id);
       if (profile) loadProfileFlags(profile);
@@ -1148,11 +1179,10 @@
           bind:checked={saveToLibrary}
           onchange={() => {
             const isAudio = !!selectedAudioProfileId;
-            const prefs = loadLastUsedPrefs(isAudio);
-            if (saveToLibrary && prefs) {
-              basicOptions.sponsorblock = prefs.sponsorblock;
-              basicOptions.subtitles = prefs.subtitles;
-              basicOptions.metadata = prefs.metadata;
+            const mode = getMode(isAudio, saveToLibrary);
+            const prefs = allPrefs[mode];
+            if (prefs) {
+              applyPrefs(mode);
             } else if (saveToLibrary) {
               basicOptions.sponsorblock = true;
               basicOptions.subtitles = true;
@@ -1238,7 +1268,19 @@
         </div>
 
         <div class="profile-group">
-          <span class="profile-group-label">Options</span>
+          <span class="profile-group-label">
+            Options
+            {#if optionsNonDefault}
+              <button
+                type="button"
+                class="reset-btn"
+                onclick={resetOptions}
+                disabled={loading}
+              >
+                Reset
+              </button>
+            {/if}
+          </span>
           <div class="profile-buttons">
             <button
               type="button"
@@ -1645,6 +1687,28 @@
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .reset-btn {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-tertiary);
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 1px 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .reset-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
   }
 
   .profile-buttons {

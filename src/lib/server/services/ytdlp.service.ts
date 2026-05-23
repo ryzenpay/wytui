@@ -111,6 +111,53 @@ export class YtdlpService {
 		});
 	}
 
+	async fetchChannelThumbnail(channelUrl: string): Promise<Buffer | null> {
+		this.validateUrl(channelUrl);
+		return new Promise((resolve) => {
+			const proc = spawn(this.ytdlpPath, [
+				'--flat-playlist',
+				'--playlist-items', '0',
+				'-J',
+				'--no-warnings',
+				channelUrl,
+			]);
+			let output = '';
+
+			proc.stdout.on('data', (data) => {
+				output += data.toString();
+			});
+
+			proc.on('close', async (code) => {
+				if (code !== 0) {
+					resolve(null);
+					return;
+				}
+				try {
+					const info = JSON.parse(output);
+					const thumbnails: { url: string; width?: number; height?: number }[] = info.thumbnails || [];
+					const avatar = thumbnails.find((t) => {
+						if (!t.width || !t.height) return false;
+						const ratio = t.width / t.height;
+						return ratio > 0.8 && ratio < 1.3;
+					});
+					const thumbUrl = avatar?.url || thumbnails[0]?.url;
+					if (!thumbUrl) {
+						resolve(null);
+						return;
+					}
+					const res = await fetch(thumbUrl);
+					if (!res.ok) {
+						resolve(null);
+						return;
+					}
+					resolve(Buffer.from(await res.arrayBuffer()));
+				} catch {
+					resolve(null);
+				}
+			});
+		});
+	}
+
 	/**
 	 * Fetch video metadata using -J flag
 	 */
@@ -138,6 +185,7 @@ export class YtdlpService {
 							thumbnail: info.thumbnail,
 							duration: info.duration,
 							uploader: info.uploader || info.channel,
+							channelUrl: info.channel_url || info.uploader_url || undefined,
 							uploadDate: info.upload_date ? this.parseUploadDate(info.upload_date) : undefined,
 							format: info.format,
 							filesize: info.filesize ? BigInt(info.filesize) : undefined,
