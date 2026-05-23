@@ -20,6 +20,7 @@
 
   // Advanced flag state
   let flags = $state<Record<string, { enabled: boolean; value: string }>>({});
+  let initialized = $state(false);
 
   type LastUsedPrefs = {
     profileId: string | null;
@@ -63,6 +64,17 @@
     basicOptions.metadata = prefs.metadata;
     audioQuality = prefs.audioQuality;
   }
+
+  $effect(() => {
+    saveToLibrary;
+    basicOptions.sponsorblock;
+    basicOptions.subtitles;
+    basicOptions.metadata;
+    audioQuality;
+    if (!initialized) return;
+    const isAudio = !!selectedAudioProfileId;
+    saveLastUsedPrefs(isAudio);
+  });
 
   type FlagType = "bool" | "text" | "number" | "select";
   type FlagDef = {
@@ -903,9 +915,6 @@
     if (settingsRes.ok) {
       const settings = await settingsRes.json();
       libraryConfigured = !!(settings.libraryPath || settings.musicLibraryPath);
-      if (libraryConfigured) {
-        saveToLibrary = true;
-      }
     }
 
     const isAudio = !!selectedAudioProfileId;
@@ -919,7 +928,11 @@
         }
       }
       applyLastUsedPrefs(isAudio);
+    } else if (libraryConfigured) {
+      saveToLibrary = true;
     }
+
+    initialized = true;
   });
 
   async function handleSubmit(e: Event) {
