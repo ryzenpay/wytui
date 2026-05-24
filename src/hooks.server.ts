@@ -59,7 +59,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	// Public paths that don't require authentication
-	const publicPaths = ['/setup', '/api/setup', '/auth', '/api/docs', '/docs'];
+	const publicPaths = ['/setup', '/api/setup', '/auth', '/api/docs', '/docs', '/llms'];
 
 	// Check if path is public
 	const isPublicPath = publicPaths.some((path) => event.url.pathname.startsWith(path));

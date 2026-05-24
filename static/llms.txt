@@ -1,0 +1,32 @@
+# wytui
+
+> A self-hosted web UI for downloading and managing media via yt-dlp.
+
+wytui provides a REST API for downloading videos/audio from YouTube and other sites, managing download profiles, subscriptions, livestream monitors, and an organized media library with optional Jellyfin integration.
+
+## Authentication
+
+All authenticated endpoints accept either:
+- **API Key**: `Authorization: Bearer <key>` header. Create keys via `POST /api/keys`.
+- **Session Cookie**: Log in through the web UI.
+
+## Typical Workflow
+
+1. Create an API key: `POST /api/keys` with a name
+2. List profiles: `GET /api/profiles` to find available download quality presets
+3. Create a download: `POST /api/downloads` with a URL and profile ID
+4. Monitor progress: `GET /api/downloads/{id}` — status progresses PENDING -> FETCHING_INFO -> DOWNLOADING -> PROCESSING -> COMPLETED
+5. Download the file: `GET /api/files/{id}` returns the binary file
+
+## Key Concepts
+
+- **Profiles**: Quality presets (e.g., "Best Video", "Audio Only MP3")
+- **Downloads**: Individual download jobs tracked through a status lifecycle
+- **Subscriptions**: Auto-monitor a channel/playlist for new uploads
+- **Monitors**: Watch for livestreams and record them automatically
+- **Library vs Cache**: Downloads land in cache by default; promote to library for permanent storage
+
+## API Documentation
+
+- OpenAPI 3.0.3 spec (JSON): [/api/docs](/api/docs)
+- Full API reference (text): [/llms-full.txt](/llms-full.txt)
