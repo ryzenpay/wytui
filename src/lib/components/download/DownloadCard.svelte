@@ -29,6 +29,8 @@
 	let thumbnailFailed = $state(false);
 	let videoProgress = $state(0);
 	let isDragging = $state(false);
+	let seekTarget = $state(-1);
+	let isMuted = $state(true);
 	let progressBarEl = $state<HTMLDivElement | null>(null);
 
 	function handleThumbnailEnter() {
@@ -37,8 +39,11 @@
 	}
 
 	function handleThumbnailLeave() {
+		if (isDragging) return;
 		showPreview = false;
 		videoProgress = 0;
+		seekTarget = -1;
+		isMuted = true;
 		if (videoEl) {
 			videoEl.pause();
 			videoEl.removeAttribute('src');
@@ -48,20 +53,28 @@
 
 	function handleTimeUpdate() {
 		if (isDragging || !videoEl || !videoEl.duration) return;
-		videoProgress = videoEl.currentTime / videoEl.duration;
+		const current = videoEl.currentTime / videoEl.duration;
+		if (seekTarget >= 0) {
+			if (Math.abs(current - seekTarget) > 0.05) return;
+			seekTarget = -1;
+		}
+		videoProgress = current;
 	}
 
 	function seekToPosition(clientX: number) {
 		if (!progressBarEl || !videoEl || !videoEl.duration) return;
 		const rect = progressBarEl.getBoundingClientRect();
 		const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+		seekTarget = ratio;
 		videoEl.currentTime = ratio * videoEl.duration;
 		videoProgress = ratio;
 	}
 
 	function handleProgressMouseDown(e: MouseEvent) {
 		e.preventDefault();
+		e.stopPropagation();
 		isDragging = true;
+		if (videoEl) videoEl.pause();
 		seekToPosition(e.clientX);
 		window.addEventListener('mousemove', handleProgressMouseMove);
 		window.addEventListener('mouseup', handleProgressMouseUp);
@@ -71,10 +84,17 @@
 		seekToPosition(e.clientX);
 	}
 
-	function handleProgressMouseUp() {
+	function handleProgressMouseUp(e: MouseEvent) {
 		isDragging = false;
+		if (videoEl) videoEl.play();
 		window.removeEventListener('mousemove', handleProgressMouseMove);
 		window.removeEventListener('mouseup', handleProgressMouseUp);
+		if (progressBarEl) {
+			const card = progressBarEl.closest('.download-card');
+			if (card && !card.contains(e.target as Node)) {
+				handleThumbnailLeave();
+			}
+		}
 	}
 
 	let formattedDuration = $derived.by(() => {
@@ -242,7 +262,7 @@
 	}
 </script>
 
-<div class="download-card" class:selecting={selectionMode} class:selected>
+<div class="download-card" class:selecting={selectionMode} class:selected onmouseenter={handleThumbnailEnter} onmouseleave={handleThumbnailLeave}>
 	{#if selectionMode && download.status === 'COMPLETED'}
 		<button class="select-overlay" onclick={onToggleSelect}>
 			<div class="select-checkbox" class:checked={selected}>
@@ -254,11 +274,7 @@
 	{/if}
 	{#if download.thumbnail || isPreviewable}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="thumbnail"
-			onmouseenter={handleThumbnailEnter}
-			onmouseleave={handleThumbnailLeave}
-		>
+		<div class="thumbnail">
 			{#if download.thumbnail && !thumbnailFailed}
 				<img
 					class="thumbnail-img"
@@ -280,14 +296,24 @@
 					bind:this={videoEl}
 					class="video-preview"
 					src="/api/files/{download.id}"
-					muted
+					muted={isMuted}
 					autoplay
 					loop
 					preload="none"
 					ontimeupdate={handleTimeUpdate}
 				></video>
+				<button
+					class="mute-btn"
+					onclick={(e) => { e.stopPropagation(); isMuted = !isMuted; }}
+				>
+					{#if isMuted}
+						<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+					{:else}
+						<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+					{/if}
+				</button>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="progress-bar" bind:this={progressBarEl} onmousedown={handleProgressMouseDown}>
+				<div class="video-progress-bar" bind:this={progressBarEl} onmousedown={handleProgressMouseDown}>
 					<div class="progress-fill" style="width: {videoProgress * 100}%"></div>
 				</div>
 			{/if}
@@ -504,6 +530,8 @@
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+		position: relative;
+		z-index: 0;
 	}
 
 	.video-preview {
@@ -516,25 +544,51 @@
 		z-index: 1;
 	}
 
-	.progress-bar {
+	.mute-btn {
+		position: absolute;
+		bottom: 12px;
+		right: 8px;
+		z-index: 4;
+		background: rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(4px);
+		border: none;
+		border-radius: 50%;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		opacity: 0.8;
+		transition: opacity 0.15s, background 0.15s;
+	}
+
+	.mute-btn:hover {
+		opacity: 1;
+		background: rgba(0, 0, 0, 0.75);
+	}
+
+	.video-progress-bar {
 		position: absolute;
 		bottom: 0;
 		left: 0;
 		width: 100%;
-		height: 4px;
-		background: rgba(255, 255, 255, 0.2);
-		z-index: 2;
+		height: 6px;
+		background: rgba(255, 255, 255, 0.3);
+		z-index: 3;
 		cursor: pointer;
-		transition: height 0.1s;
+		transition: height 0.15s;
 	}
 
-	.progress-bar:hover {
-		height: 6px;
+	.video-progress-bar:hover {
+		height: 10px;
 	}
 
 	.progress-fill {
 		height: 100%;
 		background: #f00;
+		transition: width 0.1s linear;
 	}
 
 	.content {
