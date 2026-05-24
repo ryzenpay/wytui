@@ -84,15 +84,35 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 		const userAgent = request.headers.get('user-agent') || '';
 		const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
 
-		const stream = createReadStream(download.filepath);
-
 		const disposition = isMobile ? 'attachment' : 'inline';
+		const rangeHeader = request.headers.get('range');
 
+		if (rangeHeader) {
+			const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+			if (match) {
+				const start = parseInt(match[1], 10);
+				const end = match[2] ? parseInt(match[2], 10) : stats.size - 1;
+				const stream = createReadStream(download.filepath, { start, end });
+				return new Response(stream as any, {
+					status: 206,
+					headers: {
+						'Content-Type': mimeType,
+						'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+						'Content-Length': (end - start + 1).toString(),
+						'Content-Disposition': `${disposition}; filename="${filename}"`,
+						'Accept-Ranges': 'bytes',
+					},
+				});
+			}
+		}
+
+		const stream = createReadStream(download.filepath);
 		return new Response(stream as any, {
 			headers: {
 				'Content-Type': mimeType,
 				'Content-Length': stats.size.toString(),
 				'Content-Disposition': `${disposition}; filename="${filename}"`,
+				'Accept-Ranges': 'bytes',
 			},
 		});
 	} catch (e: any) {
