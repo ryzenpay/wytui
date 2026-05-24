@@ -256,12 +256,20 @@ class DownloadService {
 	private processingSteps = new Map<string, string>();
 	private downloadDurations = new Map<string, number>();
 
+	private static readonly MEDIA_EXTENSIONS = new Set([
+		'mp4', 'webm', 'mkv', 'flv', 'mov', 'avi',
+		'mp3', 'm4a', 'aac', 'flac', 'opus', 'ogg', 'wav',
+	]);
+
 	private handleProgress(downloadId: string, data: any): void {
-		// Handle file destination info
+		// Handle file destination info (only for media files, not subtitles/thumbnails)
 		if (data.type === 'destination' && data.filepath) {
 			const filepath = data.filepath;
 			const filename = filepath.split('/').pop() || '';
+			const ext = filename.split('.').pop()?.toLowerCase() || '';
 			console.log('[DownloadService] Captured file:', filename, 'at', filepath);
+
+			if (!DownloadService.MEDIA_EXTENSIONS.has(ext)) return;
 
 			// Update immediately (not debounced)
 			this.updateDownload(downloadId, {
