@@ -27,6 +27,9 @@
 	let showPreview = $state(false);
 	let videoEl = $state<HTMLVideoElement | null>(null);
 	let thumbnailFailed = $state(false);
+	let videoProgress = $state(0);
+	let isDragging = $state(false);
+	let progressBarEl = $state<HTMLDivElement | null>(null);
 
 	function handleThumbnailEnter() {
 		if (!isPreviewable || isMobileDevice()) return;
@@ -35,11 +38,43 @@
 
 	function handleThumbnailLeave() {
 		showPreview = false;
+		videoProgress = 0;
 		if (videoEl) {
 			videoEl.pause();
 			videoEl.removeAttribute('src');
 			videoEl.load();
 		}
+	}
+
+	function handleTimeUpdate() {
+		if (isDragging || !videoEl || !videoEl.duration) return;
+		videoProgress = videoEl.currentTime / videoEl.duration;
+	}
+
+	function seekToPosition(clientX: number) {
+		if (!progressBarEl || !videoEl || !videoEl.duration) return;
+		const rect = progressBarEl.getBoundingClientRect();
+		const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+		videoEl.currentTime = ratio * videoEl.duration;
+		videoProgress = ratio;
+	}
+
+	function handleProgressMouseDown(e: MouseEvent) {
+		e.preventDefault();
+		isDragging = true;
+		seekToPosition(e.clientX);
+		window.addEventListener('mousemove', handleProgressMouseMove);
+		window.addEventListener('mouseup', handleProgressMouseUp);
+	}
+
+	function handleProgressMouseMove(e: MouseEvent) {
+		seekToPosition(e.clientX);
+	}
+
+	function handleProgressMouseUp() {
+		isDragging = false;
+		window.removeEventListener('mousemove', handleProgressMouseMove);
+		window.removeEventListener('mouseup', handleProgressMouseUp);
 	}
 
 	let formattedDuration = $derived.by(() => {
@@ -249,7 +284,12 @@
 					autoplay
 					loop
 					preload="none"
+					ontimeupdate={handleTimeUpdate}
 				></video>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="progress-bar" bind:this={progressBarEl} onmousedown={handleProgressMouseDown}>
+					<div class="progress-fill" style="width: {videoProgress * 100}%"></div>
+				</div>
 			{/if}
 		</div>
 	{/if}
@@ -474,6 +514,27 @@
 		height: 100%;
 		object-fit: cover;
 		z-index: 1;
+	}
+
+	.progress-bar {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		height: 4px;
+		background: rgba(255, 255, 255, 0.2);
+		z-index: 2;
+		cursor: pointer;
+		transition: height 0.1s;
+	}
+
+	.progress-bar:hover {
+		height: 6px;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: #f00;
 	}
 
 	.content {
