@@ -428,9 +428,25 @@ export class YtdlpService {
 
 		if (proc.stderr) {
 			proc.stderr.on('data', (chunk) => {
-				const error = chunk.toString();
-				console.error('[yt-dlp error]', error);
-				if (onError) onError(error);
+				const lines = chunk.toString().split('\n');
+				for (const line of lines) {
+					if (!line.trim()) continue;
+
+					const timeMatch = line.match(/time=(\d+):(\d+):(\d+\.\d+)/);
+					if (timeMatch) {
+						const timeSeconds =
+							parseInt(timeMatch[1]) * 3600 +
+							parseInt(timeMatch[2]) * 60 +
+							parseFloat(timeMatch[3]);
+						const speedMatch = line.match(/speed=\s*([\d.]+)x/);
+						const speed = speedMatch ? speedMatch[1] + 'x' : null;
+						if (onProgress) onProgress({ type: 'ffmpeg_progress', timeSeconds, speed });
+						continue;
+					}
+
+					console.error('[yt-dlp error]', line);
+					if (onError) onError(line);
+				}
 			});
 		}
 

@@ -216,6 +216,10 @@ class DownloadService {
 			mergedFlags
 		);
 
+		if (download.duration) {
+			this.downloadDurations.set(downloadId, download.duration);
+		}
+
 		// Spawn download process
 		const proc = ytdlpService.spawnDownload(
 			args,
@@ -250,6 +254,7 @@ class DownloadService {
 	 * Handle progress updates from yt-dlp
 	 */
 	private processingSteps = new Map<string, string>();
+	private downloadDurations = new Map<string, number>();
 
 	private handleProgress(downloadId: string, data: any): void {
 		// Handle file destination info
@@ -263,6 +268,26 @@ class DownloadService {
 				filename,
 				filepath,
 			});
+			return;
+		}
+
+		// Handle ffmpeg progress during post-processing
+		if (data.type === 'ffmpeg_progress') {
+			const step = this.processingSteps.get(downloadId) || 'Processing';
+			const duration = this.downloadDurations.get(downloadId);
+			let detail = '';
+			if (duration && data.timeSeconds) {
+				const pct = Math.min(100, Math.round((data.timeSeconds / duration) * 100));
+				detail = data.speed ? `${pct}% · ${data.speed}` : `${pct}%`;
+			} else if (data.speed) {
+				detail = data.speed;
+			}
+			const processingStep = detail ? `${step} (${detail})` : step;
+			this.emitToOwner('download:progress', {
+				id: downloadId,
+				status: 'PROCESSING',
+				processingStep,
+			}, downloadId);
 			return;
 		}
 
@@ -358,6 +383,7 @@ class DownloadService {
 		}
 
 		this.processingSteps.delete(downloadId);
+		this.downloadDurations.delete(downloadId);
 		this.emitToOwner('download:complete', { id: downloadId, download }, downloadId);
 		this.downloadOwners.delete(downloadId);
 
@@ -409,6 +435,7 @@ class DownloadService {
 				});
 
 				this.processingSteps.delete(downloadId);
+		this.downloadDurations.delete(downloadId);
 				this.emitToOwner('download:failed', { id: downloadId, error }, downloadId);
 				this.downloadOwners.delete(downloadId);
 			}
@@ -444,6 +471,7 @@ class DownloadService {
 		});
 
 		this.processingSteps.delete(downloadId);
+		this.downloadDurations.delete(downloadId);
 		this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
 		this.downloadOwners.delete(downloadId);
 	}
