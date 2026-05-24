@@ -725,7 +725,7 @@
 								if (aActive !== bActive) return aActive - bActive;
 								return sseState.downloads.indexOf(b) - sseState.downloads.indexOf(a);
 							}) as download (download.id)}
-								<DownloadCard {download} {jellyfinUrl} />
+								<DownloadCard {download} {jellyfinUrl} {libraryConfigured} />
 							{/each}
 						</div>
 					{/if}
@@ -940,6 +940,7 @@
 							<DownloadCard
 								{download}
 								{jellyfinUrl}
+								{libraryConfigured}
 								{selectionMode}
 								selected={selectedIds.has(download.id)}
 								onToggleSelect={() => toggleSelection(download.id)}

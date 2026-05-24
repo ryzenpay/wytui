@@ -7,12 +7,14 @@
 		jellyfinUrl = '',
 		selectionMode = false,
 		selected = false,
+		libraryConfigured = false,
 		onToggleSelect,
 	}: {
 		download: Download & { processingStep?: string };
 		jellyfinUrl?: string;
 		selectionMode?: boolean;
 		selected?: boolean;
+		libraryConfigured?: boolean;
 		onToggleSelect?: () => void;
 	} = $props();
 
@@ -36,6 +38,7 @@
 	function handleThumbnailEnter() {
 		if (!isPreviewable || isMobileDevice()) return;
 		showPreview = true;
+		videoTimestamp = '0:00';
 	}
 
 	function handleThumbnailLeave() {
@@ -44,6 +47,8 @@
 		videoProgress = 0;
 		seekTarget = -1;
 		isMuted = true;
+		videoDuration = 0;
+		videoTimestamp = null;
 		if (videoEl) {
 			videoEl.pause();
 			videoEl.removeAttribute('src');
@@ -51,14 +56,31 @@
 		}
 	}
 
+	let videoDuration = $state(0);
+	let videoTimestamp = $state<string | null>(null);
+
+	function formatTime(seconds: number): string {
+		const m = Math.floor(seconds / 60);
+		const s = Math.floor(seconds % 60);
+		return `${m}:${String(s).padStart(2, '0')}`;
+	}
+
+	function updateTimestamp() {
+		if (!videoDuration) return;
+		videoTimestamp = formatTime(videoProgress * videoDuration);
+	}
+
 	function handleTimeUpdate() {
-		if (isDragging || !videoEl || !videoEl.duration) return;
+		if (!videoEl || !videoEl.duration) return;
+		videoDuration = videoEl.duration;
+		if (isDragging) return;
 		const current = videoEl.currentTime / videoEl.duration;
 		if (seekTarget >= 0) {
 			if (Math.abs(current - seekTarget) > 0.05) return;
 			seekTarget = -1;
 		}
 		videoProgress = current;
+		updateTimestamp();
 	}
 
 	function seekToPosition(clientX: number) {
@@ -68,13 +90,13 @@
 		seekTarget = ratio;
 		videoEl.currentTime = ratio * videoEl.duration;
 		videoProgress = ratio;
+		updateTimestamp();
 	}
 
 	function handleProgressMouseDown(e: MouseEvent) {
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging = true;
-		if (videoEl) videoEl.pause();
 		seekToPosition(e.clientX);
 		window.addEventListener('mousemove', handleProgressMouseMove);
 		window.addEventListener('mouseup', handleProgressMouseUp);
@@ -86,7 +108,6 @@
 
 	function handleProgressMouseUp(e: MouseEvent) {
 		isDragging = false;
-		if (videoEl) videoEl.play();
 		window.removeEventListener('mousemove', handleProgressMouseMove);
 		window.removeEventListener('mouseup', handleProgressMouseUp);
 		if (progressBarEl) {
@@ -302,6 +323,9 @@
 					preload="none"
 					ontimeupdate={handleTimeUpdate}
 				></video>
+				{#if videoTimestamp}
+					<span class="video-time">{videoTimestamp}</span>
+				{/if}
 				<button
 					class="mute-btn"
 					onclick={(e) => { e.stopPropagation(); isMuted = !isMuted; }}
@@ -433,7 +457,7 @@
 				<button class="btn btn-sm btn-primary" onclick={downloadFile}>
 					Download
 				</button>
-				{#if download.storagePool === 'cache'}
+				{#if download.storagePool === 'cache' && libraryConfigured}
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
 						{promoting ? 'Saving...' : 'Save to Library'}
 					</button>
@@ -542,6 +566,22 @@
 		height: 100%;
 		object-fit: cover;
 		z-index: 1;
+	}
+
+	.video-time {
+		position: absolute;
+		bottom: 12px;
+		left: 8px;
+		z-index: 4;
+		background: rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(4px);
+		border-radius: 4px;
+		padding: 2px 6px;
+		color: white;
+		font-size: 0.6875rem;
+		font-family: monospace;
+		line-height: 1;
+		pointer-events: none;
 	}
 
 	.mute-btn {
