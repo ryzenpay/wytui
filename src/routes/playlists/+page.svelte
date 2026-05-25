@@ -375,22 +375,23 @@
 	.action-btn {
 		width: 32px;
 		height: 32px;
+		padding: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--bg-primary);
-		border: 1px solid var(--border);
+		background: transparent;
+		border: 1px solid transparent;
 		border-radius: var(--radius-sm);
 		color: var(--text-secondary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 	}
 
 	.action-btn:hover {
 		background: var(--bg-elevated);
 		border-color: var(--accent-primary);
 		color: var(--accent-primary);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 		transform: scale(1.05);
 	}
 

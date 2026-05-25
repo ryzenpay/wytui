@@ -57,11 +57,9 @@
 		</a>
 		<button class="collapse-btn" onclick={() => collapsed = !collapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
 			<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-				{#if collapsed}
-					<path d="M6 3l5 5-5 5" />
-				{:else}
-					<path d="M10 3L5 8l5 5" />
-				{/if}
+				<path d="M2 4h12" />
+				<path d="M2 8h12" />
+				<path d="M2 12h12" />
 			</svg>
 		</button>
 	</div>
@@ -311,6 +309,7 @@
 		justify-content: center;
 		width: 28px;
 		height: 28px;
+		padding: 0;
 		border-radius: var(--radius-md);
 		background: transparent;
 		border: 1px solid transparent;
@@ -322,7 +321,7 @@
 
 	.collapse-btn:hover {
 		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.05);
+		background: rgba(255, 255, 255, 0.08);
 		border-color: var(--border);
 	}
 
