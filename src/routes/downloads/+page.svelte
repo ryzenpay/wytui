@@ -397,7 +397,7 @@
 			</div>
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div class="filter-dropdown" onkeydown={(e) => { if (e.key === 'Escape') searchFilterDropdownOpen = false; }}>
-				<button class="channel-dropdown-trigger" onclick={() => (searchFilterDropdownOpen = !searchFilterDropdownOpen)}>
+				<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); searchFilterDropdownOpen = !searchFilterDropdownOpen; }}>
 					<span class="channel-dropdown-label">{
 						({ all: 'All types', regular: 'Regular', short: 'Short', stream: 'Stream' } as Record<string, string>)[searchVideoType]
 					}</span>
@@ -406,12 +406,12 @@
 					</svg>
 				</button>
 				{#if searchFilterDropdownOpen}
-					<div class="channel-dropdown-menu">
+					<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
 						<div class="channel-dropdown-options">
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'all'} onclick={() => { searchVideoType = 'all'; searchFilterDropdownOpen = false; }}>All types</button>
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'regular'} onclick={() => { searchVideoType = 'regular'; searchFilterDropdownOpen = false; }}>Regular</button>
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'short'} onclick={() => { searchVideoType = 'short'; searchFilterDropdownOpen = false; }}>Short</button>
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'stream'} onclick={() => { searchVideoType = 'stream'; searchFilterDropdownOpen = false; }}>Stream</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'all'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'all'; searchFilterDropdownOpen = false; }}>All types</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'regular'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'regular'; searchFilterDropdownOpen = false; }}>Regular</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'short'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'short'; searchFilterDropdownOpen = false; }}>Short</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'stream'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'stream'; searchFilterDropdownOpen = false; }}>Stream</button>
 						</div>
 					</div>
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -443,19 +443,19 @@
 				{#if availableChannels.length > 1}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div class="channel-dropdown" onkeydown={(e) => { if (e.key === 'Escape') channelDropdownOpen = false; }}>
-						<button class="channel-dropdown-trigger" onclick={() => { channelDropdownOpen = !channelDropdownOpen; channelSearch = ''; }}>
+						<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); channelDropdownOpen = !channelDropdownOpen; channelSearch = ''; }}>
 							<span class="channel-dropdown-label">{channelFilter === 'all' ? 'All channels' : channelFilter}</span>
 							<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={channelDropdownOpen}>
 								<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 							</svg>
 						</button>
 						{#if channelDropdownOpen}
-							<div class="channel-dropdown-menu">
+							<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
 								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." bind:value={channelSearch} autofocus />
 								<div class="channel-dropdown-options">
-									<button class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={() => { channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
+									<button class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={(e) => { e.stopPropagation(); channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
 									{#each filteredChannelOptions as channel}
-										<button class="channel-dropdown-option" class:selected={channelFilter === channel} onclick={() => { channelFilter = channel; channelDropdownOpen = false; }}>{channel}</button>
+										<button class="channel-dropdown-option" class:selected={channelFilter === channel} onclick={(e) => { e.stopPropagation(); channelFilter = channel; channelDropdownOpen = false; }}>{channel}</button>
 									{/each}
 									{#if filteredChannelOptions.length === 0}
 										<div class="channel-dropdown-empty">No channels found</div>
@@ -469,7 +469,7 @@
 				{/if}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') sortDropdownOpen = false; }}>
-					<button class="channel-dropdown-trigger" onclick={() => (sortDropdownOpen = !sortDropdownOpen)}>
+					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); sortDropdownOpen = !sortDropdownOpen; }}>
 						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
 							<path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 						</svg>
@@ -481,10 +481,10 @@
 						</svg>
 					</button>
 					{#if sortDropdownOpen}
-						<div class="channel-dropdown-menu">
+						<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
 							<div class="channel-dropdown-options">
 								{#each [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['largest', 'Largest first'], ['smallest', 'Smallest first'], ['longest', 'Longest first'], ['shortest', 'Shortest first'], ['uploader', 'Uploader A–Z']] as [value, label]}
-									<button class="channel-dropdown-option" class:selected={sortOption === value} onclick={() => { sortOption = value as typeof sortOption; sortDropdownOpen = false; }}>{label}</button>
+									<button class="channel-dropdown-option" class:selected={sortOption === value} onclick={(e) => { e.stopPropagation(); sortOption = value as typeof sortOption; sortDropdownOpen = false; }}>{label}</button>
 								{/each}
 							</div>
 						</div>

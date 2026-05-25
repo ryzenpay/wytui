@@ -221,14 +221,16 @@
 	async function redownload() {
 		redownloading = true;
 		try {
-			const body: Record<string, unknown> = { url: download.url, profileId: download.profileId };
+			const body: any = { url: download.url, profileId: download.profileId };
+			if (download.storagePool === 'library') body.saveToLibrary = true;
 			if (download.customFlags?.length) body.customFlags = download.customFlags;
-			body.saveToLibrary = true;
+
 			const res = await fetch('/api/downloads', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body),
 			});
+
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 		} catch (e) {
 			console.error('Failed to redownload:', e);
@@ -272,31 +274,6 @@
 			console.error('Failed to promote:', e);
 		} finally {
 			promoting = false;
-		}
-	}
-
-	let redownloading = $state(false);
-
-	async function redownload() {
-		redownloading = true;
-		try {
-			const body: any = { url: download.url, profileId: download.profileId };
-			if (download.storagePool === 'library') body.saveToLibrary = true;
-			if (download.customFlags?.length) body.customFlags = download.customFlags;
-
-			const res = await fetch('/api/downloads', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(body),
-			});
-
-			if (res.ok) {
-				// Optionally refresh the download list or navigate
-			}
-		} catch (e) {
-			console.error('Failed to redownload:', e);
-		} finally {
-			redownloading = false;
 		}
 	}
 
@@ -526,11 +503,7 @@
 				<button class="btn btn-sm btn-primary" onclick={downloadFile}>
 					Download
 				</button>
-<<<<<<< HEAD
 				{#if download.storagePool === 'cache' && libraryConfigured}
-=======
-				{#if libraryConfigured && download.storagePool === 'cache'}
->>>>>>> 34735cd (wip)
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
 						{promoting ? 'Saving...' : 'Save to Library'}
 					</button>
@@ -556,12 +529,6 @@
 			{#if download.status === 'FAILED' || download.status === 'CANCELLED'}
 				<button class="btn btn-sm btn-primary" onclick={retryDownload}>
 					Retry
-				</button>
-			{/if}
-
-			{#if download.status === 'DELETED'}
-				<button class="btn btn-sm btn-primary" onclick={redownload} disabled={redownloading}>
-					{redownloading ? 'Redownloading...' : 'Redownload'}
 				</button>
 			{/if}
 
