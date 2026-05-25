@@ -314,7 +314,7 @@
 		border-radius: var(--radius-md);
 		background: transparent;
 		border: 1px solid transparent;
-		color: var(--text-tertiary);
+		color: var(--text-secondary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 		flex-shrink: 0;
