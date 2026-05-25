@@ -10,8 +10,6 @@ class SearchService {
 	} = {}) {
 		const { limit = 20, offset = 0, videoType, storagePool, uploader } = options;
 
-		const searchPattern = `%${query}%`;
-
 		const where: any = {
 			userId,
 			status: 'COMPLETED',
@@ -29,7 +27,10 @@ class SearchService {
 			where.storagePool = storagePool;
 		}
 		if (uploader) {
-			where.uploader = { contains: uploader, mode: 'insensitive' };
+			where.AND = [
+				{ OR: where.OR },
+				{ uploader: { contains: uploader, mode: 'insensitive' } }
+			];
 			delete where.OR;
 		}
 

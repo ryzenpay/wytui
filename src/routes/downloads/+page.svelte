@@ -429,16 +429,16 @@
 				<button
 					class="select-btn"
 					class:active={selectionMode}
-					onclick={() => { if (selectionMode) exitSelectionMode(); else selectionMode = true; }}
+					onclick={(e) => { e.stopPropagation(); if (selectionMode) exitSelectionMode(); else selectionMode = true; }}
 				>
 					{selectionMode ? 'Cancel' : 'Select'}
 				</button>
 			</div>
 			<div class="section-header-right">
 				<div class="tabs completed-filter">
-					<button class="tab" class:active={completedFilter === 'all'} onclick={() => (completedFilter = 'all')}>All</button>
-					<button class="tab" class:active={completedFilter === 'cache'} onclick={() => (completedFilter = 'cache')}>Cache</button>
-					<button class="tab" class:active={completedFilter === 'library'} onclick={() => (completedFilter = 'library')}>Library</button>
+					<button class="tab" class:active={completedFilter === 'all'} onclick={(e) => { e.stopPropagation(); completedFilter = 'all'; }}>All</button>
+					<button class="tab" class:active={completedFilter === 'cache'} onclick={(e) => { e.stopPropagation(); completedFilter = 'cache'; }}>Cache</button>
+					<button class="tab" class:active={completedFilter === 'library'} onclick={(e) => { e.stopPropagation(); completedFilter = 'library'; }}>Library</button>
 				</div>
 				{#if availableChannels.length > 1}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
