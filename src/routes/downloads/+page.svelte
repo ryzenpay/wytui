@@ -83,12 +83,17 @@
 				if (sp !== 'all') params.set('storagePool', sp);
 				if (uf !== 'all') params.set('uploader', uf);
 
+				console.log('[Search] Fetching:', `/api/search?${params}`);
 				const res = await fetch(`/api/search?${params}`);
+				console.log('[Search] Response status:', res.status);
 				if (res.ok) {
 					const data = await res.json();
+					console.log('[Search] Data:', data);
 					searchResults = data.results || data;
 					searchTotal = data.total || searchResults.length;
 				} else {
+					const text = await res.text();
+					console.error('[Search] Error response:', text);
 					searchResults = [];
 					searchTotal = 0;
 				}

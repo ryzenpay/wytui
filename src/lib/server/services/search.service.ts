@@ -10,6 +10,8 @@ class SearchService {
 	} = {}) {
 		const { limit = 20, offset = 0, videoType, storagePool, uploader } = options;
 
+		console.log('[Search] Query:', query, 'UserId:', userId, 'Options:', options);
+
 		const where: any = {
 			userId,
 			status: 'COMPLETED',
@@ -43,6 +45,8 @@ class SearchService {
 			}),
 			prisma.download.count({ where }),
 		]);
+
+		console.log('[Search] Found:', total, 'results');
 
 		return {
 			results: results.map(r => ({
