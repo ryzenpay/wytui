@@ -23,6 +23,11 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'jellyfinApiKey',
 	'jellyfinExternalUrl',
 	'maxDurationSeconds',
+	'cleanupEnabled',
+	'cleanupUserIds',
+	'cleanupIntervalSeconds',
+	'cleanupProfileTypes',
+	'cleanupGraceHours',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -249,10 +254,46 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 			}
 		}
 
+		if (updates.cleanupIntervalSeconds !== undefined) {
+			const val = Number(updates.cleanupIntervalSeconds);
+			if (!Number.isInteger(val) || val < 600 || val > 86400) {
+				throw error(400, 'cleanupIntervalSeconds must be between 600 and 86400');
+			}
+		}
+
+		if (updates.cleanupGraceHours !== undefined) {
+			const val = Number(updates.cleanupGraceHours);
+			if (!Number.isInteger(val) || val < 0 || val > 720) {
+				throw error(400, 'cleanupGraceHours must be between 0 and 720');
+			}
+		}
+
+		if (updates.cleanupUserIds !== undefined) {
+			if (!Array.isArray(updates.cleanupUserIds) || !updates.cleanupUserIds.every((id: unknown) => typeof id === 'string' && id.length > 0)) {
+				throw error(400, 'cleanupUserIds must be an array of non-empty strings');
+			}
+		}
+
+		if (updates.cleanupProfileTypes !== undefined) {
+			const allowed = ['video', 'music'];
+			if (!Array.isArray(updates.cleanupProfileTypes) || !updates.cleanupProfileTypes.every((t: unknown) => allowed.includes(t as string))) {
+				throw error(400, 'cleanupProfileTypes must only contain "video" or "music"');
+			}
+		}
+
 		const settings = await prisma.settings.update({
 			where: { id: 'singleton' },
 			data: updates,
 		});
+
+		if (
+			updates.cleanupEnabled !== undefined ||
+			updates.cleanupIntervalSeconds !== undefined ||
+			updates.cleanupUserIds !== undefined
+		) {
+			const { jobScheduler } = await import('$lib/server/jobs/scheduler');
+			await jobScheduler.restartCleanupTask();
+		}
 
 		return json({
 			...settings,

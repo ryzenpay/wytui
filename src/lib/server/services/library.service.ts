@@ -342,7 +342,7 @@ class LibraryService {
 				status: DownloadStatus.COMPLETED,
 				filepath: { not: null },
 			},
-			select: { id: true, filepath: true, userId: true },
+			select: { id: true, filepath: true, userId: true, storagePool: true },
 		});
 
 		let removed = 0;
@@ -352,17 +352,31 @@ class LibraryService {
 			try {
 				await access(download.filepath);
 			} catch {
-				const videoId = await this.getVideoIdForDownload(download.id);
-				if (videoId) {
-					await prisma.archive.deleteMany({ where: { videoId } });
-				}
+				if (download.storagePool === 'library') {
+					await prisma.download.update({
+						where: { id: download.id },
+						data: { status: DownloadStatus.DELETED, filepath: null },
+					});
 
-				await prisma.download.delete({ where: { id: download.id } });
-
-				if (download.userId) {
-					sseEmitter.broadcastToUser('download:deleted', { id: download.id, reason: 'file_missing' }, download.userId);
+					const event = { id: download.id, status: 'DELETED', filepath: null };
+					if (download.userId) {
+						sseEmitter.broadcastToUser('download:updated', event, download.userId);
+					} else {
+						sseEmitter.broadcast('download:updated', event);
+					}
 				} else {
-					sseEmitter.broadcast('download:deleted', { id: download.id, reason: 'file_missing' });
+					const videoId = await this.getVideoIdForDownload(download.id);
+					if (videoId) {
+						await prisma.archive.deleteMany({ where: { videoId } });
+					}
+
+					await prisma.download.delete({ where: { id: download.id } });
+
+					if (download.userId) {
+						sseEmitter.broadcastToUser('download:deleted', { id: download.id, reason: 'file_missing' }, download.userId);
+					} else {
+						sseEmitter.broadcast('download:deleted', { id: download.id, reason: 'file_missing' });
+					}
 				}
 
 				removed++;

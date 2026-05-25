@@ -3,11 +3,13 @@ import { subscriptionService } from '../services/subscription.service';
 import { monitorService } from '../services/monitor.service';
 import { ytdlpService } from '../services/ytdlp.service';
 import { libraryService } from '../services/library.service';
+import { cleanupService } from '../services/cleanup.service';
 import { prisma } from '../db';
 
 class JobScheduler {
 	private ytdlpUpdateTask: ScheduledTask | null = null;
 	private cacheCleanupTask: ScheduledTask | null = null;
+	private watchedCleanupTask: ScheduledTask | null = null;
 
 	/**
 	 * Start all background jobs
@@ -35,6 +37,9 @@ class JobScheduler {
 				console.error('[Scheduler] Cache cleanup/reconciliation failed:', error);
 			}
 		});
+
+		// Schedule watched item cleanup
+		await this.restartCleanupTask();
 
 		console.log('[Scheduler] All background jobs started');
 	}
@@ -77,6 +82,40 @@ class JobScheduler {
 		}
 	}
 
+	async restartCleanupTask(): Promise<void> {
+		if (this.watchedCleanupTask) {
+			this.watchedCleanupTask.stop();
+			this.watchedCleanupTask = null;
+		}
+
+		const settings = await prisma.settings.findUnique({
+			where: { id: 'singleton' },
+		});
+
+		if (!settings?.cleanupEnabled) return;
+
+		const intervalSeconds = settings.cleanupIntervalSeconds || 3600;
+		const cronExpr = this.secondsToCronInterval(intervalSeconds);
+
+		this.watchedCleanupTask = cron.schedule(cronExpr, async () => {
+			try {
+				await cleanupService.runCleanup();
+			} catch (error) {
+				console.error('[Scheduler] Watched item cleanup failed:', error);
+			}
+		});
+
+		console.log(`[Scheduler] Watched item cleanup scheduled (every ${intervalSeconds}s)`);
+	}
+
+	private secondsToCronInterval(seconds: number): string {
+		const minutes = Math.max(1, Math.round(seconds / 60));
+		if (minutes < 60) return `*/${minutes} * * * *`;
+		const hours = Math.round(minutes / 60);
+		if (hours < 24) return `0 */${hours} * * *`;
+		return `0 0 */${Math.round(hours / 24)} * *`;
+	}
+
 	/**
 	 * Stop all background jobs
 	 */
@@ -94,6 +133,11 @@ class JobScheduler {
 		if (this.cacheCleanupTask) {
 			this.cacheCleanupTask.stop();
 			this.cacheCleanupTask = null;
+		}
+
+		if (this.watchedCleanupTask) {
+			this.watchedCleanupTask.stop();
+			this.watchedCleanupTask = null;
 		}
 
 		console.log('[Scheduler] All background jobs stopped');
