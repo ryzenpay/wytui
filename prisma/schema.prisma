@@ -175,6 +175,7 @@ model Download {
   updatedAt   DateTime  @updatedAt
   startedAt   DateTime?
   completedAt DateTime?
+  allWatchedAt DateTime?
 
   @@index([status])
   @@index([userId])
@@ -192,6 +193,7 @@ enum DownloadStatus {
   COMPLETED
   FAILED
   CANCELLED
+  CLEANED       // Auto-deleted after all users watched
 }
 
 // Channel/playlist subscriptions
@@ -301,6 +303,13 @@ model Settings {
   jellyfinUrl         String?
   jellyfinApiKey      String?
   jellyfinExternalUrl String?
+
+  // Auto-cleanup settings
+  cleanupEnabled         Boolean  @default(false)
+  cleanupUserIds         String[] @default([])
+  cleanupIntervalSeconds Int      @default(3600)
+  cleanupProfileTypes    String[] @default([])
+  cleanupGraceHours      Int      @default(24)
 
   // Download limits
   maxDurationSeconds Int? @default(10800) // 3 hours default

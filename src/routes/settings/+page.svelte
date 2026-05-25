@@ -77,6 +77,9 @@
 				settings = await res.json();
 				settingsSnapshot = JSON.stringify(settings);
 				settingsLoaded = true;
+				if (settings.cleanupEnabled && settings.jellyfinUrl && settings.jellyfinApiKey) {
+					loadJellyfinUsers();
+				}
 			}
 		} catch (e) {
 			console.error('Failed to load settings:', e);
@@ -96,7 +99,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -104,6 +107,7 @@
 	let cacheQuotaExceedsDisk = $derived(diskTotalGB !== null && cacheQuotaGB > diskTotalGB);
 	let libraryEnabled = $derived(settings ? !!settings.libraryPath : false);
 	let jellyfinEnabled = $derived(settings ? !!(settings.jellyfinUrl || settings.jellyfinApiKey) : false);
+	let cleanupEnabled = $derived(settings ? !!settings.cleanupEnabled : false);
 
 	async function loadDiskInfo() {
 		try {
@@ -134,6 +138,42 @@
 
 	let testingJellyfin = $state(false);
 	let jellyfinTestResult = $state<{ success: boolean; message: string } | null>(null);
+	let jellyfinUsers = $state<{ id: string; name: string }[]>([]);
+	let loadingJellyfinUsers = $state(false);
+	let jellyfinUsersError = $state<string | null>(null);
+
+	async function loadJellyfinUsers() {
+		if (!settings?.jellyfinUrl || !settings?.jellyfinApiKey) return;
+		loadingJellyfinUsers = true;
+		jellyfinUsersError = null;
+		try {
+			const res = await fetch('/api/settings/jellyfin-users');
+			if (res.ok) {
+				jellyfinUsers = await res.json();
+				if (jellyfinUsers.length === 0) {
+					jellyfinUsersError = 'No users found on Jellyfin server';
+				}
+			} else {
+				const data = await res.json().catch(() => null);
+				jellyfinUsersError = data?.message || `Failed to fetch users (${res.status})`;
+			}
+		} catch {
+			jellyfinUsersError = 'Could not connect to Jellyfin';
+			jellyfinUsers = [];
+		} finally {
+			loadingJellyfinUsers = false;
+		}
+	}
+
+	function toggleCleanupUser(userId: string) {
+		if (!settings) return;
+		const current: string[] = settings.cleanupUserIds || [];
+		if (current.includes(userId)) {
+			settings.cleanupUserIds = current.filter((id: string) => id !== userId);
+		} else {
+			settings.cleanupUserIds = [...current, userId];
+		}
+	}
 
 	function toggleJellyfin(enabled: boolean) {
 		if (!settings) return;
@@ -625,6 +665,121 @@
 								<span class="test-result" class:success={jellyfinTestResult.success} class:error={!jellyfinTestResult.success}>
 									{jellyfinTestResult.message}
 								</span>
+							{/if}
+						</div>
+
+						<div class="cleanup-section nested-field">
+							<div class="form-group">
+								<label class="toggle-label">
+									<input
+										type="checkbox"
+										bind:checked={settings.cleanupEnabled}
+										onchange={() => {
+											if (settings.cleanupEnabled && jellyfinUsers.length === 0) {
+												loadJellyfinUsers();
+											}
+										}}
+									/>
+									Auto-Cleanup Watched Items
+								</label>
+								<p class="help-text">Automatically delete library items after all selected users have watched them</p>
+							</div>
+
+							{#if cleanupEnabled}
+								<div class="form-group nested-field">
+									<label>Watch Users</label>
+									{#if loadingJellyfinUsers}
+										<p class="text-muted">Loading users...</p>
+									{:else if jellyfinUsers.length === 0}
+										<button class="btn-secondary btn-sm" onclick={loadJellyfinUsers}>
+											{jellyfinUsersError ? 'Retry' : 'Load Jellyfin Users'}
+										</button>
+										{#if jellyfinUsersError}
+											<span class="test-result error">{jellyfinUsersError}</span>
+										{/if}
+									{:else}
+										<div class="user-checkboxes">
+											{#each jellyfinUsers as user}
+												<label class="checkbox-label">
+													<input
+														type="checkbox"
+														checked={(settings.cleanupUserIds || []).includes(user.id)}
+														onchange={() => toggleCleanupUser(user.id)}
+													/>
+													{user.name}
+												</label>
+											{/each}
+										</div>
+										<button class="btn-secondary btn-sm" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;">
+											Refresh
+										</button>
+									{/if}
+									<p class="help-text">Item is deleted only when ALL selected users have watched it</p>
+								</div>
+
+								<div class="form-row nested-field">
+									<div class="form-group">
+										<label for="cleanupInterval">Check Interval (hours)</label>
+										<input
+											type="number"
+											id="cleanupInterval"
+											value={settings.cleanupIntervalSeconds ? Math.round(settings.cleanupIntervalSeconds / 3600) : 1}
+											oninput={(e) => {
+												const hours = parseFloat(e.currentTarget.value) || 1;
+												settings.cleanupIntervalSeconds = Math.round(hours * 3600);
+											}}
+											min="1"
+											max="24"
+											step="1"
+										/>
+									</div>
+
+									<div class="form-group">
+										<label for="cleanupGraceHours">Grace Period (hours)</label>
+										<input
+											type="number"
+											id="cleanupGraceHours"
+											bind:value={settings.cleanupGraceHours}
+											min="0"
+											max="720"
+											step="1"
+										/>
+										<p class="help-text">Wait time after all users watched before deleting</p>
+									</div>
+								</div>
+
+								<div class="form-group nested-field">
+									<label>Profile Types</label>
+									<div class="user-checkboxes">
+										<label class="checkbox-label">
+											<input
+												type="checkbox"
+												checked={(settings.cleanupProfileTypes || []).includes('video')}
+												onchange={() => {
+													const types: string[] = settings.cleanupProfileTypes || [];
+													settings.cleanupProfileTypes = types.includes('video')
+														? types.filter((t: string) => t !== 'video')
+														: [...types, 'video'];
+												}}
+											/>
+											Video
+										</label>
+										<label class="checkbox-label">
+											<input
+												type="checkbox"
+												checked={(settings.cleanupProfileTypes || []).includes('music')}
+												onchange={() => {
+													const types: string[] = settings.cleanupProfileTypes || [];
+													settings.cleanupProfileTypes = types.includes('music')
+														? types.filter((t: string) => t !== 'music')
+														: [...types, 'music'];
+												}}
+											/>
+											Music
+										</label>
+									</div>
+									<p class="help-text">Which download types to auto-clean</p>
+								</div>
 							{/if}
 						</div>
 					{/if}
@@ -1163,6 +1318,26 @@
 		margin-left: var(--spacing-xl);
 		padding-left: var(--spacing-lg);
 		border-left: 2px solid rgba(255, 255, 255, 0.1);
+	}
+
+	.user-checkboxes {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		font-weight: 400;
+		cursor: pointer;
+	}
+
+	.cleanup-section {
+		margin-top: var(--spacing-lg);
+		padding-top: var(--spacing-lg);
+		border-top: 1px solid rgba(255, 255, 255, 0.06);
 	}
 
 	.jellyfin-test {
