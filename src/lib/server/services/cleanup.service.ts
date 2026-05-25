@@ -192,7 +192,7 @@ class CleanupService {
 		await prisma.download.update({
 			where: { id: download.id },
 			data: {
-				status: DownloadStatus.CLEANED,
+				status: DownloadStatus.DELETED,
 				filepath: null,
 			},
 		});
@@ -200,13 +200,13 @@ class CleanupService {
 		if (download.userId) {
 			sseEmitter.broadcastToUser('download:updated', {
 				id: download.id,
-				status: 'CLEANED',
+				status: 'DELETED',
 				filepath: null,
 			}, download.userId);
 		} else {
 			sseEmitter.broadcast('download:updated', {
 				id: download.id,
-				status: 'CLEANED',
+				status: 'DELETED',
 				filepath: null,
 			});
 		}

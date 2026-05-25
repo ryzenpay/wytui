@@ -22,7 +22,7 @@ export const POST = apiRoute('/api/downloads', 'POST', {
 				properties: {
 					id: { type: 'string' },
 					url: { type: 'string' },
-					status: { type: 'string', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] },
+					status: { type: 'string', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'DELETED'] },
 					title: { type: 'string', nullable: true },
 					thumbnail: { type: 'string', nullable: true },
 					duration: { type: 'integer', nullable: true },
@@ -89,7 +89,7 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 	tags: ['Downloads'],
 	auth: true,
 	query: {
-		status: { type: 'string', description: 'Filter by status', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] },
+		status: { type: 'string', description: 'Filter by status', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'DELETED'] },
 		limit: { type: 'integer', description: 'Max results', minimum: 1, maximum: 100, default: 50 },
 		offset: { type: 'integer', description: 'Pagination offset', minimum: 0, default: 0 },
 	},
@@ -103,7 +103,7 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 					properties: {
 						id: { type: 'string' },
 						url: { type: 'string' },
-						status: { type: 'string', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED'] },
+						status: { type: 'string', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'DELETED'] },
 						title: { type: 'string', nullable: true },
 						thumbnail: { type: 'string', nullable: true },
 						duration: { type: 'integer', nullable: true },

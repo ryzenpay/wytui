@@ -172,6 +172,11 @@
 			}
 			loadCacheUsage();
 		});
+		const unsubUpdated = onSSEEvent('download:updated', (data) => {
+			completedDownloads = completedDownloads.map((d) =>
+				d.id === data.id ? { ...d, ...data } : d
+			);
+		});
 		const unsubDeleted = onSSEEvent('download:deleted', ({ id }) => {
 			completedDownloads = completedDownloads.filter((d) => d.id !== id);
 			loadCacheUsage();
@@ -200,6 +205,7 @@
 
 		return () => {
 			unsubComplete();
+			unsubUpdated();
 			unsubDeleted();
 			unsubChecked();
 			unsubBackfill();
@@ -211,10 +217,13 @@
 	async function loadCompletedDownloads() {
 		completedLoading = true;
 		try {
-			const res = await fetch('/api/downloads?status=COMPLETED&limit=50');
-			if (res.ok) {
-				completedDownloads = await res.json();
-			}
+			const [completedRes, deletedRes] = await Promise.all([
+				fetch('/api/downloads?status=COMPLETED&limit=50'),
+				fetch('/api/downloads?status=DELETED&limit=50'),
+			]);
+			const completed = completedRes.ok ? await completedRes.json() : [];
+			const deleted = deletedRes.ok ? await deletedRes.json() : [];
+			completedDownloads = [...completed, ...deleted];
 		} catch (e) {
 			console.error('Failed to load completed downloads:', e);
 		} finally {

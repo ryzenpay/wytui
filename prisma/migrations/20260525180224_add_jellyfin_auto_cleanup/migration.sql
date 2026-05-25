@@ -1,5 +1,5 @@
 -- AlterEnum
-ALTER TYPE "DownloadStatus" ADD VALUE 'CLEANED';
+ALTER TYPE "DownloadStatus" ADD VALUE 'DELETED';
 
 -- AlterTable
 ALTER TABLE "downloads" ADD COLUMN     "allWatchedAt" TIMESTAMP(3);

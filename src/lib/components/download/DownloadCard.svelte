@@ -151,7 +151,7 @@
 			COMPLETED: 'var(--success)',
 			FAILED: 'var(--error)',
 			CANCELLED: 'var(--text-tertiary)',
-			CLEANED: 'var(--text-tertiary)',
+			DELETED: 'var(--text-tertiary)',
 		};
 		return colors[status] || 'var(--text-secondary)';
 	}
@@ -165,7 +165,7 @@
 			COMPLETED: 'Completed',
 			FAILED: 'Failed',
 			CANCELLED: 'Cancelled',
-			CLEANED: 'Cleaned',
+			DELETED: 'Deleted',
 		};
 		return labels[status] || status;
 	}
@@ -406,7 +406,7 @@
 						<svg viewBox="0 0 20 20" fill="var(--info)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'PENDING'}
 						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
-					{:else if download.status === 'CLEANED'}
+					{:else if download.status === 'DELETED'}
 						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
 					{/if}
 				</span>
@@ -471,8 +471,8 @@
 			<div class="error">{download.error}</div>
 		{/if}
 
-		{#if download.status === 'CLEANED'}
-			<div class="cleaned-info">
+		{#if download.status === 'DELETED'}
+			<div class="deleted-info">
 				Watched by all users — file removed
 			</div>
 		{/if}
@@ -511,13 +511,13 @@
 				</button>
 			{/if}
 
-			{#if download.status === 'CLEANED'}
+			{#if download.status === 'DELETED'}
 				<button class="btn btn-sm btn-primary" onclick={redownload} disabled={redownloading}>
 					{redownloading ? 'Redownloading...' : 'Redownload'}
 				</button>
 			{/if}
 
-			{#if download.status === 'COMPLETED' || download.status === 'FAILED' || download.status === 'CANCELLED' || download.status === 'CLEANED'}
+			{#if download.status === 'COMPLETED' || download.status === 'FAILED' || download.status === 'CANCELLED' || download.status === 'DELETED'}
 				<button class="btn btn-sm btn-secondary" onclick={deleteDownload}>
 					Delete
 				</button>
@@ -922,15 +922,15 @@
 		}
 	}
 
-	.download-card:has(.cleaned-info) {
+	.download-card:has(.deleted-info) {
 		opacity: 0.65;
 	}
 
-	.download-card:has(.cleaned-info):hover {
+	.download-card:has(.deleted-info):hover {
 		opacity: 1;
 	}
 
-	.cleaned-info {
+	.deleted-info {
 		font-size: 0.75rem;
 		color: var(--text-tertiary);
 		margin-bottom: var(--spacing-md);

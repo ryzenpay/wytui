@@ -193,7 +193,7 @@ enum DownloadStatus {
   COMPLETED
   FAILED
   CANCELLED
-  CLEANED       // Auto-deleted after all users watched
+  DELETED       // File deleted, record retained for redownload
 }
 
 // Channel/playlist subscriptions
