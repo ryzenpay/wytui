@@ -25,6 +25,8 @@ model User {
   subscriptions Subscription[]
   apiKeys       ApiKey[]
   preferences   UserPreference[]
+  watchProgress WatchProgress[]
+  playlists     Playlist[]
 
   @@map("users")
 }
@@ -105,9 +107,10 @@ model DownloadProfile {
 
   userId      String?
   user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  downloads   Download[]
-  subscriptions Subscription[]
-  monitors    Monitor[]
+  downloads        Download[]
+  subscriptions    Subscription[]
+  monitors         Monitor[]
+  channelOverrides ChannelOverride[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -131,6 +134,14 @@ model Download {
   uploadDate  DateTime?
   format      String?   // resolved format string
   filesize    BigInt?   // bytes (estimated)
+
+  // Video classification & metadata
+  videoType     String?   // "regular", "short", "stream"
+  description   String?   @db.Text
+  category      String?
+  tags          String[]
+  dislikeCount  Int?
+  videoId       String?   // YouTube video ID for dedup/search
 
   // Music metadata (resolved via yt-dlp or MusicBrainz)
   artist        String?
@@ -166,6 +177,10 @@ model Download {
   // Storage pool
   storagePool String    @default("cache") // "cache" | "library"
 
+  // Relations
+  watchProgress  WatchProgress[]
+  playlistItems  PlaylistItem[]
+
   // From subscription (optional)
   subscriptionId String?
   subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
@@ -182,6 +197,7 @@ model Download {
   @@index([subscriptionId])
   @@index([createdAt])
   @@index([storagePool])
+  @@index([videoId])
   @@map("downloads")
 }
 
@@ -314,6 +330,27 @@ model Settings {
   // Download limits
   maxDurationSeconds Int? @default(10800) // 3 hours default
 
+  // Auto-delete watched videos
+  autoDeleteWatchedDays Int?
+
+  // Notifications (Apprise)
+  appriseUrl       String?
+  notifyOnComplete Boolean @default(false)
+  notifyOnFail     Boolean @default(false)
+
+  // Backup
+  backupEnabled    Boolean @default(false)
+  backupCron       String?
+  backupPath       String?
+
+  // LDAP
+  ldapEnabled      Boolean @default(false)
+  ldapUrl          String?
+  ldapBindDn       String?
+  ldapBindPassword String?
+  ldapSearchBase   String?
+  ldapSearchFilter String?
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -343,4 +380,97 @@ model Archive {
 
   @@index([videoId])
   @@map("archive")
+}
+
+// Watch progress tracking (per-user, per-download)
+model WatchProgress {
+  id         String    @id @default(cuid())
+  userId     String
+  downloadId String
+  position   Float     @default(0)
+  duration   Float?
+  watched    Boolean   @default(false)
+  watchedAt  DateTime?
+  updatedAt  DateTime  @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  download Download @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, downloadId])
+  @@index([userId])
+  @@index([downloadId])
+  @@map("watch_progress")
+}
+
+// Custom user playlists
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       PlaylistItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  id         String   @id @default(cuid())
+  playlistId String
+  downloadId String
+  position   Int
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  download   Download @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+  addedAt    DateTime @default(now())
+
+  @@unique([playlistId, downloadId])
+  @@index([playlistId])
+  @@map("playlist_items")
+}
+
+// Per-channel download configuration overrides
+model ChannelOverride {
+  id             String   @id @default(cuid())
+  channelUrl     String   @unique
+  channelName    String?
+  profileId      String?
+  profile        DownloadProfile? @relation(fields: [profileId], references: [id])
+  autoDeleteDays Int?
+  sponsorblock   Boolean  @default(true)
+  customFlags    String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("channel_overrides")
+}
+
+// Backup records
+model Backup {
+  id        String   @id @default(cuid())
+  filename  String
+  filepath  String
+  sizeBytes BigInt
+  type      String   @default("manual")
+  createdAt DateTime @default(now())
+
+  @@map("backups")
+}
+
+// Scheduled job run history
+model ScheduledJobRun {
+  id        String    @id @default(cuid())
+  jobName   String
+  status    String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  error     String?
+  details   String?
+
+  @@index([jobName])
+  @@index([startedAt])
+  @@map("scheduled_job_runs")
 }

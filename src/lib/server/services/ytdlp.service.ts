@@ -180,6 +180,19 @@ export class YtdlpService {
 				if (code === 0) {
 					try {
 						const info = JSON.parse(output);
+
+						let videoType: string | undefined;
+						if (info.is_live || info.was_live) {
+							videoType = 'stream';
+						} else if (
+							(info.duration && info.duration <= 60) &&
+							(info.webpage_url?.includes('/shorts/') || info.original_url?.includes('/shorts/'))
+						) {
+							videoType = 'short';
+						} else {
+							videoType = 'regular';
+						}
+
 						resolve({
 							title: info.title,
 							thumbnail: info.thumbnail,
@@ -193,6 +206,11 @@ export class YtdlpService {
 							track: info.track || undefined,
 							album: info.album || undefined,
 							releaseYear: info.release_year || undefined,
+							videoType,
+							description: info.description || undefined,
+							category: info.categories?.[0] || undefined,
+							tags: info.tags?.length ? info.tags : undefined,
+							videoId: info.id || undefined,
 						});
 					} catch (e) {
 						reject(new Error(`Failed to parse metadata: ${e}`));
@@ -292,7 +310,7 @@ export class YtdlpService {
 		'--sponsorblock-api',
 	]);
 
-	private stripSponsorBlockFlags(flags: string[]): string[] {
+	stripSponsorBlockFlags(flags: string[]): string[] {
 		const result: string[] = [];
 		for (let i = 0; i < flags.length; i++) {
 			if (YtdlpService.SPONSORBLOCK_FLAGS.has(flags[i])) {

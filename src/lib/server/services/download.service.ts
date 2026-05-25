@@ -7,6 +7,8 @@ import type { ChildProcess } from 'child_process';
 import type { Download } from '$lib/types';
 import { unlink, stat } from 'fs/promises';
 import { libraryService } from './library.service';
+import { channelOverrideService } from './channel-override.service';
+import { notificationService } from './notification.service';
 
 /**
  * Serialize download object for JSON responses
@@ -166,6 +168,17 @@ class DownloadService {
 				}
 			}
 
+			let dislikeCount: number | undefined;
+			if (metadata.videoId) {
+				try {
+					const rydRes = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`);
+					if (rydRes.ok) {
+						const rydData = await rydRes.json();
+						dislikeCount = rydData.dislikes ?? undefined;
+					}
+				} catch {}
+			}
+
 			const updated = await this.updateDownload(downloadId, {
 				title: metadata.title,
 				thumbnail: metadata.thumbnail,
@@ -178,7 +191,21 @@ class DownloadService {
 				artist: metadata.artist,
 				album: metadata.album,
 				releaseYear: metadata.releaseYear,
+				videoType: metadata.videoType,
+				description: metadata.description,
+				category: metadata.category,
+				tags: metadata.tags ?? [],
+				videoId: metadata.videoId,
+				...(dislikeCount !== undefined && { dislikeCount }),
 			});
+
+			// Look up channel override and apply profile if one exists
+			if (metadata.channelUrl) {
+				const override = await channelOverrideService.getByChannelUrl(metadata.channelUrl);
+				if (override?.profileId) {
+					await this.updateDownload(downloadId, { profileId: override.profileId });
+				}
+			}
 
 			this.emitToOwner('download:metadata', updated, downloadId);
 		} catch (error) {
@@ -209,7 +236,21 @@ class DownloadService {
 		const outputPath = settings.downloadPath;
 
 		// Build yt-dlp arguments (merge profile flags with per-download overrides)
-		const mergedFlags = [...download.profile.customFlags, ...download.customFlags];
+		let mergedFlags = [...download.profile.customFlags, ...download.customFlags];
+
+		// Apply channel override flags and sponsorblock setting
+		if (download.channelUrl) {
+			const effective = await channelOverrideService.getEffectiveFlags(
+				download.channelUrl,
+				mergedFlags
+			);
+			mergedFlags = effective.flags;
+			// If sponsorblock is disabled by override, strip SB flags from mergedFlags
+			if (!effective.sponsorblock) {
+				mergedFlags = ytdlpService.stripSponsorBlockFlags(mergedFlags);
+			}
+		}
+
 		const args = ytdlpService.buildArgs(
 			download.url,
 			outputPath,
@@ -395,6 +436,9 @@ class DownloadService {
 		this.emitToOwner('download:complete', { id: downloadId, download }, downloadId);
 		this.downloadOwners.delete(downloadId);
 
+		// Send notification
+		notificationService.notifyComplete(download.title || download.url).catch(() => {});
+
 		// Enforce cache quota asynchronously
 		libraryService.enforceCacheQuota().catch((error) => {
 			console.error('[DownloadService] Cache quota enforcement failed:', error);
@@ -446,6 +490,9 @@ class DownloadService {
 		this.downloadDurations.delete(downloadId);
 				this.emitToOwner('download:failed', { id: downloadId, error }, downloadId);
 				this.downloadOwners.delete(downloadId);
+
+				// Send failure notification
+				notificationService.notifyFail(download.title || download.url, error).catch(() => {});
 			}
 		} finally {
 			this.handlingError.delete(downloadId);
@@ -530,6 +577,59 @@ class DownloadService {
 			console.error(`Failed to resume download ${downloadId}:`, error);
 			this.handleDownloadError(downloadId, error.message);
 		});
+	}
+
+	/**
+	 * Refresh metadata for an existing download
+	 */
+	async refreshMetadata(downloadId: string): Promise<any> {
+		const download = await prisma.download.findUnique({ where: { id: downloadId } });
+		if (!download) throw new Error('Download not found');
+
+		const metadata = await ytdlpService.fetchMetadata(download.url);
+
+		// Fetch RYD dislike count
+		let dislikeCount: number | undefined;
+		if (metadata.videoId) {
+			try {
+				const rydRes = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`);
+				if (rydRes.ok) {
+					const rydData = await rydRes.json();
+					dislikeCount = rydData.dislikes ?? undefined;
+				}
+			} catch {}
+		}
+
+		const updated = await prisma.download.update({
+			where: { id: downloadId },
+			data: {
+				title: metadata.title,
+				thumbnail: metadata.thumbnail,
+				duration: metadata.duration,
+				uploader: metadata.uploader,
+				channelUrl: metadata.channelUrl,
+				uploadDate: metadata.uploadDate,
+				format: metadata.format,
+				filesize: metadata.filesize,
+				artist: metadata.artist,
+				album: metadata.album,
+				releaseYear: metadata.releaseYear,
+				videoType: metadata.videoType,
+				description: metadata.description,
+				category: metadata.category,
+				tags: metadata.tags ?? [],
+				videoId: metadata.videoId,
+				...(dislikeCount !== undefined && { dislikeCount }),
+			},
+			include: { profile: true },
+		});
+
+		return {
+			...updated,
+			filesize: updated.filesize?.toString() ?? null,
+			downloadedBytes: updated.downloadedBytes?.toString() ?? null,
+			totalBytes: updated.totalBytes?.toString() ?? null,
+		};
 	}
 
 	/**

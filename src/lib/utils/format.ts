@@ -6,6 +6,14 @@ export function formatBytes(bytes: string | number): string {
 	return `${(b / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 }
 
+export function formatDuration(seconds: number): string {
+	const h = Math.floor(seconds / 3600);
+	const m = Math.floor((seconds % 3600) / 60);
+	const s = seconds % 60;
+	if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+	return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export function formatUptime(ms: number): string {
 	const seconds = Math.floor(ms / 1000);
 	const days = Math.floor(seconds / 86400);

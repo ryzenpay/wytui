@@ -216,9 +216,12 @@ export function buildSpec() {
 			{ name: 'Profiles', description: 'Download profiles' },
 			{ name: 'Subscriptions', description: 'Channel/playlist subscriptions' },
 			{ name: 'Monitors', description: 'Livestream monitoring' },
+			{ name: 'Watch Progress', description: 'Video watch progress tracking' },
+			{ name: 'Playlists', description: 'Custom playlist management' },
 			{ name: 'Settings', description: 'Application settings' },
 			{ name: 'Users', description: 'User management (admin)' },
 			{ name: 'Library', description: 'Storage and library management' },
+			{ name: 'Channel Overrides', description: 'Per-channel download configuration overrides' },
 			{ name: 'System', description: 'System health and setup' },
 		],
 	};

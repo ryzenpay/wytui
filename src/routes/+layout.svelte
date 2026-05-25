@@ -1,22 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { navigating } from '$app/stores';
 	import { connectSSE, disconnectSSE, getSSEState } from '$lib/stores/sse.svelte';
+	import Sidebar from '$lib/components/ui/Sidebar.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
 	import HealthPanel from '$lib/components/ui/HealthPanel.svelte';
+	import KeyboardShortcutHelp from '$lib/components/ui/KeyboardShortcutHelp.svelte';
+	import { getKeyboardState } from '$lib/stores/keyboard.svelte';
 	import type { LayoutData } from './$types';
 	import '../app.css';
 
 	let { children, data }: { children: any; data: LayoutData } = $props();
 	let healthPanelOpen = $state(false);
+	let keyboard = getKeyboardState();
 	let sseState = getSSEState();
+	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
 
 	onMount(() => {
-		// Connect to SSE on mount
 		connectSSE();
-
-		// Cleanup on unmount
 		return () => {
 			disconnectSSE();
 		};
@@ -26,58 +28,47 @@
 		await fetch('/auth/signout', { method: 'POST' });
 		window.location.href = '/auth/signin';
 	}
-
-	function isActive(path: string): boolean {
-		if (path === '/') {
-			return $page.url.pathname === '/';
-		}
-		return $page.url.pathname.startsWith(path);
-	}
 </script>
 
-<div class="app">
-	<header class="header">
-		<div class="container">
-			<nav class="nav">
-				<a href="/" class="logo">
-					<h1>wytui</h1>
-				</a>
-				<div class="nav-links">
-					<button
-						class="connection-status"
-						class:connected={sseState.connected}
-						onclick={() => healthPanelOpen = true}
-					>
-						<span class="status-dot"></span>
-						<span class="status-label">{sseState.connected ? 'Connected' : 'Connecting...'}</span>
+<div class="app-layout">
+	<Sidebar {isAdmin} />
+
+	<div class="main-area">
+		<header class="top-bar">
+			<div class="top-bar-left">
+				<button
+					class="connection-status"
+					class:connected={sseState.connected}
+					onclick={() => healthPanelOpen = true}
+				>
+					<span class="status-dot"></span>
+					<span class="status-label">{sseState.connected ? 'Connected' : 'Connecting...'}</span>
+				</button>
+			</div>
+			<div class="top-bar-right">
+				{#if data.session?.user}
+					<span class="user-email">{data.session.user.email}</span>
+					<button class="signout-btn" onclick={handleSignout}>
+						Sign Out
 					</button>
-					<a href="/settings" class="settings-btn" class:active={isActive('/settings')} title="Settings">
-						<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-							<circle cx="12" cy="12" r="3"/>
-						</svg>
-					</a>
-					{#if data.session?.user}
-						<button class="signout-btn" onclick={handleSignout}>
-							Sign Out
-						</button>
-					{/if}
-				</div>
-			</nav>
-		</div>
-	</header>
+				{/if}
+			</div>
+		</header>
 
-	<main class="main">
-		<div class="container">
+		{#if $navigating}
+			<div class="nav-progress">
+				<div class="nav-progress-bar"></div>
+			</div>
+		{/if}
+
+		<main class="main-content">
 			{@render children()}
-		</div>
-	</main>
+		</main>
 
-	<footer class="footer">
-		<div class="container">
-			<div class="footer-links">
+		<footer class="footer">
+			<div class="footer-inner">
 				<span class="footer-brand">
-					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 128 128">
+					<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 128 128">
 						<defs>
 							<linearGradient id="footer-g" x1="0%" y1="0%" x2="100%" y2="100%">
 								<stop offset="0%" stop-color="#7c3aed"/>
@@ -91,64 +82,59 @@
 					<span>wytui</span>
 				</span>
 				<span class="footer-divider"></span>
-				<a href="https://github.com/willuhmjs/wytui" target="_blank" rel="noopener noreferrer" class="footer-link">
-					<i class="bi bi-github"></i>
-					<span>GitHub</span>
-				</a>
+				<a href="https://github.com/willuhmjs/wytui" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
 			</div>
-		</div>
-	</footer>
+		</footer>
+	</div>
 </div>
 
 <Modal />
 <Toast />
 <HealthPanel open={healthPanelOpen} onClose={() => healthPanelOpen = false} />
+<KeyboardShortcutHelp open={keyboard.showHelp} onClose={() => keyboard.closeHelp()} />
 
 <style>
-	.app {
+	.app-layout {
+		display: flex;
 		min-height: 100vh;
+	}
+
+	.main-area {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
-		overflow: visible;
+		min-width: 0;
+		margin-left: 240px;
 	}
 
-	.header {
-		background: var(--bg-secondary);
-		border-bottom: 1px solid var(--border);
-		padding: var(--spacing-md) 0;
-		position: sticky;
-		top: 0;
-		z-index: 100;
-	}
-
-	.nav {
+	.top-bar {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		padding: var(--spacing-sm) var(--spacing-xl);
+		background: var(--bg-secondary);
+		border-bottom: 1px solid var(--border);
+		position: sticky;
+		top: 0;
+		z-index: 90;
+		height: 48px;
 	}
 
-	.logo {
-		text-decoration: none;
-	}
-
-	.logo h1 {
-		font-size: 1.5rem;
-		background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		background-clip: text;
-		cursor: pointer;
-		transition: opacity var(--transition-fast);
-	}
-
-	.logo:hover h1 {
-		opacity: 0.8;
-	}
-
-	.nav-links {
+	.top-bar-left {
 		display: flex;
 		align-items: center;
-		gap: var(--spacing-lg);
+		gap: var(--spacing-md);
+	}
+
+	.top-bar-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+	}
+
+	.user-email {
+		font-size: 0.8125rem;
+		color: var(--text-tertiary);
 	}
 
 	.connection-status {
@@ -194,40 +180,13 @@
 		white-space: nowrap;
 	}
 
-	.settings-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: var(--spacing-sm);
-		color: var(--text-secondary);
-		text-decoration: none;
-		transition: all var(--transition-fast);
-		border-radius: var(--radius-md);
-	}
-
-	.settings-btn:hover {
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.05);
-	}
-
-	.settings-btn.active {
-		color: var(--accent-primary);
-	}
-
-	.settings-btn svg {
-		transition: transform var(--transition-normal);
-	}
-
-	.settings-btn:hover svg {
-		transform: rotate(45deg);
-	}
-
 	.signout-btn {
 		background: transparent;
-		border: 1px solid rgba(255, 255, 255, 0.2);
+		border: 1px solid rgba(255, 255, 255, 0.15);
 		color: var(--text-secondary);
-		padding: var(--spacing-sm) var(--spacing-md);
+		padding: var(--spacing-xs) var(--spacing-md);
 		border-radius: var(--border-radius-md);
+		font-size: 0.8125rem;
 		font-weight: 500;
 		cursor: pointer;
 		transition: var(--transition-fast);
@@ -236,27 +195,44 @@
 	.signout-btn:hover {
 		background: rgba(255, 255, 255, 0.05);
 		color: var(--text-primary);
-		border-color: rgba(255, 255, 255, 0.3);
+		border-color: rgba(255, 255, 255, 0.25);
 	}
 
-	.main {
-		flex: 1 1 auto;
-		padding: var(--spacing-2xl) 0;
+	.nav-progress {
+		height: 2px;
+		background: var(--bg-tertiary);
+		overflow: hidden;
+	}
+
+	.nav-progress-bar {
+		height: 100%;
+		background: var(--accent-primary);
+		animation: progress 1.5s ease-in-out infinite;
+		width: 30%;
+	}
+
+	@keyframes progress {
+		0% { transform: translateX(-100%); }
+		100% { transform: translateX(400%); }
+	}
+
+	.main-content {
+		flex: 1;
+		padding: var(--spacing-xl) var(--spacing-xl);
+		max-width: 1400px;
+		width: 100%;
+		margin: 0 auto;
 	}
 
 	.footer {
 		border-top: 1px solid var(--border);
-		padding: var(--spacing-md) 0;
+		padding: var(--spacing-sm) var(--spacing-xl);
 	}
 
-	.footer .container {
+	.footer-inner {
 		display: flex;
-		justify-content: center;
-	}
-
-	.footer-links {
-		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: var(--spacing-md);
 	}
 
@@ -264,65 +240,52 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--spacing-xs);
-		color: var(--text-secondary);
-		font-size: 0.875rem;
+		color: var(--text-tertiary);
+		font-size: 0.75rem;
 		font-weight: 500;
 	}
 
 	.footer-divider {
 		width: 1px;
-		height: 14px;
+		height: 12px;
 		background: var(--border);
 	}
 
 	.footer-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--spacing-sm);
-		color: var(--text-secondary);
-		font-size: 0.875rem;
+		color: var(--text-tertiary);
+		font-size: 0.75rem;
 		text-decoration: none;
 		transition: color var(--transition-fast);
 	}
 
 	.footer-link:hover {
-		color: var(--text-primary);
-	}
-
-	.footer-link .bi {
-		font-size: 1.1rem;
+		color: var(--text-secondary);
 	}
 
 	@media (max-width: 768px) {
-		.header {
-			padding: var(--spacing-sm) 0;
+		.main-area {
+			margin-left: 0;
+			padding-bottom: 68px;
 		}
 
-		.logo h1 {
-			font-size: 1.25rem;
-			min-width: 90px;
+		.top-bar {
+			padding: var(--spacing-sm) var(--spacing-md);
 		}
 
-		.nav-links {
-			gap: var(--spacing-sm);
+		.user-email {
+			display: none;
 		}
 
 		.connection-status .status-label {
 			display: none;
 		}
 
-		.connection-status {
-			padding: var(--spacing-xs);
-			min-width: unset;
+		.main-content {
+			padding: var(--spacing-md);
 		}
 
-		.signout-btn {
-			padding: var(--spacing-xs) var(--spacing-sm);
-			font-size: 0.875rem;
-		}
-
-		.main {
-			padding: var(--spacing-lg) 0;
+		.footer {
+			display: none;
 		}
 	}
 </style>

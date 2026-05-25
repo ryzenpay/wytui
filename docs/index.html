@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>wytui - Self-Hosted yt-dlp Web UI | Video Downloader Interface</title>
-  <meta name="description" content="A self-hosted web UI for yt-dlp. Download videos from YouTube and 1000+ sites with a beautiful dark interface, real-time progress, Jellyfin integration, and more. Docker & Helm supported.">
-  <meta name="keywords" content="yt-dlp web ui, self-hosted video downloader, youtube downloader ui, yt-dlp frontend, yt-dlp docker, video download manager, yt-dlp gui, youtube downloader self hosted, media server downloader, jellyfin downloader">
+  <meta name="description" content="A self-hosted web UI for yt-dlp. Download and manage videos from YouTube and 1000+ sites with in-browser playback, watch progress, full-text search, playlists, SponsorBlock, Chromecast, notifications, and more. Docker & Helm supported.">
+  <meta name="keywords" content="yt-dlp web ui, self-hosted video downloader, youtube downloader ui, yt-dlp frontend, yt-dlp docker, video download manager, yt-dlp gui, youtube downloader self hosted, media server downloader, jellyfin downloader, tubearchivist alternative, sponsorblock, chromecast, video player">
   <link rel="canonical" href="https://willuhmjs.github.io/wytui/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- OpenGraph -->
   <meta property="og:title" content="wytui - Self-Hosted yt-dlp Web UI">
-  <meta property="og:description" content="Download videos from YouTube and 1000+ sites with a beautiful self-hosted web interface. Real-time progress, Jellyfin integration, subscriptions, and more.">
+  <meta property="og:description" content="Download and manage videos from YouTube and 1000+ sites. In-browser player, watch progress, full-text search, playlists, SponsorBlock, Chromecast, and more.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://willuhmjs.github.io/wytui/">
   <meta property="og:site_name" content="wytui">
@@ -383,8 +383,39 @@
   <section class="features" id="features">
     <div class="container">
       <h2>Features</h2>
-      <p>Everything you need to manage video downloads from a single interface.</p>
+      <p>A complete media management platform — download, watch, organize, and automate.</p>
       <div class="feature-grid">
+        <!-- Playback & Viewing -->
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M10 8l6 4-6 4V8z"/></svg>
+          </div>
+          <h3>In-Browser Video Player</h3>
+          <p>Watch downloads directly in the browser. Variable speed playback, keyboard shortcuts, and HTTP Range support for instant seeking.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          </div>
+          <h3>SponsorBlock</h3>
+          <p>Automatic sponsor segment skipping with colored seek bar overlays. Powered by the community SponsorBlock database.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(6, 182, 212, 0.1); color: #06b6d4;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/><path d="M19 3v18"/></svg>
+          </div>
+          <h3>Watch Progress</h3>
+          <p>Per-user playback position tracking. Resume where you left off and see which videos you've watched. Continue Watching section on the homepage.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg>
+          </div>
+          <h3>Chromecast</h3>
+          <p>Cast videos to any Chromecast device. Play, pause, and seek from the browser with full Cast SDK integration.</p>
+        </div>
+
+        <!-- Downloading -->
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10m-5-3l5 5 5-5"/><path d="M5 18h14"/></svg>
@@ -398,13 +429,6 @@
           </div>
           <h3>Two-Tier Storage</h3>
           <p>Temporary cache with configurable quota plus a permanent library organized by uploader. Promote downloads to your library with one click.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M10 8l6 4-6 4V8z"/></svg>
-          </div>
-          <h3>Jellyfin Integration</h3>
-          <p>Auto library scan, thumbnail artwork, and deep-link search. Your downloads flow seamlessly into your Jellyfin media server.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
@@ -428,18 +452,124 @@
           <p>Live download status via Server-Sent Events. See speed, ETA, and progress percentage update in real time.</p>
         </div>
         <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
+          </div>
+          <h3>Browser Extension API</h3>
+          <p>One-click downloads from your browser. Simple POST endpoint for browser extensions to send URLs directly to wytui.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+          </div>
+          <h3>Channel Overrides</h3>
+          <p>Per-channel download settings. Override format, quality, SponsorBlock, and auto-delete on a per-creator basis.</p>
+        </div>
+
+        <!-- Organization & Search -->
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </div>
+          <h3>Full-Text Search</h3>
+          <p>Instant search across titles, descriptions, and uploaders. Powered by PostgreSQL full-text search with ranked results.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/><path d="M12 12V3"/><path d="M9.5 15a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/><path d="M3 21v-9"/><path d="M.5 15a2.5 2.5 0 100-5 2.5 2.5 0 000 5z"/></svg>
+          </div>
+          <h3>Custom Playlists</h3>
+          <p>Organize downloads into playlists with drag-to-reorder. Create, edit, and manage playlists with a dedicated UI.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </div>
+          <h3>Tags & Categories</h3>
+          <p>YouTube categories from metadata plus user-defined tags. Filter and organize your library with flexible tagging.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          </div>
+          <h3>Video Type Classification</h3>
+          <p>Automatically classifies videos as regular, short, or livestream. Filter your library by content type.</p>
+        </div>
+
+        <!-- Metadata & Integration -->
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M10 8l6 4-6 4V8z"/></svg>
+          </div>
+          <h3>Jellyfin Integration</h3>
+          <p>Auto library scan, thumbnail artwork, and deep-link search. Your downloads flow seamlessly into your Jellyfin media server.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/></svg>
+          </div>
+          <h3>Return YouTube Dislike</h3>
+          <p>See dislike counts on videos via the Return YouTube Dislike API. Metadata is fetched and stored alongside your downloads.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(6, 182, 212, 0.1); color: #06b6d4;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4l-6 6-3-3-8 8"/><path d="M17 4h6v6"/></svg>
+          </div>
+          <h3>Metadata Refresh</h3>
+          <p>Re-fetch metadata for individual videos or in bulk. Update titles, descriptions, thumbnails, and dislike counts on demand.</p>
+        </div>
+
+        <!-- Automation & System -->
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          </div>
+          <h3>Auto-Delete Watched</h3>
+          <p>Automatically delete watched videos after a configurable number of days. Per-channel overrides for fine-grained control.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          </div>
+          <h3>Notifications (Apprise)</h3>
+          <p>Get notified on download completion or failure via 80+ services. Powered by Apprise — supports Discord, Slack, email, and more.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          </div>
+          <h3>Backup & Restore</h3>
+          <p>Full database backup and restore with scheduled backups via cron. Download backups as JSON, restore with one click.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15h6"/></svg>
+          </div>
+          <h3>Filesystem Import</h3>
+          <p>Import existing video files from your filesystem. Scans directories, extracts YouTube IDs, and creates library entries automatically.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <h3>Scheduled Tasks</h3>
+          <p>Dashboard for all background jobs — subscriptions, monitors, auto-delete, backups, cache cleanup. View history and trigger runs manually.</p>
+        </div>
+
+        <!-- Auth & UI -->
+        <div class="feature-card">
           <div class="feature-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           </div>
-          <h3>OIDC Authentication</h3>
-          <p>OpenID Connect SSO with admin and user roles. Secure multi-user access with your existing identity provider.</p>
+          <h3>OIDC & LDAP Auth</h3>
+          <p>OpenID Connect SSO and LDAP authentication with admin and user roles. Secure multi-user access with your existing identity provider.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
           </div>
           <h3>Mobile-Friendly</h3>
-          <p>Responsive design with Web Share API support on iOS for save-to-photos. Full functionality on any device.</p>
+          <p>Responsive sidebar navigation with bottom tab bar on mobile. Web Share API on iOS, keyboard shortcuts on desktop.</p>
         </div>
       </div>
     </div>

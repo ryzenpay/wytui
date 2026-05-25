@@ -24,6 +24,12 @@ export interface DownloadMetadata {
 	track?: string;
 	album?: string;
 	releaseYear?: number;
+	videoType?: string;
+	description?: string;
+	category?: string;
+	tags?: string[];
+	videoId?: string;
+	dislikeCount?: number;
 }
 
 export interface SSEEvent {

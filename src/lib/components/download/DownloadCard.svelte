@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import type { Download } from '$lib/types';
 
@@ -275,6 +276,13 @@
 		}
 	}
 
+	function handleCardClick(e: MouseEvent) {
+		if (selectionMode || download.status !== 'COMPLETED') return;
+		const target = e.target as HTMLElement;
+		if (target.closest('button, a, video, audio')) return;
+		goto(`/downloads/${download.id}`);
+	}
+
 	function isMobileDevice() {
 		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
 			navigator.userAgent
@@ -306,7 +314,9 @@
 	}
 </script>
 
-<div class="download-card" class:selecting={selectionMode} class:selected onmouseenter={handleThumbnailEnter} onmouseleave={handleThumbnailLeave}>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="download-card" class:selecting={selectionMode} class:selected class:clickable={download.status === 'COMPLETED' && !selectionMode} onclick={handleCardClick}>
 	{#if selectionMode && download.status === 'COMPLETED'}
 		<button class="select-overlay" onclick={onToggleSelect}>
 			<div class="select-checkbox" class:checked={selected}>
@@ -318,7 +328,16 @@
 	{/if}
 	{#if download.thumbnail || isPreviewable}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="thumbnail">
+		<div
+			class="thumbnail"
+			onmouseenter={handleThumbnailEnter}
+			onmouseleave={handleThumbnailLeave}
+		>
+			{#if isPreviewable}
+				<div class="preview-hint">
+					<svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>
+				</div>
+			{/if}
 			{#if download.thumbnail && !thumbnailFailed}
 				<img
 					class="thumbnail-img"
@@ -545,6 +564,10 @@
 		box-shadow: var(--shadow-md);
 	}
 
+	.download-card.clickable {
+		cursor: pointer;
+	}
+
 	.download-card.selected {
 		border-color: var(--accent-primary);
 		box-shadow: 0 0 0 1px var(--accent-primary);
@@ -603,6 +626,27 @@
 		height: 100%;
 		object-fit: cover;
 		z-index: 1;
+	}
+
+	.preview-hint {
+		position: absolute;
+		bottom: 8px;
+		left: 8px;
+		background: rgba(0, 0, 0, 0.6);
+		border-radius: 50%;
+		width: 32px;
+		height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		transition: opacity var(--transition-fast);
+		pointer-events: none;
+		z-index: 2;
+	}
+
+	.thumbnail:hover .preview-hint {
+		opacity: 1;
 	}
 
 	.video-time {

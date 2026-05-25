@@ -8,6 +8,7 @@
 
 	let showOidc = $derived(data.oidcConfigured && (data.authMode === 'oidc' || data.authMode === 'both'));
 	let showPassword = $derived(data.authMode !== 'oidc' || data.fallback);
+	let ldapEnabled = $derived(data.ldapEnabled ?? false);
 
 	const oidcErrors: Record<string, string> = {
 		invalid_state: 'Login session expired. Please try again.',
@@ -25,7 +26,7 @@
 		<div class="logo">
 			<div class="logo-gradient">wytui</div>
 		</div>
-		<p class="subtitle">Sign in to continue</p>
+		<p class="subtitle">Sign in to continue{ldapEnabled ? ' (LDAP enabled)' : ''}</p>
 
 		{#if data.setupComplete}
 			<div class="success-message">Admin account created successfully! Please sign in.</div>

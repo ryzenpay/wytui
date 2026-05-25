@@ -99,7 +99,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -172,6 +172,27 @@
 			settings.cleanupUserIds = current.filter((id: string) => id !== userId);
 		} else {
 			settings.cleanupUserIds = [...current, userId];
+		}
+	}
+
+	let testingNotification = $state(false);
+	let notificationTestResult = $state<{ success: boolean; message: string } | null>(null);
+
+	async function testNotification() {
+		testingNotification = true;
+		notificationTestResult = null;
+		try {
+			const res = await fetch('/api/notifications/test', { method: 'POST' });
+			if (res.ok) {
+				notificationTestResult = { success: true, message: 'Notification sent' };
+			} else {
+				const data = await res.json().catch(() => null);
+				notificationTestResult = { success: false, message: data?.message || 'Failed to send' };
+			}
+		} catch {
+			notificationTestResult = { success: false, message: 'Request failed' };
+		} finally {
+			testingNotification = false;
 		}
 	}
 
@@ -804,6 +825,161 @@
 					{/if}
 				</div>
 
+				<div class="settings-section">
+					<h2>Auto-Delete</h2>
+					<div class="form-group">
+						<label for="autoDeleteDays">Delete watched videos after (days)</label>
+						<input
+							type="number"
+							id="autoDeleteDays"
+							bind:value={settings.autoDeleteWatchedDays}
+							min="0"
+							placeholder="Disabled"
+						/>
+						<p class="help-text">Automatically delete watched cache downloads after this many days. Set to 0 or leave empty to disable. Library items are never auto-deleted.</p>
+					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Notifications</h2>
+					<div class="form-group">
+						<label for="appriseUrl">Apprise URL</label>
+						<input
+							type="text"
+							id="appriseUrl"
+							bind:value={settings.appriseUrl}
+							placeholder="http://apprise:8000"
+						/>
+						<p class="help-text">URL of your Apprise API server for push notifications</p>
+					</div>
+
+					{#if settings.appriseUrl}
+						<div class="form-group">
+							<label>
+								<input type="checkbox" bind:checked={settings.notifyOnComplete} />
+								Notify on download complete
+							</label>
+						</div>
+						<div class="form-group">
+							<label>
+								<input type="checkbox" bind:checked={settings.notifyOnFail} />
+								Notify on download failure
+							</label>
+						</div>
+						<div class="jellyfin-test nested-field">
+							<button
+								type="button"
+								class="btn-secondary btn-sm"
+								onclick={testNotification}
+								disabled={testingNotification}
+							>
+								{testingNotification ? 'Sending...' : 'Test Notification'}
+							</button>
+							{#if notificationTestResult}
+								<span class="test-result" class:success={notificationTestResult.success} class:error={!notificationTestResult.success}>
+									{notificationTestResult.message}
+								</span>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<div class="settings-section">
+					<h2>Backup</h2>
+					<div class="form-group">
+						<label>
+							<input type="checkbox" bind:checked={settings.backupEnabled} />
+							Enable scheduled backups
+						</label>
+					</div>
+
+					{#if settings.backupEnabled}
+						<div class="form-row nested-field">
+							<div class="form-group">
+								<label for="backupCron">Backup schedule (cron)</label>
+								<input
+									type="text"
+									id="backupCron"
+									bind:value={settings.backupCron}
+									placeholder="0 2 * * *"
+								/>
+								<p class="help-text">Cron expression (e.g. "0 2 * * *" for daily at 2 AM)</p>
+							</div>
+							<div class="form-group">
+								<label for="backupPath">Backup path</label>
+								<input
+									type="text"
+									id="backupPath"
+									bind:value={settings.backupPath}
+									placeholder="/backups"
+								/>
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<div class="settings-section">
+					<h2>LDAP</h2>
+					<div class="form-group">
+						<label>
+							<input type="checkbox" bind:checked={settings.ldapEnabled} />
+							Enable LDAP authentication
+						</label>
+						<p class="help-text">Users authenticating via LDAP are auto-created on first login</p>
+					</div>
+
+					{#if settings.ldapEnabled}
+						<div class="form-group nested-field">
+							<label for="ldapUrl">LDAP Server URL</label>
+							<input
+								type="text"
+								id="ldapUrl"
+								bind:value={settings.ldapUrl}
+								placeholder="ldap://ldap.example.com:389"
+							/>
+						</div>
+						<div class="form-row nested-field">
+							<div class="form-group">
+								<label for="ldapBindDn">Bind DN</label>
+								<input
+									type="text"
+									id="ldapBindDn"
+									bind:value={settings.ldapBindDn}
+									placeholder="cn=admin,dc=example,dc=com"
+								/>
+							</div>
+							<div class="form-group">
+								<label for="ldapBindPassword">Bind Password</label>
+								<input
+									type="password"
+									id="ldapBindPassword"
+									bind:value={settings.ldapBindPassword}
+									placeholder="••••••••"
+								/>
+							</div>
+						</div>
+						<div class="form-group nested-field">
+							<label for="ldapSearchBase">Search Base</label>
+							<input
+								type="text"
+								id="ldapSearchBase"
+								bind:value={settings.ldapSearchBase}
+								placeholder="ou=users,dc=example,dc=com"
+							/>
+						</div>
+						<div class="form-group nested-field">
+							<label for="ldapSearchFilter">Search Filter</label>
+							<input
+								type="text"
+								id="ldapSearchFilter"
+								bind:value={settings.ldapSearchFilter}
+								placeholder={'(uid={{username}})'}
+							/>
+							<p class="help-text">Use {"{{username}}"} as placeholder. For Active Directory use (sAMAccountName={"{{username}}"})</p>
+						</div>
+					{/if}
+				</div>
+
 				{#if settings.oidcConfigured}
 					<div class="settings-section">
 						<h2>Authentication</h2>
@@ -947,7 +1123,7 @@
 					<div class="chart">
 						{#each analytics.downloadsPerDay as day}
 							<div class="chart-bar-container">
-								<div class="chart-bar" style="height: {Math.min(100, (day.count / Math.max(...analytics.downloadsPerDay.map(d => d.count))) * 100)}%"></div>
+								<div class="chart-bar" style="height: {Math.min(100, (day.count / Math.max(...analytics.downloadsPerDay.map((d: any) => d.count))) * 100)}%"></div>
 								<div class="chart-label">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
 								<div class="chart-value">{day.count}</div>
 							</div>

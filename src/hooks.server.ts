@@ -82,6 +82,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	// Let CORS preflight through so browser extensions can reach /api/downloads/quick
+	if (event.request.method === 'OPTIONS' && isApiPath) {
+		return await resolve(event);
+	}
+
 	// If users exist and user is not authenticated and not on public path
 	if (!isPublicPath && !event.locals.session?.user) {
 		// Redirect to signin for UI routes, return 401 for API routes
@@ -102,7 +107,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set(
 		'Content-Security-Policy',
-		"default-src 'self'; img-src 'self' https://*.ytimg.com https://*.ggpht.com https://i.ytimg.com data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'"
+		"default-src 'self'; img-src 'self' https://*.ytimg.com https://*.ggpht.com https://i.ytimg.com data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; connect-src 'self' https://sponsor.ajay.app https://returnyoutubedislikeapi.com; media-src 'self'; font-src 'self'; frame-ancestors 'none'"
 	);
 
 	return response;
