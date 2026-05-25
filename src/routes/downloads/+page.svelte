@@ -20,6 +20,7 @@
 	let channelDropdownOpen = $state(false);
 	let sortOption = $state<'newest' | 'oldest' | 'largest' | 'smallest' | 'longest' | 'shortest' | 'uploader'>('newest');
 	let sortDropdownOpen = $state(false);
+	let searchFilterDropdownOpen = $state(false);
 	let searchQuery = $state('');
 	let searchVideoType = $state('all');
 	let searchResults = $state<any[]>([]);
@@ -394,13 +395,28 @@
 					</button>
 				{/if}
 			</div>
-			<div class="search-filters">
-				<select class="search-filter-select" bind:value={searchVideoType}>
-					<option value="all">All types</option>
-					<option value="regular">Regular</option>
-					<option value="short">Short</option>
-					<option value="stream">Stream</option>
-				</select>
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="filter-dropdown" onkeydown={(e) => { if (e.key === 'Escape') searchFilterDropdownOpen = false; }}>
+				<button class="channel-dropdown-trigger" onclick={() => (searchFilterDropdownOpen = !searchFilterDropdownOpen)}>
+					<span class="channel-dropdown-label">{
+						({ all: 'All types', regular: 'Regular', short: 'Short', stream: 'Stream' } as Record<string, string>)[searchVideoType]
+					}</span>
+					<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={searchFilterDropdownOpen}>
+						<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</button>
+				{#if searchFilterDropdownOpen}
+					<div class="channel-dropdown-menu">
+						<div class="channel-dropdown-options">
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'all'} onclick={() => { searchVideoType = 'all'; searchFilterDropdownOpen = false; }}>All types</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'regular'} onclick={() => { searchVideoType = 'regular'; searchFilterDropdownOpen = false; }}>Regular</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'short'} onclick={() => { searchVideoType = 'short'; searchFilterDropdownOpen = false; }}>Short</button>
+							<button class="channel-dropdown-option" class:selected={searchVideoType === 'stream'} onclick={() => { searchVideoType = 'stream'; searchFilterDropdownOpen = false; }}>Stream</button>
+						</div>
+					</div>
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div class="channel-dropdown-backdrop" onclick={() => (searchFilterDropdownOpen = false)}></div>
+				{/if}
 			</div>
 		</div>
 	</div>
@@ -735,31 +751,7 @@
 		background: rgba(255, 255, 255, 0.06);
 	}
 
-	.search-filters {
-		display: flex;
-		gap: var(--spacing-md);
-	}
-
-	.search-filter-select {
-		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		color: var(--text-primary);
-		font-size: 0.875rem;
-		transition: border-color var(--transition-fast);
-		min-width: 140px;
-	}
-
-	.search-filter-select:focus {
-		outline: none;
-		border-color: var(--accent-primary);
-	}
-
-	.search-filter-select option {
-		background: var(--bg-secondary);
-		color: var(--text-primary);
-	}
+	.filter-dropdown { position: relative; }
 
 	@media (max-width: 768px) {
 		.page { padding: 0 var(--spacing-sm); }
@@ -769,8 +761,8 @@
 		.search-bar-section { flex-direction: column; }
 		.search-bar-wrapper { min-width: unset; }
 		.search-input-main { font-size: 1rem; }
-		.search-filters { width: 100%; }
-		.search-filter-select { flex: 1; min-width: unset; }
+		.filter-dropdown { width: 100%; }
+		.filter-dropdown .channel-dropdown-trigger { width: 100%; justify-content: center; }
 		.section-header { flex-direction: column; align-items: stretch; }
 		.section-header-left { justify-content: space-between; }
 		.section-header-right { flex-wrap: wrap; }

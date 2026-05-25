@@ -149,10 +149,20 @@
 					{userEmail.charAt(0).toUpperCase()}
 				</div>
 				{#if !collapsed}
-					<div class="user-info">
-						<span class="user-email">{userEmail}</span>
-						<button class="signout-btn" onclick={onSignout}>Sign Out</button>
-					</div>
+					<span class="user-email">{userEmail}</span>
+					<button class="signout-btn" onclick={onSignout} title="Sign out">
+						<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M9 3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/>
+							<path d="M16 10H9M16 10l-3-3M16 10l-3 3"/>
+						</svg>
+					</button>
+				{:else}
+					<button class="signout-btn signout-btn-collapsed" onclick={onSignout} title="Sign out">
+						<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M9 3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"/>
+							<path d="M16 10H9M16 10l-3-3M16 10l-3 3"/>
+						</svg>
+					</button>
 				{/if}
 			</div>
 		{/if}
@@ -466,34 +476,37 @@
 		flex-shrink: 0;
 	}
 
-	.user-info {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-width: 0;
-	}
-
 	.user-email {
 		font-size: 0.75rem;
 		color: var(--text-secondary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		flex: 1;
+		min-width: 0;
 	}
 
 	.signout-btn {
 		background: transparent;
 		border: none;
 		color: var(--text-tertiary);
-		font-size: 0.6875rem;
-		padding: 0;
+		padding: 4px;
 		cursor: pointer;
-		text-align: left;
-		transition: color var(--transition-fast);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: var(--radius-sm);
+		transition: all var(--transition-fast);
+		flex-shrink: 0;
 	}
 
 	.signout-btn:hover {
 		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.signout-btn-collapsed {
+		padding: 0;
 	}
 
 	/* Mobile bottom tab bar */
