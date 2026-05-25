@@ -16,6 +16,7 @@
 	let keyboard = getKeyboardState();
 	let sseState = getSSEState();
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
+	let sidebarCollapsed = $state(false);
 
 	onMount(() => {
 		connectSSE();
@@ -31,30 +32,16 @@
 </script>
 
 <div class="app-layout">
-	<Sidebar {isAdmin} />
+	<Sidebar
+		{isAdmin}
+		connected={sseState.connected}
+		userEmail={data.session?.user?.email}
+		onHealthClick={() => healthPanelOpen = true}
+		onSignout={handleSignout}
+		bind:collapsed={sidebarCollapsed}
+	/>
 
-	<div class="main-area">
-		<header class="top-bar">
-			<div class="top-bar-left">
-				<button
-					class="connection-status"
-					class:connected={sseState.connected}
-					onclick={() => healthPanelOpen = true}
-				>
-					<span class="status-dot"></span>
-					<span class="status-label">{sseState.connected ? 'Connected' : 'Connecting...'}</span>
-				</button>
-			</div>
-			<div class="top-bar-right">
-				{#if data.session?.user}
-					<span class="user-email">{data.session.user.email}</span>
-					<button class="signout-btn" onclick={handleSignout}>
-						Sign Out
-					</button>
-				{/if}
-			</div>
-		</header>
-
+	<div class="main-area" class:collapsed={sidebarCollapsed}>
 		{#if $navigating}
 			<div class="nav-progress">
 				<div class="nav-progress-bar"></div>
@@ -105,97 +92,11 @@
 		flex-direction: column;
 		min-width: 0;
 		margin-left: 240px;
+		transition: margin-left 0.2s ease;
 	}
 
-	.top-bar {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--spacing-sm) var(--spacing-xl);
-		background: var(--bg-secondary);
-		border-bottom: 1px solid var(--border);
-		position: sticky;
-		top: 0;
-		z-index: 90;
-		height: 48px;
-	}
-
-	.top-bar-left {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-md);
-	}
-
-	.top-bar-right {
-		display: flex;
-		align-items: center;
-		gap: var(--spacing-md);
-	}
-
-	.user-email {
-		font-size: 0.8125rem;
-		color: var(--text-tertiary);
-	}
-
-	.connection-status {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-		padding: var(--spacing-xs) var(--spacing-sm);
-		border-radius: var(--radius-md);
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid var(--border);
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		font: inherit;
-		color: inherit;
-	}
-
-	.connection-status:hover {
-		border-color: var(--accent-primary);
-		background: rgba(255, 255, 255, 0.06);
-	}
-
-	.status-dot {
-		width: 7px;
-		height: 7px;
-		border-radius: 50%;
-		background: var(--error);
-		flex-shrink: 0;
-	}
-
-	.connection-status.connected .status-dot {
-		background: var(--success);
-		animation: pulse 2s infinite;
-	}
-
-	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.4; }
-	}
-
-	.status-label {
-		font-size: 0.75rem;
-		color: var(--text-secondary);
-		white-space: nowrap;
-	}
-
-	.signout-btn {
-		background: transparent;
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		color: var(--text-secondary);
-		padding: var(--spacing-xs) var(--spacing-md);
-		border-radius: var(--border-radius-md);
-		font-size: 0.8125rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: var(--transition-fast);
-	}
-
-	.signout-btn:hover {
-		background: rgba(255, 255, 255, 0.05);
-		color: var(--text-primary);
-		border-color: rgba(255, 255, 255, 0.25);
+	.main-area.collapsed {
+		margin-left: 64px;
 	}
 
 	.nav-progress {
@@ -266,18 +167,6 @@
 		.main-area {
 			margin-left: 0;
 			padding-bottom: 68px;
-		}
-
-		.top-bar {
-			padding: var(--spacing-sm) var(--spacing-md);
-		}
-
-		.user-email {
-			display: none;
-		}
-
-		.connection-status .status-label {
-			display: none;
 		}
 
 		.main-content {

@@ -20,7 +20,12 @@
 	let channelDropdownOpen = $state(false);
 	let sortOption = $state<'newest' | 'oldest' | 'largest' | 'smallest' | 'longest' | 'shortest' | 'uploader'>('newest');
 	let sortDropdownOpen = $state(false);
-	let titleSearch = $state('');
+	let searchQuery = $state('');
+	let searchVideoType = $state('all');
+	let searchResults = $state<any[]>([]);
+	let searchTotal = $state(0);
+	let searchLoading = $state(false);
+	let searchDebounceTimer = $state<ReturnType<typeof setTimeout> | null>(null);
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let selectionMode = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
@@ -54,15 +59,58 @@
 			: availableChannels
 	);
 
+	$effect(() => {
+		const q = searchQuery;
+		const vt = searchVideoType;
+		const sp = completedFilter;
+		const uf = channelFilter;
+
+		if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+
+		if (!q.trim()) {
+			searchResults = [];
+			searchTotal = 0;
+			searchLoading = false;
+			return;
+		}
+
+		searchLoading = true;
+		searchDebounceTimer = setTimeout(async () => {
+			try {
+				const params = new URLSearchParams({ q, limit: '50' });
+				if (vt !== 'all') params.set('videoType', vt);
+				if (sp !== 'all') params.set('storagePool', sp);
+				if (uf !== 'all') params.set('uploader', uf);
+
+				const res = await fetch(`/api/search?${params}`);
+				if (res.ok) {
+					const data = await res.json();
+					searchResults = data.results || data;
+					searchTotal = data.total || searchResults.length;
+				} else {
+					searchResults = [];
+					searchTotal = 0;
+				}
+			} catch (e) {
+				console.error('Search failed:', e);
+				searchResults = [];
+				searchTotal = 0;
+			} finally {
+				searchLoading = false;
+			}
+		}, 300);
+	});
+
 	let filteredCompletedDownloads = $derived.by(() => {
+		// Use search results if searching
+		if (searchQuery.trim()) {
+			return searchResults;
+		}
+
+		// Otherwise use normal filtering
 		let filtered = channelFilter === 'all'
 			? poolFilteredDownloads
 			: poolFilteredDownloads.filter((d) => d.uploader === channelFilter);
-
-		if (titleSearch) {
-			const q = titleSearch.toLowerCase();
-			filtered = filtered.filter((d) => d.title?.toLowerCase().includes(q));
-		}
 
 		const sorted = [...filtered];
 		switch (sortOption) {
@@ -268,7 +316,7 @@
 						if (aActive !== bActive) return aActive - bActive;
 						return sseState.downloads.indexOf(b) - sseState.downloads.indexOf(a);
 					}) as download (download.id)}
-						<DownloadCard {download} {jellyfinUrl} />
+						<DownloadCard {download} {jellyfinUrl} {libraryConfigured} />
 					{/each}
 				</div>
 			{/if}
@@ -328,9 +376,39 @@
 	{/if}
 
 	<div class="section">
+		<div class="search-bar-section">
+			<div class="search-bar-wrapper">
+				<svg class="search-icon" width="20" height="20" viewBox="0 0 16 16" fill="none">
+					<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
+					<path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+				</svg>
+				<input
+					type="text"
+					class="search-input-main"
+					placeholder="Search downloads by title, description, or uploader..."
+					bind:value={searchQuery}
+				/>
+				{#if searchQuery}
+					<button class="search-clear-btn" aria-label="Clear search" onclick={() => (searchQuery = '')}>
+						<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+					</button>
+				{/if}
+			</div>
+			<div class="search-filters">
+				<select class="search-filter-select" bind:value={searchVideoType}>
+					<option value="all">All types</option>
+					<option value="regular">Regular</option>
+					<option value="short">Short</option>
+					<option value="stream">Stream</option>
+				</select>
+			</div>
+		</div>
+	</div>
+
+	<div class="section">
 		<div class="section-header">
 			<div class="section-header-left">
-				<h2>Completed ({filteredCompletedDownloads.length})</h2>
+				<h2>Completed ({searchQuery ? searchTotal : filteredCompletedDownloads.length})</h2>
 				<ViewToggle bind:view={viewMode} />
 				<button
 					class="select-btn"
@@ -400,18 +478,6 @@
 				</div>
 			</div>
 		</div>
-		<div class="completed-search">
-			<svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-				<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
-				<path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-			</svg>
-			<input type="text" class="search-input" placeholder="Search by title..." bind:value={titleSearch} />
-			{#if titleSearch}
-				<button class="search-clear" aria-label="Clear search" onclick={() => (titleSearch = '')}>
-					<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
-				</button>
-			{/if}
-		</div>
 		{#if completedLoading}
 			<Skeleton count={6} variant="card" />
 		{:else if filteredCompletedDownloads.length === 0}
@@ -427,6 +493,7 @@
 						{jellyfinUrl}
 						{selectionMode}
 						selected={selectedIds.has(download.id)}
+						{libraryConfigured}
 						onToggleSelect={() => toggleSelection(download.id)}
 					/>
 				{/each}
@@ -558,22 +625,6 @@
 	.channel-dropdown-backdrop { position: fixed; inset: 0; z-index: 99; }
 	.sort-dropdown { position: relative; }
 
-	.completed-search { position: relative; display: flex; align-items: center; margin-bottom: var(--spacing-md); }
-	.search-icon { position: absolute; left: var(--spacing-md); color: var(--text-tertiary); pointer-events: none; }
-	.search-input {
-		width: 100%; padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) calc(var(--spacing-md) + 24px);
-		background: var(--bg-tertiary); border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md); color: var(--text-primary); font-size: 0.875rem; transition: border-color 0.15s;
-	}
-	.search-input:focus { outline: none; border-color: var(--accent-primary); }
-	.search-input::placeholder { color: var(--text-tertiary); }
-	.search-clear {
-		position: absolute; right: var(--spacing-sm); display: flex; align-items: center;
-		padding: 4px; background: transparent; border: none; color: var(--text-tertiary);
-		cursor: pointer; border-radius: var(--radius-sm);
-	}
-	.search-clear:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.06); }
-
 	.downloads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: var(--spacing-lg); width: 100%; }
 
 	.downloads-list { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; }
@@ -619,11 +670,107 @@
 
 	.empty-state { text-align: center; padding: var(--spacing-2xl); background: var(--bg-secondary); border: 1px dashed var(--border); border-radius: var(--radius-lg); }
 	.empty-state p { margin-bottom: var(--spacing-sm); }
+
+	.search-bar-section {
+		margin-bottom: var(--spacing-xl);
+		display: flex;
+		gap: var(--spacing-md);
+		flex-wrap: wrap;
+		align-items: flex-start;
+	}
+
+	.search-bar-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+		flex: 1;
+		min-width: 300px;
+	}
+
+	.search-icon {
+		position: absolute;
+		left: var(--spacing-lg);
+		color: var(--text-tertiary);
+		pointer-events: none;
+		z-index: 1;
+	}
+
+	.search-input-main {
+		width: 100%;
+		padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + 28px);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		color: var(--text-primary);
+		font-size: 1.0625rem;
+		transition: border-color var(--transition-fast);
+	}
+
+	.search-input-main:focus {
+		outline: none;
+		border-color: var(--accent-primary);
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+	}
+
+	.search-input-main::placeholder {
+		color: var(--text-tertiary);
+	}
+
+	.search-clear-btn {
+		position: absolute;
+		right: var(--spacing-md);
+		display: flex;
+		align-items: center;
+		padding: 4px;
+		background: transparent;
+		border: none;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		z-index: 1;
+	}
+
+	.search-clear-btn:hover {
+		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.search-filters {
+		display: flex;
+		gap: var(--spacing-md);
+	}
+
+	.search-filter-select {
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		color: var(--text-primary);
+		font-size: 0.875rem;
+		transition: border-color var(--transition-fast);
+		min-width: 140px;
+	}
+
+	.search-filter-select:focus {
+		outline: none;
+		border-color: var(--accent-primary);
+	}
+
+	.search-filter-select option {
+		background: var(--bg-secondary);
+		color: var(--text-primary);
+	}
+
 	@media (max-width: 768px) {
 		.page { padding: 0 var(--spacing-sm); }
 		.storage-row { flex-direction: column; }
 		.downloads-layout { grid-template-columns: 1fr; gap: var(--spacing-lg); }
 		.downloads-grid { grid-template-columns: 1fr; }
+		.search-bar-section { flex-direction: column; }
+		.search-bar-wrapper { min-width: unset; }
+		.search-input-main { font-size: 1rem; }
+		.search-filters { width: 100%; }
+		.search-filter-select { flex: 1; min-width: unset; }
 		.section-header { flex-direction: column; align-items: stretch; }
 		.section-header-left { justify-content: space-between; }
 		.section-header-right { flex-wrap: wrap; }

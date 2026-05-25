@@ -35,6 +35,8 @@
 	let seekTarget = $state(-1);
 	let isMuted = $state(true);
 	let progressBarEl = $state<HTMLDivElement | null>(null);
+	let videoDuration = $state(0);
+	let videoTimestamp = $state<string | null>(null);
 
 	function handleThumbnailEnter() {
 		if (!isPreviewable || isMobileDevice()) return;
@@ -56,9 +58,6 @@
 			videoEl.load();
 		}
 	}
-
-	let videoDuration = $state(0);
-	let videoTimestamp = $state<string | null>(null);
 
 	function formatTime(seconds: number): string {
 		const m = Math.floor(seconds / 60);
@@ -276,6 +275,31 @@
 		}
 	}
 
+	let redownloading = $state(false);
+
+	async function redownload() {
+		redownloading = true;
+		try {
+			const body: any = { url: download.url, profileId: download.profileId };
+			if (download.storagePool === 'library') body.saveToLibrary = true;
+			if (download.customFlags?.length) body.customFlags = download.customFlags;
+
+			const res = await fetch('/api/downloads', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+
+			if (res.ok) {
+				// Optionally refresh the download list or navigate
+			}
+		} catch (e) {
+			console.error('Failed to redownload:', e);
+		} finally {
+			redownloading = false;
+		}
+	}
+
 	function handleCardClick(e: MouseEvent) {
 		if (selectionMode || download.status !== 'COMPLETED') return;
 		const target = e.target as HTMLElement;
@@ -333,11 +357,6 @@
 			onmouseenter={handleThumbnailEnter}
 			onmouseleave={handleThumbnailLeave}
 		>
-			{#if isPreviewable}
-				<div class="preview-hint">
-					<svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>
-				</div>
-			{/if}
 			{#if download.thumbnail && !thumbnailFailed}
 				<img
 					class="thumbnail-img"
@@ -507,7 +526,11 @@
 				<button class="btn btn-sm btn-primary" onclick={downloadFile}>
 					Download
 				</button>
+<<<<<<< HEAD
 				{#if download.storagePool === 'cache' && libraryConfigured}
+=======
+				{#if libraryConfigured && download.storagePool === 'cache'}
+>>>>>>> 34735cd (wip)
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
 						{promoting ? 'Saving...' : 'Save to Library'}
 					</button>
@@ -522,6 +545,12 @@
 						Open in Jellyfin
 					</a>
 				{/if}
+			{/if}
+
+			{#if download.status === 'DELETED'}
+				<button class="btn btn-sm btn-primary" onclick={redownload} disabled={redownloading}>
+					{redownloading ? 'Redownloading...' : 'Redownload'}
+				</button>
 			{/if}
 
 			{#if download.status === 'FAILED' || download.status === 'CANCELLED'}
@@ -628,25 +657,86 @@
 		z-index: 1;
 	}
 
-	.preview-hint {
+	.video-time {
 		position: absolute;
-		bottom: 8px;
+		bottom: 12px;
 		left: 8px;
-		background: rgba(0, 0, 0, 0.6);
+		z-index: 4;
+		background: rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(4px);
+		border-radius: 4px;
+		padding: 2px 6px;
+		color: white;
+		font-size: 0.6875rem;
+		font-family: monospace;
+		line-height: 1;
+		pointer-events: none;
+	}
+
+	.mute-btn {
+		position: absolute;
+		bottom: 12px;
+		right: 8px;
+		z-index: 4;
+		background: rgba(0, 0, 0, 0.55);
+		backdrop-filter: blur(4px);
+		border: none;
 		border-radius: 50%;
 		width: 32px;
 		height: 32px;
+		padding: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		opacity: 0;
-		transition: opacity var(--transition-fast);
-		pointer-events: none;
-		z-index: 2;
+		cursor: pointer;
+		opacity: 0.8;
+		transition: opacity 0.15s, background 0.15s;
 	}
 
-	.thumbnail:hover .preview-hint {
+	.mute-btn:hover {
 		opacity: 1;
+		background: rgba(0, 0, 0, 0.75);
+	}
+
+	.video-progress-bar {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		width: 100%;
+		height: 6px;
+		background: rgba(255, 255, 255, 0.3);
+		z-index: 3;
+		cursor: pointer;
+		transition: height 0.15s;
+	}
+
+	.video-progress-bar:hover {
+		height: 10px;
+	}
+
+	.progress-fill {
+		height: 100%;
+		background: #f00;
+		transition: width 0.1s linear;
+	}
+
+	.deleted-info {
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-sm);
+		color: var(--text-secondary);
+		font-size: 0.75rem;
+		margin-bottom: var(--spacing-md);
+		text-align: center;
+	}
+
+	.download-card:has(.deleted-info) {
+		opacity: 0.6;
+	}
+
+	.download-card:has(.deleted-info):hover {
+		opacity: 0.8;
 	}
 
 	.video-time {

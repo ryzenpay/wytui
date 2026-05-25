@@ -3,9 +3,14 @@
 
 	interface Props {
 		isAdmin: boolean;
+		connected: boolean;
+		userEmail?: string;
+		onHealthClick: () => void;
+		onSignout: () => void;
+		collapsed?: boolean;
 	}
 
-	let { isAdmin }: Props = $props();
+	let { isAdmin, connected, userEmail, onHealthClick, onSignout, collapsed = $bindable(false) }: Props = $props();
 
 	type NavItem = {
 		label: string;
@@ -17,8 +22,7 @@
 		{ label: 'Downloads', href: '/downloads', icon: 'download' },
 		{ label: 'Subscriptions', href: '/subscriptions', icon: 'broadcast' },
 		{ label: 'Monitors', href: '/monitors', icon: 'eye' },
-		{ label: 'Playlists', href: '/playlists', icon: 'playlist' },
-		{ label: 'Search', href: '/search', icon: 'search' }
+		{ label: 'Playlists', href: '/playlists', icon: 'playlist' }
 	];
 
 	const systemItems: NavItem[] = [
@@ -31,11 +35,10 @@
 		return $page.url.pathname === href || $page.url.pathname.startsWith(href + '/');
 	}
 
-	// Mobile bottom bar items: Downloads, Subscriptions, Search, Settings, More
 	const mobileItems: NavItem[] = [
 		{ label: 'Downloads', href: '/downloads', icon: 'download' },
 		{ label: 'Subs', href: '/subscriptions', icon: 'broadcast' },
-		{ label: 'Search', href: '/search', icon: 'search' },
+		{ label: 'Playlists', href: '/playlists', icon: 'playlist' },
 		{ label: 'Settings', href: '/settings', icon: 'gear' }
 	];
 
@@ -43,21 +46,35 @@
 </script>
 
 <!-- Desktop sidebar -->
-<aside class="sidebar">
+<aside class="sidebar" class:collapsed>
 	<div class="sidebar-header">
 		<a href="/" class="logo">
-			<h1>wytui</h1>
+			{#if !collapsed}
+				<h1>wytui</h1>
+			{:else}
+				<h1 class="logo-collapsed">w</h1>
+			{/if}
 		</a>
+		<button class="collapse-btn" onclick={() => collapsed = !collapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+			<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+				{#if collapsed}
+					<path d="M6 3l5 5-5 5" />
+				{:else}
+					<path d="M10 3L5 8l5 5" />
+				{/if}
+			</svg>
+		</button>
 	</div>
 
 	<nav class="sidebar-nav">
 		<div class="nav-group">
-			<span class="nav-label">Library</span>
+			{#if !collapsed}<span class="nav-label">Library</span>{/if}
 			{#each libraryItems as item}
 				<a
 					href={item.href}
 					class="nav-item"
 					class:active={isActive(item.href)}
+					title={collapsed ? item.label : undefined}
 				>
 					<svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 						{#if item.icon === 'download'}
@@ -82,19 +99,20 @@
 							<path d="M13 13l4 4" />
 						{/if}
 					</svg>
-					<span class="nav-text">{item.label}</span>
+					{#if !collapsed}<span class="nav-text">{item.label}</span>{/if}
 				</a>
 			{/each}
 		</div>
 
 		{#if isAdmin}
 			<div class="nav-group">
-				<span class="nav-label">System</span>
+				{#if !collapsed}<span class="nav-label">System</span>{/if}
 				{#each systemItems as item}
 					<a
 						href={item.href}
 						class="nav-item"
 						class:active={isActive(item.href)}
+						title={collapsed ? item.label : undefined}
 					>
 						<svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 							{#if item.icon === 'gear'}
@@ -105,12 +123,40 @@
 								<path d="M10 6v4l3 2" />
 							{/if}
 						</svg>
-						<span class="nav-text">{item.label}</span>
+						{#if !collapsed}<span class="nav-text">{item.label}</span>{/if}
 					</a>
 				{/each}
 			</div>
 		{/if}
 	</nav>
+
+	<div class="sidebar-footer">
+		<button
+			class="connection-status"
+			class:connected
+			onclick={onHealthClick}
+			title={collapsed ? (connected ? 'Connected' : 'Connecting...') : undefined}
+		>
+			<span class="status-dot"></span>
+			{#if !collapsed}
+				<span class="status-label">{connected ? 'Connected' : 'Connecting...'}</span>
+			{/if}
+		</button>
+
+		{#if userEmail}
+			<div class="user-card">
+				<div class="user-avatar">
+					{userEmail.charAt(0).toUpperCase()}
+				</div>
+				{#if !collapsed}
+					<div class="user-info">
+						<span class="user-email">{userEmail}</span>
+						<button class="signout-btn" onclick={onSignout}>Sign Out</button>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	</div>
 </aside>
 
 <!-- Mobile bottom tab bar -->
@@ -129,9 +175,11 @@
 					<circle cx="10" cy="10" r="2" />
 					<path d="M6.5 6.5a5 5 0 0 0 0 7" />
 					<path d="M13.5 6.5a5 5 0 0 1 0 7" />
-				{:else if item.icon === 'search'}
-					<circle cx="9" cy="9" r="5" />
-					<path d="M13 13l4 4" />
+				{:else if item.icon === 'playlist'}
+					<path d="M3 5h10" />
+					<path d="M3 10h6" />
+					<path d="M3 15h4" />
+					<path d="M14 10v6l4-3-4-3z" />
 				{:else if item.icon === 'gear'}
 					<circle cx="10" cy="10" r="3" />
 					<path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" />
@@ -199,15 +247,32 @@
 		flex-direction: column;
 		z-index: 100;
 		overflow-y: auto;
+		transition: width 0.2s ease;
+	}
+
+	.sidebar.collapsed {
+		width: 64px;
 	}
 
 	.sidebar-header {
 		padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-sm);
+	}
+
+	.sidebar.collapsed .sidebar-header {
+		padding: var(--spacing-lg) var(--spacing-sm) var(--spacing-md);
+		justify-content: center;
+		flex-direction: column;
+		gap: var(--spacing-xs);
 	}
 
 	.logo {
 		text-decoration: none;
 		display: block;
+		min-width: 0;
 	}
 
 	.logo h1 {
@@ -218,10 +283,37 @@
 		background-clip: text;
 		cursor: pointer;
 		transition: opacity var(--transition-fast);
+		white-space: nowrap;
+	}
+
+	.logo-collapsed {
+		font-size: 1.25rem !important;
+		text-align: center;
 	}
 
 	.logo:hover h1 {
 		opacity: 0.8;
+	}
+
+	.collapse-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		border-radius: var(--radius-md);
+		background: transparent;
+		border: 1px solid transparent;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		flex-shrink: 0;
+	}
+
+	.collapse-btn:hover {
+		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.05);
+		border-color: var(--border);
 	}
 
 	.sidebar-nav {
@@ -230,6 +322,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-lg);
+		overflow-y: auto;
 	}
 
 	.nav-group {
@@ -259,6 +352,13 @@
 		font-size: 0.875rem;
 		font-weight: 500;
 		transition: all var(--transition-fast);
+		white-space: nowrap;
+		overflow: hidden;
+	}
+
+	.sidebar.collapsed .nav-item {
+		justify-content: center;
+		padding: 10px;
 	}
 
 	.nav-item:hover {
@@ -277,6 +377,123 @@
 
 	.nav-text {
 		line-height: 1;
+	}
+
+	/* Sidebar footer */
+	.sidebar-footer {
+		padding: var(--spacing-sm);
+		border-top: 1px solid var(--border);
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.connection-status {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: var(--radius-md);
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid var(--border);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		font: inherit;
+		color: inherit;
+		width: 100%;
+	}
+
+	.sidebar.collapsed .connection-status {
+		justify-content: center;
+		padding: 8px;
+	}
+
+	.connection-status:hover {
+		border-color: var(--accent-primary);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.status-dot {
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--error);
+		flex-shrink: 0;
+	}
+
+	.connection-status.connected .status-dot {
+		background: var(--success);
+		animation: pulse 2s infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.4; }
+	}
+
+	.status-label {
+		font-size: 0.75rem;
+		color: var(--text-secondary);
+		white-space: nowrap;
+	}
+
+	.user-card {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		padding: 8px 12px;
+		border-radius: var(--radius-md);
+		background: rgba(255, 255, 255, 0.03);
+		overflow: hidden;
+	}
+
+	.sidebar.collapsed .user-card {
+		justify-content: center;
+		padding: 8px;
+	}
+
+	.user-avatar {
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: white;
+		flex-shrink: 0;
+	}
+
+	.user-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+
+	.user-email {
+		font-size: 0.75rem;
+		color: var(--text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.signout-btn {
+		background: transparent;
+		border: none;
+		color: var(--text-tertiary);
+		font-size: 0.6875rem;
+		padding: 0;
+		cursor: pointer;
+		text-align: left;
+		transition: color var(--transition-fast);
+	}
+
+	.signout-btn:hover {
+		color: var(--text-primary);
 	}
 
 	/* Mobile bottom tab bar */
