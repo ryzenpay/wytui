@@ -54,17 +54,17 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 		const { url } = await request.json();
 
 		if (!url) {
-			throw error(400, 'Missing required field: url');
+			return json({ error: 'Missing required field: url' }, { status: 400, headers: corsHeaders });
 		}
 
 		// Validate URL format
 		try {
 			const urlObj = new URL(url);
 			if (!['http:', 'https:'].includes(urlObj.protocol)) {
-				throw error(400, 'Only HTTP(S) URLs are allowed');
+				return json({ error: 'Only HTTP(S) URLs are allowed' }, { status: 400, headers: corsHeaders });
 			}
 		} catch {
-			throw error(400, 'Invalid URL format');
+			return json({ error: 'Invalid URL format' }, { status: 400, headers: corsHeaders });
 		}
 
 		const userId = locals.session?.user?.id;
@@ -81,7 +81,7 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 		});
 
 		if (!profile) {
-			throw error(400, 'No download profile found. Create a profile first.');
+			return json({ error: 'No download profile found. Create a profile first.' }, { status: 400, headers: corsHeaders });
 		}
 
 		const download = await downloadService.createDownload(url, profile.id, userId);
@@ -89,7 +89,9 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 		return json(download, { status: 201, headers: corsHeaders });
 	} catch (e: any) {
 		console.error('Failed to create quick download:', e);
-		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create download');
+		return json(
+			{ error: e.message || 'Failed to create download' },
+			{ status: e.status || 500, headers: corsHeaders }
+		);
 	}
 }) satisfies RequestHandler;

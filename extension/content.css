@@ -1,0 +1,73 @@
+/* wytui download button injected on YouTube */
+#wytui-download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-right: 8px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  vertical-align: middle;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#wytui-download-btn:hover {
+  background: #6d28d9;
+}
+
+#wytui-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#wytui-download-btn.wytui-loading {
+  opacity: 0.6;
+}
+
+#wytui-download-btn svg {
+  flex-shrink: 0;
+}
+
+/* Toast notification */
+#wytui-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 99999;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.3s, transform 0.3s;
+  max-width: 360px;
+  word-wrap: break-word;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+#wytui-toast.wytui-toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#wytui-toast.wytui-toast-success {
+  background: #1a2e1a;
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+#wytui-toast.wytui-toast-error {
+  background: #2e1a1a;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
