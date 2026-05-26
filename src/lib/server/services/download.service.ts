@@ -156,10 +156,13 @@ class DownloadService {
 		});
 
 		try {
-			const metadata = await ytdlpService.fetchMetadata(download.url);
+			// Get settings for cookie path
+			const settings = await this.getSettings();
+			const metadata = await ytdlpService.fetchMetadata(download.url, {
+				cookiePath: settings.cookiePath,
+			});
 
 			// Check duration limit
-			const settings = await this.getSettings();
 			if (settings.maxDurationSeconds && metadata.duration) {
 				if (metadata.duration > settings.maxDurationSeconds) {
 					throw new Error(
@@ -254,7 +257,8 @@ class DownloadService {
 		const args = ytdlpService.buildArgs(
 			download.url,
 			outputPath,
-			mergedFlags
+			mergedFlags,
+			{ cookiePath: settings.cookiePath }
 		);
 
 		if (download.duration) {

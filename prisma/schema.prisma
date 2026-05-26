@@ -307,6 +307,9 @@ model Settings {
   enableArchive Boolean @default(true)
   archivePath String?   // Path to archive.txt for yt-dlp
 
+  // Cookie authentication for member/age-restricted content
+  cookiePath  String?
+
   // Authentication
   authMode    String    @default("password") // "password" | "oidc" | "both"
 
