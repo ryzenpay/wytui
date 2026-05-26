@@ -13,6 +13,7 @@
 	import CheckSquareIcon from '$lib/components/icons/CheckSquareIcon.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
 	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
+	import ListPlusIcon from '$lib/components/icons/ListPlusIcon.svelte';
 
 	let sseState = getSSEState();
 
@@ -27,6 +28,7 @@
 	let sortDropdownOpen = $state(false);
 	let resolutionFilter = $state<string>('all');
 	let resolutionDropdownOpen = $state(false);
+	let watchStateDropdownOpen = $state(false);
 	let dateFrom = $state('');
 	let dateTo = $state('');
 	let searchQuery = $state('');
@@ -337,6 +339,46 @@
 		}
 	}
 
+	let bulkPlaylistOpen = $state(false);
+	let bulkPlaylists = $state<{ id: string; name: string }[]>([]);
+	let bulkPlaylistLoading = $state(false);
+	let bulkPlaylistAdding = $state(false);
+
+	async function openBulkPlaylistPicker() {
+		bulkPlaylistOpen = !bulkPlaylistOpen;
+		if (!bulkPlaylistOpen) return;
+		bulkPlaylistLoading = true;
+		try {
+			const res = await fetch('/api/playlists');
+			bulkPlaylists = res.ok ? await res.json() : [];
+		} catch {
+			bulkPlaylists = [];
+		} finally {
+			bulkPlaylistLoading = false;
+		}
+	}
+
+	async function bulkAddToPlaylist(playlistId: string, playlistName: string) {
+		bulkPlaylistAdding = true;
+		try {
+			await Promise.all(
+				[...selectedIds].map((id) =>
+					fetch(`/api/playlists/${playlistId}/items`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ downloadId: id }),
+					})
+				)
+			);
+			addToast('success', `Added ${selectedIds.size} video${selectedIds.size !== 1 ? 's' : ''} to "${playlistName}"`);
+			bulkPlaylistOpen = false;
+		} catch {
+			addToast('error', 'Failed to add some videos to playlist');
+		} finally {
+			bulkPlaylistAdding = false;
+		}
+	}
+
 	async function bulkPromote() {
 		const ids = [...selectedIds].filter((id) => {
 			const d = completedDownloads.find((dl) => dl.id === id);
@@ -515,12 +557,6 @@
 					<button class="tab" class:active={completedFilter === 'cache'} onclick={(e) => { e.stopPropagation(); completedFilter = 'cache'; }}>Cache</button>
 					<button class="tab" class:active={completedFilter === 'library'} onclick={(e) => { e.stopPropagation(); completedFilter = 'library'; }}>Library</button>
 				</div>
-				<div class="tabs completed-filter watch-state-filter">
-					<button class="tab" class:active={watchStateFilter === 'all'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'all'; }}>All</button>
-					<button class="tab" class:active={watchStateFilter === 'unwatched'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'unwatched'; }}>Unwatched</button>
-					<button class="tab" class:active={watchStateFilter === 'in_progress'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'in_progress'; }}>In Progress</button>
-					<button class="tab" class:active={watchStateFilter === 'watched'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'watched'; }}>Watched</button>
-				</div>
 				{#if availableChannels.length > 1}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div class="channel-dropdown" onkeydown={(e) => { if (e.key === 'Escape') channelDropdownOpen = false; }}>
@@ -573,6 +609,34 @@
 						<div class="channel-dropdown-backdrop" onclick={() => (sortDropdownOpen = false)}></div>
 					{/if}
 				</div>
+			</div>
+			<div class="section-header-filters">
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') watchStateDropdownOpen = false; }}>
+					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); watchStateDropdownOpen = !watchStateDropdownOpen; }}>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+							<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+							<path d="M5.5 5.5L9 7L5.5 8.5z" fill="currentColor"/>
+						</svg>
+						<span class="channel-dropdown-label">{
+							({ all: 'All states', unwatched: 'Unwatched', in_progress: 'In progress', watched: 'Watched' } as Record<string, string>)[watchStateFilter]
+						}</span>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={watchStateDropdownOpen}>
+							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</button>
+					{#if watchStateDropdownOpen}
+						<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
+							<div class="channel-dropdown-options">
+								{#each [['all', 'All states'], ['unwatched', 'Unwatched'], ['in_progress', 'In progress'], ['watched', 'Watched']] as [value, label]}
+									<button class="channel-dropdown-option" class:selected={watchStateFilter === value} onclick={(e) => { e.stopPropagation(); watchStateFilter = value as typeof watchStateFilter; watchStateDropdownOpen = false; }}>{label}</button>
+								{/each}
+							</div>
+						</div>
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="channel-dropdown-backdrop" onclick={() => (watchStateDropdownOpen = false)}></div>
+					{/if}
+				</div>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') resolutionDropdownOpen = false; }}>
 					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); resolutionDropdownOpen = !resolutionDropdownOpen; }}>
@@ -607,7 +671,7 @@
 						placeholder="From"
 						title="Download date from"
 					/>
-					<span class="date-range-separator">-</span>
+					<span class="date-range-separator">–</span>
 					<input
 						type="date"
 						class="date-input"
@@ -658,14 +722,40 @@
 			<div class="bulk-bar">
 				<span class="bulk-count">{selectedIds.size} selected</span>
 				<div class="bulk-actions">
-					<button class="btn btn-sm btn-secondary btn-icon" onclick={() => { selectedIds.size === filteredCompletedDownloads.length ? deselectAll() : selectAll(); }} aria-label={selectedIds.size === filteredCompletedDownloads.length ? 'Deselect all' : 'Select all'} title={selectedIds.size === filteredCompletedDownloads.length ? 'Deselect all' : 'Select all'}>
+					<button class="btn btn-sm btn-secondary" onclick={() => { selectedIds.size === filteredCompletedDownloads.length ? deselectAll() : selectAll(); }}>
 						<CheckSquareIcon checked={selectedIds.size === filteredCompletedDownloads.length} />
+						{selectedIds.size === filteredCompletedDownloads.length ? 'Deselect all' : 'Select all'}
 					</button>
-					<button class="btn btn-sm btn-icon btn-accent" onclick={bulkPromote} disabled={bulkActing} aria-label="Move to library" title="Move to library">
+					<div class="bulk-playlist-wrap">
+						<button class="btn btn-sm btn-secondary" onclick={openBulkPlaylistPicker} disabled={bulkPlaylistAdding}>
+							<ListPlusIcon />
+							Add to Playlist
+						</button>
+						{#if bulkPlaylistOpen}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div class="bulk-playlist-backdrop" onclick={() => (bulkPlaylistOpen = false)}></div>
+							<div class="bulk-playlist-menu">
+								{#if bulkPlaylistLoading}
+									<p class="bulk-playlist-empty">Loading…</p>
+								{:else if bulkPlaylists.length === 0}
+									<p class="bulk-playlist-empty">No playlists yet</p>
+								{:else}
+									{#each bulkPlaylists as pl}
+										<button class="bulk-playlist-option" onclick={() => bulkAddToPlaylist(pl.id, pl.name)} disabled={bulkPlaylistAdding}>
+											{pl.name}
+										</button>
+									{/each}
+								{/if}
+							</div>
+						{/if}
+					</div>
+					<button class="btn btn-sm btn-accent" onclick={bulkPromote} disabled={bulkActing}>
 						<FolderDownIcon />
+						Move to Library
 					</button>
-					<button class="btn btn-sm btn-icon btn-danger" onclick={bulkDelete} disabled={bulkActing} aria-label="Delete selected" title="Delete selected">
+					<button class="btn btn-sm btn-danger" onclick={bulkDelete} disabled={bulkActing}>
 						<TrashIcon />
+						Delete
 					</button>
 				</div>
 			</div>
@@ -714,6 +804,7 @@
 
 	.section-header-left { display: flex; align-items: center; gap: var(--spacing-sm); }
 	.section-header-right { display: flex; align-items: center; gap: var(--spacing-sm); }
+	.section-header-filters { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-xs); }
 	.section-header h2 { margin: 0; line-height: 1; font-size: 1.25rem; }
 	.section > h2 { margin-bottom: var(--spacing-lg); }
 
@@ -785,7 +876,26 @@
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); margin-top: var(--spacing-lg); z-index: 50;
 	}
 	.bulk-count { font-size: 0.875rem; font-weight: 500; color: var(--text-primary); }
-	.bulk-actions { display: flex; gap: var(--spacing-sm); }
+	.bulk-actions { display: flex; gap: var(--spacing-sm); align-items: center; flex-wrap: wrap; }
+
+	.bulk-playlist-wrap { position: relative; }
+	.bulk-playlist-backdrop { position: fixed; inset: 0; z-index: 49; }
+	.bulk-playlist-menu {
+		position: absolute; bottom: calc(100% + 8px); left: 0;
+		background: var(--bg-tertiary); border: 1px solid var(--border);
+		border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+		min-width: 180px; max-height: 240px; overflow-y: auto; z-index: 50;
+		padding: var(--spacing-xs);
+	}
+	.bulk-playlist-option {
+		display: block; width: 100%; text-align: left; padding: 7px var(--spacing-sm);
+		background: none; border: none; color: var(--text-primary); font: inherit;
+		font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);
+		transition: background var(--transition-fast); min-height: unset;
+	}
+	.bulk-playlist-option:hover { background: rgba(255, 255, 255, 0.06); }
+	.bulk-playlist-option:disabled { opacity: 0.5; cursor: not-allowed; }
+	.bulk-playlist-empty { padding: var(--spacing-sm) var(--spacing-sm); font-size: 0.875rem; color: var(--text-secondary); margin: 0; }
 
 	.storage-row { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
 	.storage-box {
@@ -1037,6 +1147,7 @@
 		.section-header { flex-direction: column; align-items: stretch; }
 		.section-header-left { justify-content: space-between; }
 		.section-header-right { flex-wrap: wrap; }
+		.section-header-filters { flex-wrap: wrap; }
 		.completed-filter { width: 100%; }
 		.completed-filter .tab { flex: 1; text-align: center; }
 		.channel-dropdown, .sort-dropdown { flex: 1; min-width: 0; }

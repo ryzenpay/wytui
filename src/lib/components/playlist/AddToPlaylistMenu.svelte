@@ -133,12 +133,12 @@
 <div class="add-to-playlist-wrap">
 	<button
 		bind:this={btnEl}
-		class="btn btn-sm btn-secondary"
+		class="btn btn-secondary"
 		onclick={handleToggle}
 		title="Add to playlist"
 		aria-label="Add to playlist"
 	>
-		<ListPlusIcon width={14} height={14} />
+		<ListPlusIcon />
 		Playlist
 	</button>
 
