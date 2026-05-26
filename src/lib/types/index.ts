@@ -30,6 +30,7 @@ export interface DownloadMetadata {
 	tags?: string[];
 	videoId?: string;
 	dislikeCount?: number;
+	height?: number;
 }
 
 export interface SSEEvent {

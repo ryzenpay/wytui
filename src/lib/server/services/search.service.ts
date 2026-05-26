@@ -7,8 +7,12 @@ class SearchService {
 		videoType?: string;
 		storagePool?: string;
 		uploader?: string;
+		minHeight?: number;
+		maxHeight?: number;
+		dateFrom?: Date;
+		dateTo?: Date;
 	} = {}) {
-		const { limit = 20, offset = 0, videoType, storagePool, uploader } = options;
+		const { limit = 20, offset = 0, videoType, storagePool, uploader, minHeight, maxHeight, dateFrom, dateTo } = options;
 
 		const where: any = {
 			userId,
@@ -32,6 +36,24 @@ class SearchService {
 				{ uploader: { contains: uploader, mode: 'insensitive' } }
 			];
 			delete where.OR;
+		}
+
+		// Resolution (height) filters
+		if (minHeight || maxHeight) {
+			where.height = {};
+			if (minHeight) where.height.gte = minHeight;
+			if (maxHeight) where.height.lte = maxHeight;
+		}
+
+		// Date range filters
+		if (dateFrom || dateTo) {
+			where.createdAt = {};
+			if (dateFrom) where.createdAt.gte = dateFrom;
+			if (dateTo) {
+				const endOfDay = new Date(dateTo);
+				endOfDay.setHours(23, 59, 59, 999);
+				where.createdAt.lte = endOfDay;
+			}
 		}
 
 		const [results, total] = await Promise.all([

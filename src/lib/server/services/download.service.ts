@@ -196,6 +196,7 @@ class DownloadService {
 				category: metadata.category,
 				tags: metadata.tags ?? [],
 				videoId: metadata.videoId,
+				height: metadata.height,
 				...(dislikeCount !== undefined && { dislikeCount }),
 			});
 
@@ -619,6 +620,7 @@ class DownloadService {
 				category: metadata.category,
 				tags: metadata.tags ?? [],
 				videoId: metadata.videoId,
+				height: metadata.height,
 				...(dislikeCount !== undefined && { dislikeCount }),
 			},
 			include: { profile: true },
@@ -650,7 +652,13 @@ class DownloadService {
 		userId?: string,
 		status?: DownloadStatus,
 		limit = 50,
-		offset = 0
+		offset = 0,
+		filters?: {
+			minHeight?: number;
+			maxHeight?: number;
+			dateFrom?: Date;
+			dateTo?: Date;
+		}
 	): Promise<Download[]> {
 		const where: any = {};
 
@@ -660,6 +668,25 @@ class DownloadService {
 		}
 		if (status !== undefined && status !== null) {
 			where.status = status;
+		}
+
+		// Resolution (height) filters
+		if (filters?.minHeight || filters?.maxHeight) {
+			where.height = {};
+			if (filters.minHeight) where.height.gte = filters.minHeight;
+			if (filters.maxHeight) where.height.lte = filters.maxHeight;
+		}
+
+		// Date range filters (based on createdAt / download date)
+		if (filters?.dateFrom || filters?.dateTo) {
+			where.createdAt = {};
+			if (filters.dateFrom) where.createdAt.gte = filters.dateFrom;
+			if (filters.dateTo) {
+				// Set to end of day
+				const endOfDay = new Date(filters.dateTo);
+				endOfDay.setHours(23, 59, 59, 999);
+				where.createdAt.lte = endOfDay;
+			}
 		}
 
 		const downloads = await prisma.download.findMany({

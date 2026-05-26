@@ -92,6 +92,10 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 		status: { type: 'string', description: 'Filter by status', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'DELETED'] },
 		limit: { type: 'integer', description: 'Max results', minimum: 1, maximum: 100, default: 50 },
 		offset: { type: 'integer', description: 'Pagination offset', minimum: 0, default: 0 },
+		minHeight: { type: 'integer', description: 'Minimum video height (e.g. 720)' },
+		maxHeight: { type: 'integer', description: 'Maximum video height (e.g. 1080)' },
+		dateFrom: { type: 'string', format: 'date', description: 'Filter downloads from this date (YYYY-MM-DD)' },
+		dateTo: { type: 'string', format: 'date', description: 'Filter downloads up to this date (YYYY-MM-DD)' },
 	},
 	responses: {
 		200: {
@@ -141,14 +145,42 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 
 		if (isNaN(offset) || offset < 0) offset = 0;
 
-		const args: Parameters<typeof downloadService.listDownloads> = [
+		const minHeightParam = url.searchParams.get('minHeight');
+		const maxHeightParam = url.searchParams.get('maxHeight');
+		const dateFromParam = url.searchParams.get('dateFrom');
+		const dateToParam = url.searchParams.get('dateTo');
+
+		const filters: {
+			minHeight?: number;
+			maxHeight?: number;
+			dateFrom?: Date;
+			dateTo?: Date;
+		} = {};
+
+		if (minHeightParam) {
+			const v = parseInt(minHeightParam);
+			if (!isNaN(v)) filters.minHeight = v;
+		}
+		if (maxHeightParam) {
+			const v = parseInt(maxHeightParam);
+			if (!isNaN(v)) filters.maxHeight = v;
+		}
+		if (dateFromParam) {
+			const d = new Date(dateFromParam);
+			if (!isNaN(d.getTime())) filters.dateFrom = d;
+		}
+		if (dateToParam) {
+			const d = new Date(dateToParam);
+			if (!isNaN(d.getTime())) filters.dateTo = d;
+		}
+
+		const downloads = await downloadService.listDownloads(
 			userId,
 			statusParam as any,
 			limit,
-			offset
-		];
-
-		const downloads = await downloadService.listDownloads(...args);
+			offset,
+			Object.keys(filters).length > 0 ? filters : undefined
+		);
 
 		return json(downloads);
 	} catch (e: any) {
