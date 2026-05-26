@@ -43,6 +43,8 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'ldapSearchFilter',
 	'rateLimit',
 	'sleepInterval',
+	'proxyAuthEnabled',
+	'proxyAuthHeader',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -157,6 +159,8 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		ldapSearchFilter: { type: 'string', description: 'LDAP search filter template', nullable: true },
 		rateLimit: { type: 'string', description: 'Download speed limit (e.g. "5M" for 5MB/s)', nullable: true },
 		sleepInterval: { type: 'integer', description: 'Seconds to wait between downloads', nullable: true, minimum: 0 },
+		proxyAuthEnabled: { type: 'boolean', description: 'Enable reverse-proxy authentication headers' },
+		proxyAuthHeader: { type: 'string', description: 'Header name for proxy auth (e.g. X-Forwarded-User)' },
 	},
 	responses: {
 		200: {
@@ -323,6 +327,14 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 			if (!Number.isInteger(val) || val < 0 || val > 3600) {
 				throw error(400, 'sleepInterval must be an integer between 0 and 3600');
 			}
+		}
+
+		if (updates.proxyAuthHeader !== undefined) {
+			const header = String(updates.proxyAuthHeader).trim();
+			if (!header || !/^[a-zA-Z0-9-]+$/.test(header)) {
+				throw error(400, 'proxyAuthHeader must be a valid HTTP header name (letters, digits, hyphens)');
+			}
+			updates.proxyAuthHeader = header;
 		}
 
 		const settings = await prisma.settings.update({

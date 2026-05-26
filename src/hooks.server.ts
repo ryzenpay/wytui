@@ -1,8 +1,9 @@
-import { hasUsers, verifySessionToken, resolveApiKey } from '$lib/server/auth';
+import { hasUsers, verifySessionToken, resolveApiKey, issueSessionCookie, hashPassword } from '$lib/server/auth';
 import { jobScheduler } from '$lib/server/jobs/scheduler';
 import { ensureDefaults } from '$lib/server/init';
 import { redirect, type Handle } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
+import { randomBytes } from 'crypto';
 
 // Initialise database defaults and start background jobs on server startup
 const initPromise = ensureDefaults()
@@ -54,6 +55,58 @@ export const handle: Handle = async ({ event, resolve }) => {
 				}
 			} else {
 				event.cookies.delete('wytui.session-token', { path: '/' });
+			}
+		}
+	}
+
+	// Try reverse-proxy auth headers (Authelia/Authentik/etc.)
+	if (!event.locals.session?.user) {
+		const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+		if (settings?.proxyAuthEnabled) {
+			const headerName = settings.proxyAuthHeader || 'X-Forwarded-User';
+			const proxyUser = event.request.headers.get(headerName);
+
+			if (proxyUser) {
+				// Treat header value as username/email — look up or auto-create
+				const identifier = proxyUser.trim();
+				if (identifier) {
+					// Normalise to email-like if no @ present
+					const email = identifier.includes('@') ? identifier : `${identifier}@proxy.local`;
+
+					let user = await prisma.user.findUnique({ where: { email } });
+
+					if (!user) {
+						// Auto-create with a random password (they authenticate via proxy)
+						const randomPassword = randomBytes(32).toString('hex');
+						const hashedPassword = await hashPassword(randomPassword);
+						const isFirstUser = (await prisma.user.count()) === 0;
+						user = await prisma.user.create({
+							data: {
+								email,
+								password: hashedPassword,
+								name: identifier.includes('@') ? identifier.split('@')[0] : identifier,
+								isAdmin: isFirstUser,
+								emailVerified: new Date(),
+							},
+						});
+					}
+
+					event.locals.session = {
+						user: {
+							id: user.id,
+							email: user.email,
+							name: user.name ?? undefined,
+							isAdmin: user.isAdmin,
+						},
+					};
+
+					// Issue a session cookie so subsequent requests don't re-query
+					issueSessionCookie(event.cookies, {
+						id: user.id,
+						email: user.email,
+						isAdmin: user.isAdmin,
+					});
+				}
 			}
 		}
 	}
