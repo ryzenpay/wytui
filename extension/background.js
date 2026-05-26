@@ -65,18 +65,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+function authHeaders(apiKey) {
+  return apiKey ? { Authorization: 'Bearer ' + apiKey } : {};
+}
+
+function authCredentials(apiKey) {
+  return apiKey ? 'omit' : 'include';
+}
+
 async function lookupUrl(url) {
   try {
     const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
-    if (!data.serverUrl || !data.apiKey) return { success: false, downloads: [] };
+    if (!data.serverUrl) return { success: false, downloads: [] };
 
     const endpoint = `${data.serverUrl.replace(/\/+$/, '')}/api/downloads/quick?url=${encodeURIComponent(url)}`;
 
-    const res = await fetch(endpoint, { headers: { Authorization: 'Bearer ' + data.apiKey } });
+    const res = await fetch(endpoint, {
+      credentials: authCredentials(data.apiKey),
+      headers: authHeaders(data.apiKey),
+    });
 
-    if (!res.ok) {
-      return { success: false, downloads: [] };
-    }
+    if (!res.ok) return { success: false, downloads: [] };
     const downloads = await res.json();
     return { success: true, downloads };
   } catch (err) {
@@ -88,17 +97,18 @@ async function lookupUrl(url) {
 async function fetchProfiles() {
   try {
     const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
-    if (!data.serverUrl || !data.apiKey) return { success: false, profiles: [] };
+    if (!data.serverUrl) return { success: false, status: 0, profiles: [] };
 
     const res = await fetch(`${data.serverUrl.replace(/\/+$/, '')}/api/profiles`, {
-      headers: { Authorization: 'Bearer ' + data.apiKey },
+      credentials: authCredentials(data.apiKey),
+      headers: authHeaders(data.apiKey),
     });
 
-    if (!res.ok) return { success: false, profiles: [] };
+    if (!res.ok) return { success: false, status: res.status, profiles: [] };
     const profiles = await res.json();
-    return { success: true, profiles };
+    return { success: true, status: 200, profiles };
   } catch {
-    return { success: false, profiles: [] };
+    return { success: false, status: 0, profiles: [] };
   }
 }
 
@@ -106,8 +116,8 @@ async function sendToWytui(url, profileId, saveToLibrary) {
   try {
     const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
 
-    if (!data.serverUrl || !data.apiKey) {
-      return { success: false, error: 'Extension not configured. Open the popup to set server URL and API key.' };
+    if (!data.serverUrl) {
+      return { success: false, error: 'Extension not configured. Open the popup to set the server URL.' };
     }
 
     const endpoint = data.serverUrl.replace(/\/+$/, '') + '/api/downloads/quick';
@@ -118,9 +128,10 @@ async function sendToWytui(url, profileId, saveToLibrary) {
 
     const response = await fetch(endpoint, {
       method: 'POST',
+      credentials: authCredentials(data.apiKey),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + data.apiKey,
+        ...authHeaders(data.apiKey),
       },
       body: JSON.stringify(body),
     });

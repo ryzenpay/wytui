@@ -201,9 +201,26 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// Let CORS preflight through so browser extensions can reach /api/downloads/quick
-	if (event.request.method === 'OPTIONS' && isApiPath) {
-		return await resolve(event);
+	// Handle CORS for browser extension requests to the API
+	if (isApiPath) {
+		const origin = event.request.headers.get('origin');
+		// Allow browser extension origins (chrome-extension://, moz-extension://, etc.)
+		const isExtensionOrigin = origin && /^(chrome-extension|moz-extension|safari-web-extension):\/\//.test(origin);
+
+		if (event.request.method === 'OPTIONS') {
+			const headers: Record<string, string> = {
+				'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+				'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+				'Access-Control-Allow-Credentials': 'true',
+				'Access-Control-Max-Age': '86400',
+			};
+			if (isExtensionOrigin) headers['Access-Control-Allow-Origin'] = origin;
+			return new Response(null, { status: 204, headers });
+		}
+
+		if (isExtensionOrigin) {
+			event.locals.corsOrigin = origin;
+		}
 	}
 
 	// CSRF protection for state-changing requests
@@ -239,6 +256,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const response = await resolve(event);
+
+	if (event.locals.corsOrigin) {
+		response.headers.set('Access-Control-Allow-Origin', event.locals.corsOrigin);
+		response.headers.set('Access-Control-Allow-Credentials', 'true');
+		response.headers.set('Vary', 'Origin');
+	}
 
 	response.headers.set('X-Frame-Options', 'DENY');
 	response.headers.set('X-Content-Type-Options', 'nosniff');

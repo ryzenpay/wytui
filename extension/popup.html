@@ -46,6 +46,7 @@
       flex-shrink: 0;
     }
     .status-dot.connected { background: #10b981; animation: pulse 2s infinite; }
+    .status-dot.checking { background: #f59e0b; animation: pulse 1s infinite; }
     .status-dot.error { background: #ef4444; }
     @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
 
@@ -69,7 +70,8 @@
       margin-bottom: -1px;
     }
     .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
-    .tab-btn:hover:not(.active) { color: #a0a0a0; }
+    .tab-btn:hover:not(.active):not(:disabled) { color: #a0a0a0; }
+    .tab-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     /* Panels */
     .panel { display: none; padding: 14px 16px; }
@@ -434,8 +436,8 @@
       <input type="text" id="serverUrl" placeholder="https://wytui.example.com">
     </div>
     <div class="form-group">
-      <label for="apiKey">API Key</label>
-      <input type="password" id="apiKey" placeholder="wytui_...">
+      <label for="apiKey">API Key <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#3a3a3a">— optional if logged in</span></label>
+      <input type="password" id="apiKey" placeholder="wytui_… (leave blank to use browser session)">
     </div>
     <div class="save-row">
       <button class="btn btn-primary btn-save" id="saveBtn">Save</button>

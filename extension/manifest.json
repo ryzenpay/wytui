@@ -3,6 +3,12 @@
   "name": "wytui",
   "version": "1.0.0",
   "description": "Send any video to your wytui server for downloading.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "wytui@wytui",
+      "strict_min_version": "109.0"
+    }
+  },
   "permissions": ["activeTab", "storage", "contextMenus"],
   "host_permissions": [
     "*://youtube.com/*",
@@ -14,7 +20,8 @@
     "*://dailymotion.com/*",
     "*://www.dailymotion.com/*",
     "*://twitch.tv/*",
-    "*://www.twitch.tv/*"
+    "*://www.twitch.tv/*",
+    "*://*/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
@@ -35,7 +42,8 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
   "content_scripts": [
     {

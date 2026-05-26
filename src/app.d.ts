@@ -13,6 +13,7 @@ declare global {
 					isAdmin?: boolean;
 				};
 			} | null;
+			corsOrigin?: string;
 		}
 		interface PageData {
 			csrfToken?: string;

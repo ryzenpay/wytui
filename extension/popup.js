@@ -25,9 +25,17 @@ let serverUrl = '';
 let saveToLibrary = false;
 let existingLocked = false;
 
+const downloadTabBtn = document.querySelector('.tab-btn[data-tab="download"]');
+
+function setConfigured(configured) {
+  downloadTabBtn.disabled = !configured;
+  downloadTabBtn.title = configured ? '' : 'Configure wytui first';
+}
+
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
+    if (btn.disabled) return;
     document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
     document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
     btn.classList.add('active');
@@ -47,9 +55,16 @@ chrome.storage.local.get(['serverUrl', 'apiKey'], async (data) => {
   if (data.apiKey) apiKeyInput.value = data.apiKey;
 
   serverUrl = data.serverUrl || '';
-  updateStatus(data.serverUrl, data.apiKey);
 
-  // Get current tab
+  // If no server URL at all, go straight to settings
+  if (!data.serverUrl) {
+    updateStatus('unconfigured');
+    setConfigured(false);
+    switchToSettings();
+    return;
+  }
+
+  // Get current tab (do this while checking auth)
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab?.url) {
     currentTabUrl = tab.url;
@@ -62,12 +77,28 @@ chrome.storage.local.get(['serverUrl', 'apiKey'], async (data) => {
     }
   }
 
-  // Load profiles and check for existing downloads if configured
-  if (data.serverUrl && data.apiKey) {
-    loadProfiles();
-    if (currentTabUrl) lookupExisting(currentTabUrl);
+  // Verify auth (API key or cookie session) and load profiles
+  updateStatus('checking');
+  const profileResult = await chrome.runtime.sendMessage({ action: 'fetchProfiles' });
+  if (!profileResult?.success) {
+    updateStatus('error');
+    setConfigured(false);
+    switchToSettings();
+    return;
   }
+
+  updateStatus(data.apiKey ? 'connected-key' : 'connected-session');
+  setConfigured(true);
+  populateProfiles(profileResult);
+  if (currentTabUrl) lookupExisting(currentTabUrl);
 });
+
+function switchToSettings() {
+  document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="settings"]').classList.add('active');
+  document.getElementById('panel-settings').classList.add('active');
+}
 
 // Open in wytui (opens server root)
 openWytuiBtn.addEventListener('click', () => {
@@ -77,21 +108,30 @@ openWytuiBtn.addEventListener('click', () => {
 function formatUrl(url) {
   try {
     const u = new URL(url);
-    const path = u.pathname.length > 30 ? u.pathname.slice(0, 28) + '…' : u.pathname;
-    return u.hostname + path;
+    const path = u.pathname === '/' ? '' : u.pathname;
+    const query = u.search;
+    const full = u.hostname + path + query;
+    return full.length > 50 ? full.slice(0, 48) + '…' : full;
   } catch {
     return url;
   }
 }
 
-function updateStatus(url, key) {
-  if (url && key) {
-    statusDot.className = 'status-dot connected';
-    statusText.textContent = 'Connected';
+function updateStatus(state) {
+  const states = {
+    unconfigured:          ['status-dot', 'Not configured'],
+    checking:              ['status-dot checking', 'Checking…'],
+    'connected-key':       ['status-dot connected', 'Connected · API key'],
+    'connected-session':   ['status-dot connected', 'Connected · Session'],
+    error:                 ['status-dot error', 'Auth failed'],
+  };
+  const [cls, label] = states[state] || states.unconfigured;
+  statusDot.className = cls;
+  statusText.textContent = label;
+  const isConnected = state === 'connected-key' || state === 'connected-session';
+  if (isConnected) {
     if (!existingLocked) downloadBtn.disabled = false;
   } else {
-    statusDot.className = 'status-dot';
-    statusText.textContent = 'Not configured';
     downloadBtn.disabled = true;
   }
 }
@@ -139,12 +179,7 @@ redownloadBtn.addEventListener('click', () => {
   libraryToggleRow.style.pointerEvents = '';
 });
 
-async function loadProfiles() {
-  profileSelect.disabled = true;
-  profileSelect.innerHTML = '<option value="">Loading profiles…</option>';
-
-  const result = await chrome.runtime.sendMessage({ action: 'fetchProfiles' });
-
+function populateProfiles(result) {
   profileSelect.innerHTML = '';
 
   if (!result?.success || !result.profiles?.length) {
@@ -153,7 +188,6 @@ async function loadProfiles() {
     return;
   }
 
-  // Add default option
   const defaultOpt = document.createElement('option');
   defaultOpt.value = '';
   defaultOpt.textContent = 'Default profile';
@@ -170,7 +204,6 @@ async function loadProfiles() {
 
   if (!existingLocked) profileSelect.disabled = false;
 
-  // Select default profile
   const defaultProfile = result.profiles.find((p) => p.isDefault);
   if (defaultProfile) profileSelect.value = defaultProfile.id;
 }
@@ -185,12 +218,20 @@ saveBtn.addEventListener('click', () => {
     return;
   }
 
-  chrome.storage.local.set({ serverUrl: url, apiKey: key }, () => {
+  chrome.storage.local.set({ serverUrl: url, apiKey: key }, async () => {
     serverUrl = url;
-    updateStatus(url, key);
     saveBtn.textContent = 'Saved!';
     setTimeout(() => { saveBtn.textContent = 'Save'; }, 2000);
-    if (url && key) loadProfiles();
+    updateStatus('checking');
+    const profileResult = await chrome.runtime.sendMessage({ action: 'fetchProfiles' });
+    if (!profileResult?.success) {
+      updateStatus('error');
+      setConfigured(false);
+      return;
+    }
+    updateStatus(key ? 'connected-key' : 'connected-session');
+    setConfigured(true);
+    populateProfiles(profileResult);
   });
 });
 

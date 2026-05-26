@@ -61,5 +61,11 @@ export function isCsrfExempt(request: Request): boolean {
 		return true;
 	}
 
+	// Browser extension origins are trusted (chrome-extension://, moz-extension://, etc.)
+	const origin = request.headers.get('origin');
+	if (origin && /^(chrome-extension|moz-extension|safari-web-extension):\/\//.test(origin)) {
+		return true;
+	}
+
 	return false;
 }
