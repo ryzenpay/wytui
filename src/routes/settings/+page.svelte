@@ -57,7 +57,7 @@
 	onMount(async () => {
 		loadApiKeys();
 		if (isAdmin) {
-			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo()]);
+			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
 		}
 	});
 
@@ -164,6 +164,68 @@
 			settings.cleanupUserIds = current.filter((id: string) => id !== userId);
 		} else {
 			settings.cleanupUserIds = [...current, userId];
+		}
+	}
+
+	// Cookie management
+	let cookieStatus = $state<{ hasCookies: boolean; path: string | null }>({ hasCookies: false, path: null });
+	let uploadingCookies = $state(false);
+	let cookieError = $state<string | null>(null);
+
+	async function loadCookieStatus() {
+		try {
+			const res = await fetch('/api/settings/cookies');
+			if (res.ok) {
+				cookieStatus = await res.json();
+			}
+		} catch {
+			// best-effort
+		}
+	}
+
+	async function uploadCookieFile(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		uploadingCookies = true;
+		cookieError = null;
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const res = await fetch('/api/settings/cookies', {
+				method: 'POST',
+				body: formData,
+			});
+
+			if (res.ok) {
+				await loadCookieStatus();
+				addToast('success', 'Cookie file uploaded');
+			} else {
+				const data = await res.json().catch(() => null);
+				cookieError = data?.message || 'Failed to upload cookie file';
+			}
+		} catch {
+			cookieError = 'Failed to upload cookie file';
+		} finally {
+			uploadingCookies = false;
+			input.value = '';
+		}
+	}
+
+	async function deleteCookieFile() {
+		try {
+			const res = await fetch('/api/settings/cookies', { method: 'DELETE' });
+			if (res.ok) {
+				cookieStatus = { hasCookies: false, path: null };
+				addToast('success', 'Cookie file removed');
+			} else {
+				addToast('error', 'Failed to remove cookie file');
+			}
+		} catch {
+			addToast('error', 'Failed to remove cookie file');
 		}
 	}
 
@@ -845,6 +907,44 @@
 				</div>
 
 				<div class="settings-section">
+					<h2>Cookies</h2>
+					<p class="help-text" style="margin-bottom: var(--spacing-lg);">
+						Upload a Netscape-format cookies.txt file to access member-only and age-restricted content.
+					</p>
+
+					{#if cookieStatus.hasCookies}
+						<div class="info-box" style="margin-bottom: var(--spacing-md);">
+							Cookie file is active.
+						</div>
+						<button
+							class="btn-danger btn-sm btn-with-icon"
+							onclick={deleteCookieFile}
+						>
+							<TrashIcon width={14} height={14} />
+							Remove Cookies
+						</button>
+					{:else}
+						<label class="cookie-upload-label btn-secondary btn-sm btn-with-icon">
+							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+							{uploadingCookies ? 'Uploading...' : 'Upload cookies.txt'}
+							<input
+								type="file"
+								accept=".txt"
+								onchange={uploadCookieFile}
+								disabled={uploadingCookies}
+								style="display: none;"
+							/>
+						</label>
+					{/if}
+
+					{#if cookieError}
+						<div class="error-message" style="margin-top: var(--spacing-md);">
+							{cookieError}
+						</div>
+					{/if}
+				</div>
+
+				<div class="settings-section">
 					<h2>Auto-Delete</h2>
 					<div class="form-group">
 						<label for="autoDeleteDays">Delete watched videos after (days)</label>
@@ -1452,6 +1552,15 @@
 		gap: var(--spacing-sm);
 		font-weight: 400;
 		cursor: pointer;
+	}
+
+	.cookie-upload-label {
+		cursor: pointer;
+	}
+
+	.cookie-upload-label:has(input:disabled) {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.cleanup-section {

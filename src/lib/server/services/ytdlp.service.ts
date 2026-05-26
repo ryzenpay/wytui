@@ -161,10 +161,15 @@ export class YtdlpService {
 	/**
 	 * Fetch video metadata using -J flag
 	 */
-	async fetchMetadata(url: string): Promise<DownloadMetadata> {
+	async fetchMetadata(url: string, options?: { cookiePath?: string | null }): Promise<DownloadMetadata> {
 		this.validateUrl(url);
 		return new Promise((resolve, reject) => {
-			const proc = spawn(this.ytdlpPath, ['-J', '--no-warnings', url]);
+			const args = ['-J', '--no-warnings'];
+			if (options?.cookiePath) {
+				args.push('--cookies', options.cookiePath);
+			}
+			args.push(url);
+			const proc = spawn(this.ytdlpPath, args);
 			let output = '';
 			let error = '';
 
@@ -331,7 +336,7 @@ export class YtdlpService {
 		url: string,
 		outputPath: string,
 		customFlags: string[] = [],
-		options?: { rateLimit?: string | null; sleepInterval?: number | null }
+		options?: { rateLimit?: string | null; sleepInterval?: number | null; cookiePath?: string | null }
 	): string[] {
 		this.validateUrl(url);
 
@@ -357,6 +362,11 @@ export class YtdlpService {
 		}
 		if (options?.sleepInterval && options.sleepInterval > 0) {
 			args.push('--sleep-interval', String(options.sleepInterval));
+		}
+
+		// Add cookie authentication if configured
+		if (options?.cookiePath) {
+			args.push('--cookies', options.cookiePath);
 		}
 
 		// Add custom flags with filtering
