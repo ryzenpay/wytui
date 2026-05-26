@@ -45,6 +45,7 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'sleepInterval',
 	'proxyAuthEnabled',
 	'proxyAuthHeader',
+	'versionCheckEnabled',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -161,6 +162,7 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		sleepInterval: { type: 'integer', description: 'Seconds to wait between downloads', nullable: true, minimum: 0 },
 		proxyAuthEnabled: { type: 'boolean', description: 'Enable reverse-proxy authentication headers' },
 		proxyAuthHeader: { type: 'string', description: 'Header name for proxy auth (e.g. X-Forwarded-User)' },
+		versionCheckEnabled: { type: 'boolean', description: 'Enable automatic version update checks' },
 	},
 	responses: {
 		200: {
