@@ -14,6 +14,14 @@ export function formatDuration(seconds: number): string {
 	return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+export function formatTimestamp(totalSeconds: number): string {
+	const h = Math.floor(totalSeconds / 3600);
+	const m = Math.floor((totalSeconds % 3600) / 60);
+	const s = Math.floor(totalSeconds % 60);
+	if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+	return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 export function formatUptime(ms: number): string {
 	const seconds = Math.floor(ms / 1000);
 	const days = Math.floor(seconds / 86400);

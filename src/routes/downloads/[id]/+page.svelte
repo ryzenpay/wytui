@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
@@ -151,6 +152,12 @@
 		}
 	}
 
+	// Use ?t= query param for subtitle timestamp linking, fallback to watch progress
+	let urlStartTime = $derived(() => {
+		const t = $page.url.searchParams.get('t');
+		return t ? parseFloat(t) : null;
+	});
+
 	let isVideo = $derived(
 		download.filepath?.match(/\.(mp4|webm|mkv)$/i) !== null
 	);
@@ -213,7 +220,7 @@
 					src="/api/files/{download.id}"
 					poster={download.thumbnail || undefined}
 					videoId={download.videoId || undefined}
-					startTime={download.watchProgress?.position ?? 0}
+					startTime={urlStartTime() ?? download.watchProgress?.position ?? 0}
 					onEnded={handleVideoEnded}
 				/>
 			{:else if isAudio && download.status === 'COMPLETED'}
