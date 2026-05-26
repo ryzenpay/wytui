@@ -86,10 +86,15 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		similar = rows;
 	}
 
+	// Timestamp deep link: ?t=123 jumps to that second
+	const tParam = url.searchParams.get('t');
+	const startTimeParam = tParam !== null ? parseFloat(tParam) : null;
+
 	return {
 		download: serialized,
 		jellyfinUrl: settings?.jellyfinExternalUrl || settings?.jellyfinUrl || '',
 		playlistContext,
 		similar,
+		startTimeParam: startTimeParam !== null && isFinite(startTimeParam) && startTimeParam > 0 ? startTimeParam : null,
 	};
 };

@@ -3,6 +3,7 @@
 		src,
 		poster,
 		videoId,
+		downloadId,
 		startTime = 0,
 		subtitles = [],
 		onEnded,
@@ -10,6 +11,7 @@
 		src: string;
 		poster?: string;
 		videoId?: string;
+		downloadId?: string;
 		startTime?: number;
 		subtitles?: { label: string; lang: string; src: string }[];
 		onEnded?: () => void;
@@ -301,6 +303,23 @@
 		helpTimer = setTimeout(() => { showHelp = false; }, 4000);
 	}
 
+	let linkCopiedNotification = $state('');
+	let linkCopiedTimer: ReturnType<typeof setTimeout> | undefined;
+
+	async function copyLinkAtCurrentTime() {
+		if (!downloadId) return;
+		const t = Math.floor(currentTime);
+		const url = `${window.location.origin}/downloads/${downloadId}?t=${t}`;
+		try {
+			await navigator.clipboard.writeText(url);
+			linkCopiedNotification = 'Link copied to clipboard';
+		} catch {
+			linkCopiedNotification = 'Failed to copy link';
+		}
+		if (linkCopiedTimer) clearTimeout(linkCopiedTimer);
+		linkCopiedTimer = setTimeout(() => { linkCopiedNotification = ''; }, 2500);
+	}
+
 	$effect(() => {
 		function handleFsChange() {
 			isFullscreen = !!document.fullscreenElement;
@@ -506,6 +525,10 @@
 				break;
 			case '>':
 				changeSpeed(1);
+				break;
+			case 'l':
+			case 'L':
+				copyLinkAtCurrentTime();
 				break;
 			case '?':
 				showHelpOverlay();
@@ -800,6 +823,11 @@
 		<div class="skip-toast">{skipNotification}</div>
 	{/if}
 
+	<!-- Link copied toast -->
+	{#if linkCopiedNotification}
+		<div class="skip-toast link-toast">{linkCopiedNotification}</div>
+	{/if}
+
 	<!-- Right-click context menu -->
 	{#if contextMenu}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -823,6 +851,15 @@
 				Skip Sponsors
 				{#if autoSkipEnabled}<span class="ctx-check">✓</span>{/if}
 			</button>
+			{#if downloadId}
+				<button class="ctx-item" onclick={() => { copyLinkAtCurrentTime(); closeContextMenu(); }}>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+						<path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+					</svg>
+					Copy link at current time
+				</button>
+			{/if}
 			<div class="ctx-divider"></div>
 			<div class="ctx-label">Speed</div>
 			<div class="ctx-speeds">
@@ -851,6 +888,7 @@
 				<span>M</span><span>Mute</span>
 				<span>C</span><span>Cycle subtitles</span>
 				<span>&lt; / &gt;</span><span>Speed down / up</span>
+				<span>L</span><span>Copy link at time</span>
 				<span>?</span><span>Show this help</span>
 				<span>Esc</span><span>Exit theater / help</span>
 			</div>
@@ -1295,6 +1333,10 @@
 		pointer-events: none;
 		animation: toast-in 0.3s ease;
 		border-left: 3px solid #00d400;
+	}
+
+	.link-toast {
+		border-left-color: var(--accent-primary, #3b82f6);
 	}
 
 	@keyframes toast-in {
