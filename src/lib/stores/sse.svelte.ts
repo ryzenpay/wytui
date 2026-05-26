@@ -108,6 +108,16 @@ export function connectSSE() {
 		dispatchCallbacks('download:deleted', data);
 	});
 
+	eventSource.addEventListener('download:tasks', (e) => {
+		const data = JSON.parse(e.data);
+		dispatchCallbacks('download:tasks', data);
+	});
+
+	eventSource.addEventListener('download:task', (e) => {
+		const data = JSON.parse(e.data);
+		dispatchCallbacks('download:task', data);
+	});
+
 	eventSource.addEventListener('subscription:checked', (e) => {
 		const data = JSON.parse(e.data);
 		dispatchCallbacks('subscription:checked', data);
