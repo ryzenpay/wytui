@@ -3,6 +3,7 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 
 	interface Props {
 		data: {
@@ -510,7 +511,9 @@
 			</button>
 		</div>
 	{:else if loading}
-		<div class="loading">Loading...</div>
+		<div class="general-settings">
+			<Skeleton count={3} variant="row" />
+		</div>
 	{:else}
 		{#if activeTab === 'general' && settings}
 			<div class="general-settings">
@@ -1021,14 +1024,14 @@
 
 		{#if activeTab === 'analytics'}
 			{#if analyticsLoading}
-				<div class="loading">Loading analytics...</div>
+				<Skeleton count={6} variant="row" />
 			{:else if analytics}
 				<div class="settings-section">
 					<div class="section-header">
 						<h2>Analytics Overview</h2>
-						<button class="btn-secondary btn-sm" onclick={loadAnalytics}>
-							Refresh
-						</button>
+						<button class="btn-secondary btn-sm btn-icon" onclick={loadAnalytics} aria-label="Refresh analytics" title="Refresh analytics">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+					</button>
 					</div>
 
 					<div class="analytics-grid">
@@ -1278,8 +1281,12 @@
 					<div class="info-box warning-box">
 						<strong>Copy your key now — it won't be shown again:</strong>
 						<code class="api-key-display">{newKeyResult}</code>
-						<button class="btn-secondary btn-sm" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }}>Copy</button>
-						<button class="btn-secondary btn-sm" onclick={() => newKeyResult = null}>Dismiss</button>
+						<button class="btn-secondary btn-sm btn-icon" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }} aria-label="Copy key" title="Copy key">
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+						</button>
+						<button class="btn-secondary btn-sm btn-icon" onclick={() => newKeyResult = null} aria-label="Dismiss" title="Dismiss">
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+						</button>
 					</div>
 				{/if}
 
@@ -1302,7 +1309,9 @@
 										{/if}
 									</span>
 								</div>
-								<button class="btn-danger btn-sm" onclick={() => revokeApiKey(key.id)}>Revoke</button>
+								<button class="btn-danger btn-sm btn-icon" onclick={() => revokeApiKey(key.id)} aria-label="Revoke key" title="Revoke key">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+								</button>
 							</div>
 						{/each}
 					</div>
@@ -1438,12 +1447,6 @@
 		background: var(--accent-primary);
 		color: #fff;
 		font-weight: 600;
-	}
-
-	.loading {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
 	}
 
 	.general-settings {
@@ -1773,6 +1776,18 @@
 	.btn-sm {
 		padding: var(--spacing-sm) var(--spacing-md);
 		font-size: 0.875rem;
+	}
+
+	.btn-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-sm) !important;
+		line-height: 1;
+	}
+
+	.btn-icon svg {
+		display: block;
 	}
 
 	.btn-lg {

@@ -494,29 +494,43 @@
 
 							<div class="actions">
 								<button
-									class="btn btn-sm btn-primary"
+									class="btn btn-sm btn-icon btn-primary"
 									onclick={() => checkNow(sub.id)}
 									disabled={checkingNow.has(sub.id)}
+									aria-label="Check now"
+									title="Check now"
 								>
-									{checkingNow.has(sub.id) ? 'Checking...' : 'Check Now'}
+									{#if checkingNow.has(sub.id)}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+									{/if}
 								</button>
-								<button class="btn btn-sm btn-secondary" onclick={() => startEditSub(sub)}>
-									Edit
+								<button class="btn btn-sm btn-icon btn-secondary" onclick={() => startEditSub(sub)} aria-label="Edit" title="Edit">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 								</button>
 								<button
-									class="btn btn-sm btn-secondary"
+									class="btn btn-sm btn-icon btn-secondary"
 									onclick={() => toggleSubscription(sub.id, sub.enabled)}
+									aria-label={sub.enabled ? 'Pause' : 'Resume'}
+									title={sub.enabled ? 'Pause' : 'Resume'}
 								>
-									{sub.enabled ? 'Pause' : 'Resume'}
+									{#if sub.enabled}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+									{/if}
 								</button>
 								<button
-									class="btn btn-sm btn-secondary"
+									class="btn btn-sm btn-icon btn-secondary"
 									onclick={() => (showBackfillMenu = showBackfillMenu === sub.id ? null : sub.id)}
+									aria-label={showBackfillMenu === sub.id ? 'Close backfill' : 'Backfill'}
+									title={showBackfillMenu === sub.id ? 'Close backfill' : 'Backfill'}
 								>
-									{showBackfillMenu === sub.id ? 'Close' : 'Backfill'}
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
 								</button>
-								<button class="btn btn-sm btn-danger" onclick={() => deleteSubscription(sub.id)}>
-									Delete
+								<button class="btn btn-sm btn-icon btn-danger" onclick={() => deleteSubscription(sub.id)} aria-label="Delete" title="Delete">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 								</button>
 							</div>
 
@@ -844,6 +858,21 @@
 		gap: var(--spacing-sm);
 		margin-top: var(--spacing-md);
 	}
+
+	:global(.btn-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-sm) !important;
+		line-height: 1;
+	}
+
+	:global(.btn-icon svg) {
+		display: block;
+	}
+
+	@keyframes spin { to { transform: rotate(360deg); } }
+	:global(.spin) { animation: spin 1s linear infinite; }
 
 	@media (max-width: 768px) {
 		.page {

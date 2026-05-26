@@ -5,6 +5,7 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { formatDuration, formatBytes } from '$lib/utils/format';
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 
 	let playlist = $state<any>(null);
 	let loading = $state(true);
@@ -141,7 +142,7 @@
 	<a href="/playlists" class="back-link">Back to Playlists</a>
 
 	{#if loading}
-		<div class="loading">Loading playlist...</div>
+		<Skeleton count={4} variant="row" />
 	{:else if loadError}
 		<div class="empty-state">
 			<p>{loadError}</p>
@@ -176,9 +177,15 @@
 					</p>
 				</div>
 				<div class="header-actions">
-					<button class="btn btn-sm btn-secondary" onclick={startEdit}>Edit</button>
-					<button class="btn btn-sm btn-danger" onclick={handleDelete} disabled={deleting}>
-						{deleting ? 'Deleting...' : 'Delete'}
+					<button class="btn btn-sm btn-icon btn-secondary" onclick={startEdit} aria-label="Edit playlist" title="Edit playlist">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+					</button>
+					<button class="btn btn-sm btn-icon btn-danger" onclick={handleDelete} disabled={deleting} aria-label="Delete playlist" title="Delete playlist">
+						{#if deleting}
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+						{:else}
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+						{/if}
 					</button>
 				</div>
 			{/if}
@@ -223,11 +230,12 @@
 							</div>
 						</button>
 						<button
-							class="btn btn-sm btn-danger remove-btn"
+							class="btn btn-sm btn-icon btn-danger remove-btn"
 							onclick={() => removeItem(item.downloadId, item.download.title)}
+							aria-label="Remove from playlist"
 							title="Remove from playlist"
 						>
-							Remove
+							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 						</button>
 					</div>
 				{/each}
@@ -253,12 +261,6 @@
 
 	.back-link:hover {
 		text-decoration: underline;
-	}
-
-	.loading {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
 	}
 
 	.empty-state {
@@ -409,6 +411,21 @@
 	.remove-btn {
 		flex-shrink: 0;
 	}
+
+	:global(.btn-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-sm) !important;
+		line-height: 1;
+	}
+
+	:global(.btn-icon svg) {
+		display: block;
+	}
+
+	@keyframes spin { to { transform: rotate(360deg); } }
+	:global(.spin) { animation: spin 1s linear infinite; }
 
 	@media (max-width: 768px) {
 		.page {

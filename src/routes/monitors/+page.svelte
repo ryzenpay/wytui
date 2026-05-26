@@ -357,17 +357,23 @@
 							{/if}
 
 							<div class="actions">
-								<button class="btn btn-sm btn-secondary" onclick={() => startEditMonitor(monitor)}>
-									Edit
+								<button class="btn btn-sm btn-icon btn-secondary" onclick={() => startEditMonitor(monitor)} aria-label="Edit" title="Edit">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 								</button>
 								<button
-									class="btn btn-sm btn-secondary"
+									class="btn btn-sm btn-icon btn-secondary"
 									onclick={() => toggleMonitor(monitor.id, monitor.enabled)}
+									aria-label={monitor.enabled ? 'Pause' : 'Resume'}
+									title={monitor.enabled ? 'Pause' : 'Resume'}
 								>
-									{monitor.enabled ? 'Pause' : 'Resume'}
+									{#if monitor.enabled}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+									{/if}
 								</button>
-								<button class="btn btn-sm btn-danger" onclick={() => deleteMonitor(monitor.id)}>
-									Delete
+								<button class="btn btn-sm btn-icon btn-danger" onclick={() => deleteMonitor(monitor.id)} aria-label="Delete" title="Delete">
+									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 								</button>
 							</div>
 						{/if}
@@ -638,6 +644,18 @@
 		flex-wrap: wrap;
 		gap: var(--spacing-sm);
 		margin-top: var(--spacing-md);
+	}
+
+	:global(.btn-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-sm) !important;
+		line-height: 1;
+	}
+
+	:global(.btn-icon svg) {
+		display: block;
 	}
 
 	@media (max-width: 768px) {

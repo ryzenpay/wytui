@@ -336,8 +336,12 @@
 						<div class="cache-usage-right">
 							<span class="cache-usage-value">{formatBytes(cacheUsage.usedBytes)} / {formatBytes(cacheUsage.quotaBytes)}</span>
 							{#if Number(cacheUsage.usedBytes) > 0}
-								<button class="btn btn-sm btn-secondary cache-clear-btn" onclick={clearCache} disabled={clearingCache}>
-									{clearingCache ? 'Clearing...' : 'Clear'}
+								<button class="btn btn-sm btn-secondary cache-clear-btn" onclick={clearCache} disabled={clearingCache} aria-label="Clear cache" title="Clear cache">
+									{#if clearingCache}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+									{:else}
+										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+									{/if}
 								</button>
 							{/if}
 						</div>
@@ -532,8 +536,12 @@
 					<button class="btn btn-sm btn-secondary" onclick={() => { selectedIds.size === filteredCompletedDownloads.length ? deselectAll() : selectAll(); }}>
 						{selectedIds.size === filteredCompletedDownloads.length ? 'Deselect All' : 'Select All'}
 					</button>
-					<button class="btn btn-sm btn-accent" onclick={bulkPromote} disabled={bulkActing}>Move to Library</button>
-					<button class="btn btn-sm btn-danger" onclick={bulkDelete} disabled={bulkActing}>Delete</button>
+					<button class="btn btn-sm btn-icon btn-accent" onclick={bulkPromote} disabled={bulkActing} aria-label="Move to library" title="Move to library">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/></svg>
+					</button>
+					<button class="btn btn-sm btn-icon btn-danger" onclick={bulkDelete} disabled={bulkActing} aria-label="Delete selected" title="Delete selected">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+					</button>
 				</div>
 			</div>
 		{/if}
@@ -678,7 +686,29 @@
 	}
 	.cache-usage-tooltip:hover::after { opacity: 1; }
 	.cache-usage-value { font-size: 0.8125rem; color: var(--text-secondary); }
-	.cache-clear-btn { padding: 2px 8px !important; font-size: 0.6875rem !important; }
+	.cache-clear-btn {
+		padding: 4px !important;
+		font-size: 0 !important;
+		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.cache-clear-btn svg { display: block; }
+
+	:global(.btn-icon) {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--spacing-sm) !important;
+		line-height: 1;
+	}
+
+	:global(.btn-icon svg) {
+		display: block;
+	}
+	@keyframes spin { to { transform: rotate(360deg); } }
+	.cache-clear-btn .spin { animation: spin 1s linear infinite; }
 	.cache-usage-bar { height: 6px; background: var(--bg-tertiary); border-radius: var(--radius-sm); overflow: hidden; }
 	.cache-usage-fill { height: 100%; background: var(--accent-primary); border-radius: var(--radius-sm); transition: width 0.3s ease; }
 	.cache-usage-fill.warning { background: var(--warning); }
