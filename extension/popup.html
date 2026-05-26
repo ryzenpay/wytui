@@ -26,7 +26,7 @@
     .logo {
       font-size: 16px;
       font-weight: 700;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      background: linear-gradient(135deg, #7c3aed, #3b82f6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -68,7 +68,7 @@
       border-bottom: 2px solid transparent;
       margin-bottom: -1px;
     }
-    .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+    .tab-btn.active { color: #7c3aed; border-bottom-color: #7c3aed; }
     .tab-btn:hover:not(.active) { color: #a0a0a0; }
 
     /* Panels */
@@ -107,7 +107,7 @@
       border-radius: 4px;
       transition: color 150ms ease;
     }
-    .url-open-btn:hover { color: #3b82f6; }
+    .url-open-btn:hover { color: #7c3aed; }
 
     /* Form controls */
     .form-group { margin-bottom: 10px; }
@@ -142,7 +142,7 @@
       padding-right: 28px;
       cursor: pointer;
     }
-    select:focus, input:focus { border-color: #3b82f6; }
+    select:focus, input:focus { border-color: #7c3aed; }
     input::placeholder { color: #606060; }
     select option { background: #1e1e1e; }
 
@@ -178,7 +178,7 @@
       top: 3px; left: 3px;
       transition: transform 150ms ease;
     }
-    .toggle.on { background: #3b82f6; }
+    .toggle.on { background: #7c3aed; }
     .toggle.on::after { transform: translateX(16px); }
 
     /* Buttons */
@@ -198,8 +198,8 @@
       transition: background 150ms ease, opacity 150ms ease;
     }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-primary { background: #3b82f6; color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: #2563eb; }
+    .btn-primary { background: #7c3aed; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #6d28d9; }
     .btn-secondary { background: #1e1e1e; color: #ffffff; border: 1px solid #3a3a3a; }
     .btn-secondary:hover:not(:disabled) { background: #2a2a2a; }
     .btn-ghost {
@@ -231,7 +231,7 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      color: #3b82f6;
+      color: #7c3aed;
       text-decoration: none;
       font-size: 12px;
       margin-top: 6px;
@@ -252,9 +252,16 @@
 <body>
 
   <div class="header">
-    <svg width="18" height="18" viewBox="0 0 128 128" fill="none">
-      <path d="M64 26L64 80M44 62L64 82L84 62" stroke="#3b82f6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
-      <line x1="36" y1="98" x2="92" y2="98" stroke="#3b82f6" stroke-width="14" stroke-linecap="round"/>
+    <svg width="20" height="20" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="pg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#3b82f6"/>
+        </linearGradient>
+      </defs>
+      <rect width="128" height="128" rx="28" fill="url(#pg)"/>
+      <path d="M64 30L64 78M44 62L64 82L84 62" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M38 94L90 94" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
     </svg>
     <span class="logo">wytui</span>
     <div class="status-badge">

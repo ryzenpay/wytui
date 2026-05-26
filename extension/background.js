@@ -35,7 +35,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetchProfiles().then(sendResponse);
     return true;
   }
+  if (message.action === 'lookupUrl') {
+    lookupUrl(message.url).then(sendResponse);
+    return true;
+  }
 });
+
+async function lookupUrl(url) {
+  try {
+    const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
+    if (!data.serverUrl || !data.apiKey) return { success: false, downloads: [] };
+
+    const res = await fetch(
+      `${data.serverUrl.replace(/\/+$/, '')}/api/downloads/quick?url=${encodeURIComponent(url)}`,
+      { headers: { Authorization: 'Bearer ' + data.apiKey } }
+    );
+
+    if (!res.ok) return { success: false, downloads: [] };
+    const downloads = await res.json();
+    return { success: true, downloads };
+  } catch {
+    return { success: false, downloads: [] };
+  }
+}
 
 async function fetchProfiles() {
   try {
