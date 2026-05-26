@@ -338,6 +338,9 @@ model Settings {
   notifyOnComplete Boolean @default(false)
   notifyOnFail     Boolean @default(false)
 
+  // Return YouTube Dislike integration
+  rydEnabled       Boolean @default(false)
+
   // Backup
   backupEnabled    Boolean @default(false)
   backupCron       String?
