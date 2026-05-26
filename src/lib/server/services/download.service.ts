@@ -254,7 +254,8 @@ class DownloadService {
 		const args = ytdlpService.buildArgs(
 			download.url,
 			outputPath,
-			mergedFlags
+			mergedFlags,
+			{ rateLimit: settings.rateLimit, sleepInterval: settings.sleepInterval }
 		);
 
 		if (download.duration) {

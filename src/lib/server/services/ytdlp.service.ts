@@ -330,7 +330,8 @@ export class YtdlpService {
 	buildArgs(
 		url: string,
 		outputPath: string,
-		customFlags: string[] = []
+		customFlags: string[] = [],
+		options?: { rateLimit?: string | null; sleepInterval?: number | null }
 	): string[] {
 		this.validateUrl(url);
 
@@ -349,6 +350,14 @@ export class YtdlpService {
 			'--no-warnings',
 			'--no-colors',
 		];
+
+		// Rate limiting
+		if (options?.rateLimit) {
+			args.push('--limit-rate', options.rateLimit);
+		}
+		if (options?.sleepInterval && options.sleepInterval > 0) {
+			args.push('--sleep-interval', String(options.sleepInterval));
+		}
 
 		// Add custom flags with filtering
 		if (customFlags.length > 0) {

@@ -41,6 +41,8 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'ldapBindPassword',
 	'ldapSearchBase',
 	'ldapSearchFilter',
+	'rateLimit',
+	'sleepInterval',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -153,6 +155,8 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		ldapBindPassword: { type: 'string', description: 'LDAP bind password', nullable: true },
 		ldapSearchBase: { type: 'string', description: 'LDAP search base DN', nullable: true },
 		ldapSearchFilter: { type: 'string', description: 'LDAP search filter template', nullable: true },
+		rateLimit: { type: 'string', description: 'Download speed limit (e.g. "5M" for 5MB/s)', nullable: true },
+		sleepInterval: { type: 'integer', description: 'Seconds to wait between downloads', nullable: true, minimum: 0 },
 	},
 	responses: {
 		200: {
@@ -304,6 +308,20 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 			const allowed = ['video', 'music'];
 			if (!Array.isArray(updates.cleanupProfileTypes) || !updates.cleanupProfileTypes.every((t: unknown) => allowed.includes(t as string))) {
 				throw error(400, 'cleanupProfileTypes must only contain "video" or "music"');
+			}
+		}
+
+		if (updates.rateLimit !== undefined && updates.rateLimit !== null) {
+			const rateLimitPattern = /^\d+(\.\d+)?[KMG]?$/i;
+			if (!rateLimitPattern.test(updates.rateLimit)) {
+				throw error(400, 'rateLimit must be a number optionally followed by K, M, or G (e.g. "5M")');
+			}
+		}
+
+		if (updates.sleepInterval !== undefined && updates.sleepInterval !== null) {
+			const val = Number(updates.sleepInterval);
+			if (!Number.isInteger(val) || val < 0 || val > 3600) {
+				throw error(400, 'sleepInterval must be an integer between 0 and 3600');
 			}
 		}
 

@@ -91,7 +91,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -585,6 +585,32 @@
 								step="0.5"
 							/>
 							<p class="help-text">Skip downloads longer than this (0 = no limit)</p>
+						</div>
+					</div>
+
+					<div class="form-row">
+						<div class="form-group">
+							<label for="rateLimit">Speed Limit</label>
+							<input
+								type="text"
+								id="rateLimit"
+								bind:value={settings.rateLimit}
+								placeholder="Unlimited"
+							/>
+							<p class="help-text">e.g. "5M" for 5 MB/s, "500K" for 500 KB/s</p>
+						</div>
+
+						<div class="form-group">
+							<label for="sleepInterval">Sleep Between Downloads (seconds)</label>
+							<input
+								type="number"
+								id="sleepInterval"
+								bind:value={settings.sleepInterval}
+								min="0"
+								max="3600"
+								placeholder="0"
+							/>
+							<p class="help-text">Wait time between consecutive downloads</p>
 						</div>
 					</div>
 

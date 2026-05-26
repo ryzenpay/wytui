@@ -330,6 +330,10 @@ model Settings {
   // Download limits
   maxDurationSeconds Int? @default(10800) // 3 hours default
 
+  // Rate limiting
+  rateLimit     String? // e.g. "5M" for 5MB/s, passed as --limit-rate
+  sleepInterval Int?    // seconds between downloads, passed as --sleep-interval
+
   // Auto-delete watched videos
   autoDeleteWatchedDays Int?
 
