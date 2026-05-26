@@ -213,7 +213,8 @@
 					src="/api/files/{download.id}"
 					poster={download.thumbnail || undefined}
 					videoId={download.videoId || undefined}
-					startTime={download.watchProgress?.position ?? 0}
+					downloadId={download.id}
+					startTime={data.startTimeParam ?? download.watchProgress?.position ?? 0}
 					onEnded={handleVideoEnded}
 				/>
 			{:else if isAudio && download.status === 'COMPLETED'}
