@@ -41,6 +41,26 @@
 	let helpTimer: ReturnType<typeof setTimeout> | undefined;
 	let activeSubtitleIndex = $state(-1); // -1 = off
 
+	// -- Loop --
+	let loopEnabled = $state(false);
+	$effect(() => { if (videoEl) videoEl.loop = loopEnabled; });
+
+	// -- Context menu --
+	let contextMenu = $state<{ x: number; y: number } | null>(null);
+
+	function openContextMenu(e: MouseEvent) {
+		e.preventDefault();
+		// Clamp so menu doesn't overflow viewport
+		const menuW = 190, menuH = 220;
+		const x = Math.min(e.clientX, window.innerWidth - menuW - 8);
+		const y = Math.min(e.clientY, window.innerHeight - menuH - 8);
+		contextMenu = { x, y };
+	}
+
+	function closeContextMenu() {
+		contextMenu = null;
+	}
+
 	// -- SponsorBlock --
 	type SBSegment = {
 		segment: [number, number];
@@ -552,6 +572,7 @@
 	onkeydown={handleKeydown}
 	onmousemove={resetHideTimer}
 	onclick={handleWrapperClick}
+	oncontextmenu={openContextMenu}
 	role="application"
 	aria-label="Video player"
 >
@@ -779,6 +800,41 @@
 		<div class="skip-toast">{skipNotification}</div>
 	{/if}
 
+	<!-- Right-click context menu -->
+	{#if contextMenu}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="ctx-backdrop" onclick={closeContextMenu}></div>
+		<div class="ctx-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;" oncontextmenu={(e) => e.preventDefault()}>
+			<button class="ctx-item ctx-item-toggle" class:active={loopEnabled} onclick={() => { loopEnabled = !loopEnabled; closeContextMenu(); }}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="17 1 21 5 17 9" />
+					<path d="M3 11V9a4 4 0 014-4h14" />
+					<polyline points="7 23 3 19 7 15" />
+					<path d="M21 13v2a4 4 0 01-4 4H3" />
+				</svg>
+				Loop
+				{#if loopEnabled}<span class="ctx-check">✓</span>{/if}
+			</button>
+			<button class="ctx-item ctx-item-toggle" class:active={autoSkipEnabled} onclick={() => { autoSkipEnabled = !autoSkipEnabled; closeContextMenu(); }}>
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="10" />
+					<path d="M10 15l5-3-5-3v6z" fill="currentColor" stroke="none" />
+				</svg>
+				Skip Sponsors
+				{#if autoSkipEnabled}<span class="ctx-check">✓</span>{/if}
+			</button>
+			<div class="ctx-divider"></div>
+			<div class="ctx-label">Speed</div>
+			<div class="ctx-speeds">
+				{#each SPEED_OPTIONS as speed}
+					<button class="ctx-speed" class:active={playbackRate === speed} onclick={() => { setSpeed(speed); closeContextMenu(); }}>
+						{speed}x
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	<!-- Help overlay -->
 	{#if showHelp}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -860,7 +916,7 @@
 		left: 0;
 		right: 0;
 		background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
-		padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+		padding: 0 var(--spacing-md) var(--spacing-sm);
 		opacity: 0;
 		transition: opacity var(--transition-normal);
 		display: flex;
@@ -1129,6 +1185,99 @@
 
 	.help-grid span:nth-child(even) {
 		color: rgba(255,255,255,0.8);
+	}
+
+	/* Context menu */
+	.ctx-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 200;
+	}
+
+	.ctx-menu {
+		position: fixed;
+		z-index: 201;
+		background: rgba(20, 20, 20, 0.95);
+		backdrop-filter: blur(8px);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-xs);
+		min-width: 180px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+	}
+
+	.ctx-item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		width: 100%;
+		padding: 7px var(--spacing-sm);
+		background: none;
+		border: none;
+		color: rgba(255, 255, 255, 0.9);
+		font: inherit;
+		font-size: 0.875rem;
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		text-align: left;
+		transition: background var(--transition-fast);
+		min-height: unset;
+		min-width: unset;
+	}
+
+	.ctx-item:hover {
+		background: rgba(255, 255, 255, 0.1);
+	}
+
+	.ctx-check {
+		margin-left: auto;
+		color: var(--accent-primary);
+		font-size: 0.75rem;
+	}
+
+	.ctx-divider {
+		height: 1px;
+		background: rgba(255, 255, 255, 0.1);
+		margin: var(--spacing-xs) 0;
+	}
+
+	.ctx-label {
+		font-size: 0.6875rem;
+		color: rgba(255, 255, 255, 0.4);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		padding: 4px var(--spacing-sm) 2px;
+	}
+
+	.ctx-speeds {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		padding: var(--spacing-xs);
+	}
+
+	.ctx-speed {
+		background: rgba(255, 255, 255, 0.08);
+		border: none;
+		color: rgba(255, 255, 255, 0.8);
+		border-radius: var(--radius-sm);
+		padding: 4px 8px;
+		font: inherit;
+		font-size: 0.75rem;
+		cursor: pointer;
+		transition: background var(--transition-fast);
+		min-height: unset;
+		min-width: unset;
+	}
+
+	.ctx-speed:hover {
+		background: rgba(255, 255, 255, 0.15);
+		color: white;
+	}
+
+	.ctx-speed.active {
+		background: var(--accent-primary);
+		color: white;
 	}
 
 	/* Skip notification toast */

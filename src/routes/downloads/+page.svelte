@@ -51,7 +51,7 @@
 	);
 
 	$effect(() => {
-		if (channelFilter !== 'all' && !availableChannels.includes(channelFilter)) {
+		if (!completedLoading && channelFilter !== 'all' && completedDownloads.length > 0 && !availableChannels.includes(channelFilter)) {
 			channelFilter = 'all';
 		}
 	});
