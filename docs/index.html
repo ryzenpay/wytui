@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>wytui - Self-Hosted yt-dlp Web UI | Video Downloader Interface</title>
-  <meta name="description" content="A self-hosted web UI for yt-dlp. Download and manage videos from YouTube and 1000+ sites with in-browser playback, watch progress, full-text search, playlists, SponsorBlock, Chromecast, notifications, and more. Docker & Helm supported.">
-  <meta name="keywords" content="yt-dlp web ui, self-hosted video downloader, youtube downloader ui, yt-dlp frontend, yt-dlp docker, video download manager, yt-dlp gui, youtube downloader self hosted, media server downloader, jellyfin downloader, tubearchivist alternative, sponsorblock, chromecast, video player">
+  <meta name="description" content="A self-hosted web UI for yt-dlp. Download and manage videos from YouTube and 1000+ sites with in-browser playback, watch progress, subtitle search, playlists, SponsorBlock, Chromecast, Plex/Jellyfin integration, browser extension, and more. Docker & Helm supported.">
+  <meta name="keywords" content="yt-dlp web ui, self-hosted video downloader, youtube downloader ui, yt-dlp frontend, yt-dlp docker, video download manager, yt-dlp gui, youtube downloader self hosted, media server downloader, jellyfin downloader, plex downloader, tubearchivist alternative, sponsorblock, chromecast, video player, subtitle search">
   <link rel="canonical" href="https://willuhmjs.github.io/wytui/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
   <!-- OpenGraph -->
   <meta property="og:title" content="wytui - Self-Hosted yt-dlp Web UI">
-  <meta property="og:description" content="Download and manage videos from YouTube and 1000+ sites. In-browser player, watch progress, full-text search, playlists, SponsorBlock, Chromecast, and more.">
+  <meta property="og:description" content="Download and manage videos from YouTube and 1000+ sites. In-browser player, watch progress, subtitle search, playlists, SponsorBlock, Chromecast, Plex/Jellyfin integration, browser extension, and more.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://willuhmjs.github.io/wytui/">
   <meta property="og:site_name" content="wytui">
@@ -391,7 +391,7 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M10 8l6 4-6 4V8z"/></svg>
           </div>
           <h3>In-Browser Video Player</h3>
-          <p>Watch downloads directly in the browser. Variable speed playback, keyboard shortcuts, and HTTP Range support for instant seeking.</p>
+          <p>Watch downloads directly in the browser. Variable speed, keyboard shortcuts, HTTP Range seeking, timestamp deep links (<code>?t=</code>), similar videos sidebar, and a context menu for loop, speed, and SponsorBlock controls.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
@@ -434,8 +434,8 @@
           <div class="feature-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M12 4v16"/><circle cx="12" cy="12" r="10"/></svg>
           </div>
-          <h3>Subscriptions</h3>
-          <p>Monitor channels and playlists. Auto-download new content on a schedule. Backfill by date or download entire channels.</p>
+          <h3>Subscriptions & Playlist Import</h3>
+          <p>Monitor channels and playlists. Auto-download new content on a schedule. Backfill by date, download entire channels, or import a YouTube playlist with live progress tracking.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
@@ -449,14 +449,14 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           </div>
           <h3>Real-Time Progress</h3>
-          <p>Live download status via Server-Sent Events. See speed, ETA, and progress percentage update in real time.</p>
+          <p>Live download status via Server-Sent Events. Granular step-by-step tracking through fetch, download, and post-processing stages — speed, ETA, and ffmpeg progress all update live.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9"/></svg>
           </div>
-          <h3>Browser Extension API</h3>
-          <p>One-click downloads from your browser. Simple POST endpoint for browser extensions to send URLs directly to wytui.</p>
+          <h3>Browser Extension</h3>
+          <p>Companion extension for Chrome and Firefox. Works on YouTube and 1000+ supported sites — select quality, profile, and playlist, then send to wytui in one click. Detects already-downloaded URLs automatically.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;">
@@ -466,13 +466,28 @@
           <p>Per-channel download settings. Override format, quality, SponsorBlock, and auto-delete on a per-creator basis.</p>
         </div>
 
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Cookie Import</h3>
+          <p>Import browser cookies to download member-only, age-restricted, or paywalled content. Paste a Netscape-format cookie file directly in the settings.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+          </div>
+          <h3>Speed Throttling</h3>
+          <p>Cap download bandwidth with a configurable speed limit and optional sleep interval between downloads. Avoid hammering your network or CDN rate limits.</p>
+        </div>
+
         <!-- Organization & Search -->
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           </div>
           <h3>Full-Text Search</h3>
-          <p>Instant search across titles, descriptions, and uploaders. Powered by PostgreSQL full-text search with ranked results.</p>
+          <p>Instant search across titles, descriptions, uploaders, and subtitles. Powered by PostgreSQL full-text search with ranked results — find the exact moment someone says something in any video.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
@@ -501,8 +516,8 @@
           <div class="feature-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M10 8l6 4-6 4V8z"/></svg>
           </div>
-          <h3>Jellyfin Integration</h3>
-          <p>Auto library scan, thumbnail artwork, and deep-link search. Your downloads flow seamlessly into your Jellyfin media server.</p>
+          <h3>Jellyfin & Plex Integration</h3>
+          <p>Auto library scan on download completion for both Jellyfin and Plex. Jellyfin also gets thumbnail artwork and deep-link search. Your downloads flow seamlessly into your media server.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
@@ -561,8 +576,8 @@
           <div class="feature-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           </div>
-          <h3>OIDC & LDAP Auth</h3>
-          <p>OpenID Connect SSO and LDAP authentication with admin and user roles. Secure multi-user access with your existing identity provider.</p>
+          <h3>OIDC, LDAP & Reverse-Proxy Auth</h3>
+          <p>OpenID Connect SSO, LDAP, and reverse-proxy header auth (Authelia, Authentik). Admin and user roles with secure multi-user access via your existing identity provider.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
