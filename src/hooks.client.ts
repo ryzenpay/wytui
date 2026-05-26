@@ -17,7 +17,11 @@ export const handleFetch: HandleFetch = async ({ request, fetch }) => {
 		!['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&
 		new URL(request.url).origin === window.location.origin
 	) {
-		request.headers.set('x-csrf-token', csrfToken);
+		// Create new request with CSRF token header (Request headers are read-only)
+		const headers = new Headers(request.headers);
+		headers.set('x-csrf-token', csrfToken);
+
+		request = new Request(request, { headers });
 	}
 
 	return fetch(request);
