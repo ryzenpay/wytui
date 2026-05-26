@@ -7,8 +7,9 @@ class SearchService {
 		videoType?: string;
 		storagePool?: string;
 		uploader?: string;
+		watchState?: 'watched' | 'unwatched' | 'in_progress';
 	} = {}) {
-		const { limit = 20, offset = 0, videoType, storagePool, uploader } = options;
+		const { limit = 20, offset = 0, videoType, storagePool, uploader, watchState } = options;
 
 		const where: any = {
 			userId,
@@ -32,6 +33,35 @@ class SearchService {
 				{ uploader: { contains: uploader, mode: 'insensitive' } }
 			];
 			delete where.OR;
+		}
+
+		if (watchState) {
+			switch (watchState) {
+				case 'watched':
+					where.watchProgress = {
+						some: { userId, watched: true },
+					};
+					break;
+				case 'unwatched':
+					where.NOT = {
+						...(where.NOT || {}),
+						watchProgress: {
+							some: {
+								userId,
+								OR: [
+									{ watched: true },
+									{ position: { gt: 0 } },
+								],
+							},
+						},
+					};
+					break;
+				case 'in_progress':
+					where.watchProgress = {
+						some: { userId, watched: false, position: { gt: 0 } },
+					};
+					break;
+			}
 		}
 
 		const [results, total] = await Promise.all([

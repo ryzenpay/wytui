@@ -19,6 +19,7 @@
 	let completedDownloads = $state<any[]>([]);
 	let completedLoading = $state(false);
 	let completedFilter = $state<'all' | 'cache' | 'library'>('all');
+	let watchStateFilter = $state<'all' | 'watched' | 'unwatched' | 'in_progress'>('all');
 	let channelFilter = $state<string>('all');
 	let channelSearch = $state('');
 	let channelDropdownOpen = $state(false);
@@ -56,6 +57,16 @@
 		}
 	});
 
+	// Reload downloads when watch state filter changes
+	let prevWatchState = $state(watchStateFilter);
+	$effect(() => {
+		const ws = watchStateFilter;
+		if (ws !== prevWatchState) {
+			prevWatchState = ws;
+			loadCompletedDownloads();
+		}
+	});
+
 	let filteredChannelOptions = $derived(
 		channelSearch
 			? availableChannels.filter((c) => c.toLowerCase().includes(channelSearch.toLowerCase()))
@@ -66,6 +77,7 @@
 		const q = searchQuery;
 		const sp = completedFilter;
 		const uf = channelFilter;
+		const ws = watchStateFilter;
 
 		if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
 
@@ -82,6 +94,7 @@
 				const params = new URLSearchParams({ q, limit: '50' });
 				if (sp !== 'all') params.set('storagePool', sp);
 				if (uf !== 'all') params.set('uploader', uf);
+				if (ws !== 'all') params.set('watchState', ws);
 
 				const res = await fetch(`/api/search?${params}`);
 				if (res.ok) {
@@ -183,7 +196,11 @@
 	async function loadCompletedDownloads() {
 		completedLoading = true;
 		try {
-			const res = await fetch('/api/downloads?status=COMPLETED&limit=50');
+			const params = new URLSearchParams({ status: 'COMPLETED', limit: '50' });
+			if (watchStateFilter !== 'all') {
+				params.set('watchState', watchStateFilter);
+			}
+			const res = await fetch(`/api/downloads?${params}`);
 			if (res.ok) {
 				completedDownloads = await res.json();
 			}
@@ -425,6 +442,12 @@
 					<button class="tab" class:active={completedFilter === 'cache'} onclick={(e) => { e.stopPropagation(); completedFilter = 'cache'; }}>Cache</button>
 					<button class="tab" class:active={completedFilter === 'library'} onclick={(e) => { e.stopPropagation(); completedFilter = 'library'; }}>Library</button>
 				</div>
+				<div class="tabs completed-filter watch-state-filter">
+					<button class="tab" class:active={watchStateFilter === 'all'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'all'; }}>All</button>
+					<button class="tab" class:active={watchStateFilter === 'unwatched'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'unwatched'; }}>Unwatched</button>
+					<button class="tab" class:active={watchStateFilter === 'in_progress'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'in_progress'; }}>In Progress</button>
+					<button class="tab" class:active={watchStateFilter === 'watched'} onclick={(e) => { e.stopPropagation(); watchStateFilter = 'watched'; }}>Watched</button>
+				</div>
 				{#if availableChannels.length > 1}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div class="channel-dropdown" onkeydown={(e) => { if (e.key === 'Escape') channelDropdownOpen = false; }}>
@@ -483,8 +506,8 @@
 			<Skeleton count={6} variant="card" />
 		{:else if filteredCompletedDownloads.length === 0}
 			<div class="empty-state">
-				<p>{completedFilter === 'all' ? 'No completed downloads yet' : `No ${completedFilter} downloads`}</p>
-				<p class="text-muted">{completedFilter === 'all' ? 'Downloads will appear here once they finish' : 'Try changing your filters'}</p>
+				<p>{completedFilter === 'all' && watchStateFilter === 'all' ? 'No completed downloads yet' : watchStateFilter !== 'all' ? `No ${watchStateFilter.replace('_', ' ')} downloads` : `No ${completedFilter} downloads`}</p>
+				<p class="text-muted">{completedFilter === 'all' && watchStateFilter === 'all' ? 'Downloads will appear here once they finish' : 'Try changing your filters'}</p>
 			</div>
 		{:else if viewMode === 'grid'}
 			<div class="downloads-grid">

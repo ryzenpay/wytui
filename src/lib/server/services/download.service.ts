@@ -651,7 +651,8 @@ class DownloadService {
 		userId?: string,
 		status?: DownloadStatus,
 		limit = 50,
-		offset = 0
+		offset = 0,
+		watchState?: 'watched' | 'unwatched' | 'in_progress'
 	): Promise<Download[]> {
 		const where: any = {};
 
@@ -661,6 +662,42 @@ class DownloadService {
 		}
 		if (status !== undefined && status !== null) {
 			where.status = status;
+		}
+
+		// Filter by watch state using watchProgress relation
+		if (watchState && userId) {
+			switch (watchState) {
+				case 'watched':
+					where.watchProgress = {
+						some: {
+							userId,
+							watched: true,
+						},
+					};
+					break;
+				case 'unwatched':
+					where.NOT = {
+						watchProgress: {
+							some: {
+								userId,
+								OR: [
+									{ watched: true },
+									{ position: { gt: 0 } },
+								],
+							},
+						},
+					};
+					break;
+				case 'in_progress':
+					where.watchProgress = {
+						some: {
+							userId,
+							watched: false,
+							position: { gt: 0 },
+						},
+					};
+					break;
+			}
 		}
 
 		const downloads = await prisma.download.findMany({

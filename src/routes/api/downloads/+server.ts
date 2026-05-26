@@ -90,6 +90,7 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 	auth: true,
 	query: {
 		status: { type: 'string', description: 'Filter by status', enum: ['PENDING', 'FETCHING_INFO', 'DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED', 'DELETED'] },
+		watchState: { type: 'string', description: 'Filter by watch state', enum: ['watched', 'unwatched', 'in_progress'] },
 		limit: { type: 'integer', description: 'Max results', minimum: 1, maximum: 100, default: 50 },
 		offset: { type: 'integer', description: 'Pagination offset', minimum: 0, default: 0 },
 	},
@@ -132,6 +133,7 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 
 		const userId = locals.session.user.id;
 		const statusParam = url.searchParams.get('status');
+		const watchStateParam = url.searchParams.get('watchState') as 'watched' | 'unwatched' | 'in_progress' | null;
 
 		let limit = parseInt(url.searchParams.get('limit') || '50');
 		let offset = parseInt(url.searchParams.get('offset') || '0');
@@ -145,7 +147,8 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 			userId,
 			statusParam as any,
 			limit,
-			offset
+			offset,
+			watchStateParam || undefined
 		];
 
 		const downloads = await downloadService.listDownloads(...args);
