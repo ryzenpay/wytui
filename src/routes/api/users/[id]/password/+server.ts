@@ -70,12 +70,19 @@ export const PATCH = apiRoute('/api/users/[id]/password', 'PATCH', {
 
 		const hashedPassword = await hashPassword(newPassword);
 
+		// Update password and set passwordChangedAt for session revocation
 		await prisma.user.update({
 			where: { id: targetUserId },
-			data: { password: hashedPassword },
+			data: {
+				password: hashedPassword,
+				passwordChangedAt: new Date(), // Revoke all existing sessions
+			},
 		});
 
-		return json({ success: true, message: 'Password changed successfully' });
+		return json({
+			success: true,
+			message: 'Password changed successfully. All active sessions have been revoked.',
+		});
 	} catch (e: any) {
 		console.error('Failed to change password:', e);
 		if (e.status) throw e;

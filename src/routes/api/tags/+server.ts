@@ -11,15 +11,23 @@ export const GET = apiRoute('/api/tags', 'GET', {
 }, async ({ locals }) => {
 	if (!locals.session?.user?.id) throw error(401, 'Authentication required');
 
-	const results = await prisma.$queryRaw<{ tag: string }[]>`
-		SELECT DISTINCT unnest(tags) as tag
-		FROM downloads
-		WHERE "userId" = ${locals.session.user.id}
-		AND array_length(tags, 1) > 0
-		ORDER BY tag
-	`;
+	// Fetch all downloads with tags for this user using Prisma ORM
+	const downloads = await prisma.download.findMany({
+		where: {
+			userId: locals.session.user.id,
+			tags: {
+				isEmpty: false,
+			},
+		},
+		select: {
+			tags: true,
+		},
+	});
 
-	return new Response(JSON.stringify(results.map((r) => r.tag)), {
+	// Flatten and deduplicate tags in application code
+	const uniqueTags = [...new Set(downloads.flatMap((d) => d.tags))].sort();
+
+	return new Response(JSON.stringify(uniqueTags), {
 		headers: { 'Content-Type': 'application/json' },
 	});
 }) satisfies RequestHandler;

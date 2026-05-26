@@ -85,19 +85,34 @@ export const GET = apiRoute('/api/analytics', 'GET', {
 		const thirtyDaysAgo = new Date();
 		thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-		const downloadsPerDay = await prisma.$queryRaw<
-			{ date: string; count: number }[]
-		>`
-			SELECT
-				DATE(COALESCE("completedAt", "createdAt")) as date,
-				COUNT(*)::int as count
-			FROM downloads
-			WHERE
-				status = ${DownloadStatus.COMPLETED}
-				AND COALESCE("completedAt", "createdAt") >= ${thirtyDaysAgo}
-			GROUP BY DATE(COALESCE("completedAt", "createdAt"))
-			ORDER BY date DESC
-		`;
+		// Fetch completed downloads and group by date in application code
+		const completedRecentDownloads = await prisma.download.findMany({
+			where: {
+				status: DownloadStatus.COMPLETED,
+				OR: [
+					{ completedAt: { gte: thirtyDaysAgo } },
+					{
+						completedAt: null,
+						createdAt: { gte: thirtyDaysAgo }
+					}
+				],
+			},
+			select: {
+				completedAt: true,
+				createdAt: true,
+			},
+		});
+
+		// Group by date
+		const downloadsByDate = new Map<string, number>();
+		for (const download of completedRecentDownloads) {
+			const date = (download.completedAt || download.createdAt).toISOString().split('T')[0];
+			downloadsByDate.set(date, (downloadsByDate.get(date) || 0) + 1);
+		}
+
+		const downloadsPerDay = Array.from(downloadsByDate.entries())
+			.map(([date, count]) => ({ date, count }))
+			.sort((a, b) => b.date.localeCompare(a.date));
 
 		// Top uploaders
 		const topUploaders = await prisma.download.groupBy({
@@ -145,20 +160,29 @@ export const GET = apiRoute('/api/analytics', 'GET', {
 				: 0;
 
 		// Downloads by format
-		const downloadsByFormat = await prisma.$queryRaw<
-			{ format: string; count: number }[]
-		>`
-			SELECT
-				LOWER(SUBSTRING(filename FROM '\\.([^.]+)$')) as format,
-				COUNT(*)::int as count
-			FROM downloads
-			WHERE
-				status = ${DownloadStatus.COMPLETED}
-				AND filename IS NOT NULL
-			GROUP BY LOWER(SUBSTRING(filename FROM '\\.([^.]+)$'))
-			ORDER BY count DESC
-			LIMIT 10
-		`;
+		const completedWithFilename = await prisma.download.findMany({
+			where: {
+				status: DownloadStatus.COMPLETED,
+				filename: { not: null },
+			},
+			select: { filename: true },
+		});
+
+		// Extract file extensions and count
+		const formatCounts = new Map<string, number>();
+		for (const download of completedWithFilename) {
+			if (!download.filename) continue;
+			const match = download.filename.match(/\.([^.]+)$/);
+			if (match) {
+				const format = match[1].toLowerCase();
+				formatCounts.set(format, (formatCounts.get(format) || 0) + 1);
+			}
+		}
+
+		const downloadsByFormat = Array.from(formatCounts.entries())
+			.map(([format, count]) => ({ format, count }))
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 10);
 
 		// Success rate
 		const totalCompleteOrFailed = completedDownloads + failedDownloads;

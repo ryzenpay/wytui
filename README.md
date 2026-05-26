@@ -18,11 +18,29 @@ A self-hosted web UI for [yt-dlp](https://github.com/yt-dlp/yt-dlp), built with 
 
 ### Docker Compose
 
-Copy `.env.example` to `.env` and fill in your values, then:
+The `docker-init.sh` script automatically generates secure random credentials on first run:
 
 ```bash
+./docker-init.sh up -d
+```
+
+This creates a `.env` file with secure random passwords. The file is auto-generated if it doesn't exist.
+
+**Manual setup** (if you prefer):
+
+```bash
+# Generate secure secrets
+export POSTGRES_PASSWORD=$(openssl rand -hex 32)
+export AUTH_SECRET=$(openssl rand -hex 32)
+
+# Save to .env file
+echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" > .env
+echo "AUTH_SECRET=$AUTH_SECRET" >> .env
+
 docker compose up -d
 ```
+
+> 💾 **Important**: The `.env` file contains your database password. Back it up securely!
 
 ### Helm
 

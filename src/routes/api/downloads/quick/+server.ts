@@ -4,23 +4,47 @@ import { prisma } from '$lib/server/db';
 import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
-const corsHeaders = {
-	'Access-Control-Allow-Origin': '*',
-	'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+// Whitelist of allowed origins for CORS
+const ALLOWED_ORIGINS = [
+	process.env.ORIGIN || 'http://localhost:5173',
+	'http://localhost:5173',
+	'http://localhost:3000',
+];
+
+// Helper to get CORS headers based on request origin
+function getCorsHeaders(request: Request): Record<string, string> {
+	const origin = request.headers.get('origin');
+
+	// Check if origin is allowed or is a chrome-extension (for browser extensions)
+	const isAllowed = origin && (
+		ALLOWED_ORIGINS.includes(origin) ||
+		origin.startsWith('chrome-extension://') ||
+		origin.startsWith('moz-extension://')
+	);
+
+	if (isAllowed) {
+		return {
+			'Access-Control-Allow-Origin': origin,
+			'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+			'Access-Control-Allow-Credentials': 'true',
+		};
+	}
+
+	return {};
+}
+
+export const OPTIONS: RequestHandler = async ({ request }) => {
+	return new Response(null, { status: 204, headers: getCorsHeaders(request) });
 };
 
-export const OPTIONS: RequestHandler = async () => {
-	return new Response(null, { status: 204, headers: corsHeaders });
-};
-
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url, locals, request }) => {
 	if (!locals.session?.user?.id) {
-		return json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+		return json({ error: 'Unauthorized' }, { status: 401, headers: getCorsHeaders(request) });
 	}
 
 	const lookupUrl = url.searchParams.get('url');
 	if (!lookupUrl) {
-		return json({ error: 'Missing url parameter' }, { status: 400, headers: corsHeaders });
+		return json({ error: 'Missing url parameter' }, { status: 400, headers: getCorsHeaders(request) });
 	}
 
 	const downloads = await prisma.download.findMany({
@@ -44,7 +68,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		orderBy: { createdAt: 'desc' },
 	});
 
-	return json(downloads, { headers: corsHeaders });
+	return json(downloads, { headers: getCorsHeaders(request) });
 };
 
 export const POST = apiRoute('/api/downloads/quick', 'POST', {
@@ -88,17 +112,17 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 		const { url, profileId, saveToLibrary } = await request.json();
 
 		if (!url) {
-			return json({ error: 'Missing required field: url' }, { status: 400, headers: corsHeaders });
+			return json({ error: 'Missing required field: url' }, { status: 400, headers: getCorsHeaders(request) });
 		}
 
 		// Validate URL format
 		try {
 			const urlObj = new URL(url);
 			if (!['http:', 'https:'].includes(urlObj.protocol)) {
-				return json({ error: 'Only HTTP(S) URLs are allowed' }, { status: 400, headers: corsHeaders });
+				return json({ error: 'Only HTTP(S) URLs are allowed' }, { status: 400, headers: getCorsHeaders(request) });
 			}
 		} catch {
-			return json({ error: 'Invalid URL format' }, { status: 400, headers: corsHeaders });
+			return json({ error: 'Invalid URL format' }, { status: 400, headers: getCorsHeaders(request) });
 		}
 
 		const userId = locals.session?.user?.id;
@@ -123,17 +147,17 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 		}
 
 		if (!profile) {
-			return json({ error: 'No download profile found. Create a profile first.' }, { status: 400, headers: corsHeaders });
+			return json({ error: 'No download profile found. Create a profile first.' }, { status: 400, headers: getCorsHeaders(request) });
 		}
 
 		const download = await downloadService.createDownload(url, profile.id, userId, undefined, !!saveToLibrary);
 
-		return json(download, { status: 201, headers: corsHeaders });
+		return json(download, { status: 201, headers: getCorsHeaders(request) });
 	} catch (e: any) {
 		console.error('Failed to create quick download:', e);
 		return json(
 			{ error: e.message || 'Failed to create download' },
-			{ status: e.status || 500, headers: corsHeaders }
+			{ status: e.status || 500, headers: getCorsHeaders(request) }
 		);
 	}
 }) satisfies RequestHandler;

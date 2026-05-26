@@ -229,63 +229,101 @@ export class YtdlpService {
 	}
 
 	/**
+	 * Whitelist of allowed yt-dlp flags for security
+	 * Using a whitelist instead of blacklist to prevent command injection
+	 */
+	private allowedFlags = new Set([
+		// Format selection
+		'--format',
+		'-f',
+		'--merge-output-format',
+		// Quality
+		'--audio-quality',
+		'--video-quality',
+		// Subtitles
+		'--write-subs',
+		'--write-auto-subs',
+		'--sub-langs',
+		'--sub-format',
+		'--embed-subs',
+		// Metadata
+		'--embed-metadata',
+		'--embed-thumbnail',
+		'--add-metadata',
+		// Thumbnails
+		'--write-thumbnail',
+		'--convert-thumbnails',
+		// Audio
+		'--extract-audio',
+		'--audio-format',
+		'--audio-quality',
+		// Video
+		'--recode-video',
+		// Network
+		'--limit-rate',
+		'--retries',
+		'--fragment-retries',
+		// Workarounds
+		'--force-ipv4',
+		'--force-ipv6',
+		// Playlist
+		'--playlist-start',
+		'--playlist-end',
+		'--playlist-items',
+		'--yes-playlist',
+		'--no-playlist',
+		// Download
+		'--concurrent-fragments',
+		// Post-processing
+		'--remux-video',
+		'--postprocessor-args',
+		// Other safe flags
+		'--no-check-certificates',
+		'--no-warnings',
+		'--no-progress',
+		'--quiet',
+		'--verbose',
+	]);
+
+	/**
+	 * Check if a flag is allowed (whitelist approach)
+	 */
+	private isFlagAllowed(flag: string): boolean {
+		// Extract flag name (everything before '=' if present)
+		const flagName = flag.split('=')[0].toLowerCase();
+
+		// Check if it's in the whitelist
+		return this.allowedFlags.has(flagName);
+	}
+
+	/**
 	 * Check if any flags are dangerous and return the offending flag, or null if safe
 	 */
 	findDangerousFlag(flags: string[]): string | null {
 		for (const flag of flags) {
-			if (this.dangerousFlags.some((df) => flag.toLowerCase().startsWith(df))) {
+			if (!this.isFlagAllowed(flag)) {
 				return flag;
 			}
-			if (this.dangerousPatterns.some((pattern) => pattern.test(flag))) {
+			// Also check for shell metacharacters
+			if (/[;&|$`]/.test(flag)) {
 				return flag;
 			}
 		}
 		return null;
 	}
 
-	private dangerousFlags = [
-		'--exec',
-		'--exec-before-download',
-		'--config-location',
-		'--config-locations',
-		'--batch-file',
-		'--load-info-json',
-		'--cookies-from-browser',
-		'--cookies',
-		'-o',
-		'--output',
-		'-P',
-		'--paths',
-		'--download-archive',
-		'--write-pages',
-		'--print-to-file',
-		'--output-na-placeholder',
-	];
-
-	private dangerousPatterns = [
-		/--exec/i,
-		/--config/i,
-		/--batch/i,
-		/--load-info/i,
-		/--output/i,
-		/--cookies/i,
-		/--paths/i,
-		/--download-archive/i,
-		/--print-to-file/i,
-		/[;&|$`]/,
-	];
-
 	/**
-	 * Filter dangerous flags from custom flags
+	 * Filter flags to only allow whitelisted ones
 	 */
 	private filterDangerousFlags(flags: string[]): string[] {
 		return flags.filter((flag) => {
-			if (this.dangerousFlags.some((df) => flag.toLowerCase().startsWith(df))) {
-				console.warn(`Filtered dangerous flag: ${flag}`);
+			if (!this.isFlagAllowed(flag)) {
+				console.warn(`Filtered non-whitelisted flag: ${flag}`);
 				return false;
 			}
-			if (this.dangerousPatterns.some((pattern) => pattern.test(flag))) {
-				console.warn(`Filtered dangerous flag: ${flag}`);
+			// Also check for shell metacharacters
+			if (/[;&|$`]/.test(flag)) {
+				console.warn(`Filtered flag with dangerous characters: ${flag}`);
 				return false;
 			}
 			return true;

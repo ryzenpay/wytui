@@ -1,0 +1,141 @@
+import type { RequestEvent } from '@sveltejs/kit';
+
+interface RateLimitEntry {
+	count: number;
+	resetAt: number;
+}
+
+interface RateLimitConfig {
+	windowMs: number;
+	maxRequests: number;
+}
+
+class RateLimiter {
+	private store = new Map<string, RateLimitEntry>();
+	private cleanupInterval: NodeJS.Timeout;
+
+	constructor() {
+		// Clean up expired entries every minute
+		this.cleanupInterval = setInterval(() => {
+			const now = Date.now();
+			for (const [key, entry] of this.store.entries()) {
+				if (entry.resetAt < now) {
+					this.store.delete(key);
+				}
+			}
+		}, 60000);
+	}
+
+	/**
+	 * Check if request should be rate limited
+	 * Returns true if rate limit exceeded, false otherwise
+	 */
+	check(identifier: string, config: RateLimitConfig): boolean {
+		const now = Date.now();
+		const entry = this.store.get(identifier);
+
+		if (!entry || entry.resetAt < now) {
+			// New window or expired
+			this.store.set(identifier, {
+				count: 1,
+				resetAt: now + config.windowMs,
+			});
+			return false;
+		}
+
+		// Increment count
+		entry.count++;
+
+		if (entry.count > config.maxRequests) {
+			return true; // Rate limit exceeded
+		}
+
+		return false;
+	}
+
+	/**
+	 * Get rate limit info for response headers
+	 */
+	getInfo(identifier: string, config: RateLimitConfig): {
+		limit: number;
+		remaining: number;
+		reset: number;
+	} {
+		const entry = this.store.get(identifier);
+		const now = Date.now();
+
+		if (!entry || entry.resetAt < now) {
+			return {
+				limit: config.maxRequests,
+				remaining: config.maxRequests,
+				reset: now + config.windowMs,
+			};
+		}
+
+		return {
+			limit: config.maxRequests,
+			remaining: Math.max(0, config.maxRequests - entry.count),
+			reset: entry.resetAt,
+		};
+	}
+
+	cleanup() {
+		clearInterval(this.cleanupInterval);
+		this.store.clear();
+	}
+}
+
+// Global rate limiter instance
+export const rateLimiter = new RateLimiter();
+
+// Rate limit configurations for different endpoints
+export const RATE_LIMITS: Record<string, RateLimitConfig> = {
+	// Auth endpoints: 5 requests per minute
+	auth: {
+		windowMs: 60 * 1000,
+		maxRequests: 5,
+	},
+	// Downloads creation: 10 requests per minute
+	downloads: {
+		windowMs: 60 * 1000,
+		maxRequests: 10,
+	},
+	// Settings updates: 1 request per 10 seconds
+	settings: {
+		windowMs: 10 * 1000,
+		maxRequests: 1,
+	},
+	// General API: 60 requests per minute
+	general: {
+		windowMs: 60 * 1000,
+		maxRequests: 60,
+	},
+};
+
+/**
+ * Get client identifier for rate limiting (IP address + user agent)
+ */
+export function getClientIdentifier(event: RequestEvent): string {
+	const forwarded = event.request.headers.get('x-forwarded-for');
+	const ip = forwarded ? forwarded.split(',')[0].trim() : event.getClientAddress();
+	const userAgent = event.request.headers.get('user-agent') || 'unknown';
+	return `${ip}:${userAgent}`;
+}
+
+/**
+ * Check rate limit for a request
+ * Throws 429 error if rate limit exceeded
+ */
+export function checkRateLimit(
+	event: RequestEvent,
+	config: RateLimitConfig,
+	identifier?: string
+): void {
+	const clientId = identifier || getClientIdentifier(event);
+	const isExceeded = rateLimiter.check(clientId, config);
+
+	if (isExceeded) {
+		const info = rateLimiter.getInfo(clientId, config);
+		throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((info.reset - Date.now()) / 1000)} seconds.`);
+	}
+}

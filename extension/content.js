@@ -21,8 +21,28 @@ function showToast(message, success) {
 }
 
 // Listen for toast messages from background (context menu downloads)
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender) => {
+  // Validate sender is from this extension
+  if (sender.id !== chrome.runtime.id) {
+    console.warn('[wytui] Message from unknown sender:', sender);
+    return;
+  }
+
+  // Validate message structure
+  if (!message || typeof message !== 'object') {
+    console.warn('[wytui] Invalid message format:', message);
+    return;
+  }
+
+  // Validate action
+  if (typeof message.action !== 'string') {
+    console.warn('[wytui] Invalid message action:', message);
+    return;
+  }
+
   if (message.action === 'showToast') {
-    showToast(message.message, message.success);
+    if (typeof message.message === 'string' && typeof message.success === 'boolean') {
+      showToast(message.message, message.success);
+    }
   }
 });

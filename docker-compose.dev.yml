@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:18.3-alpine
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: wytui
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-wytui}
     ports:
       - "5432:5432"
     volumes:
@@ -28,8 +28,8 @@ services:
       - "5173:5173"
       - "5555:5555"
     environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/wytui?schema=public
-      - AUTH_SECRET=${AUTH_SECRET:-your-auth-secret-change-in-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-devpassword}@db:5432/${POSTGRES_DB:-wytui}?schema=public
+      - AUTH_SECRET=${AUTH_SECRET:-dev-secret-please-change-in-production}
       - AUTH_TRUST_HOST=true
       - NODE_ENV=development
       - ADMIN_USERNAME=${ADMIN_USERNAME:-}

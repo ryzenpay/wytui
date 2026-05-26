@@ -1,9 +1,11 @@
 import { hasUsers, verifySessionToken, resolveApiKey, issueSessionCookie, hashPassword } from '$lib/server/auth';
 import { jobScheduler } from '$lib/server/jobs/scheduler';
 import { ensureDefaults } from '$lib/server/init';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { redirect, type Handle, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { randomBytes } from 'crypto';
+import { isCsrfExempt, validateCsrfToken } from '$lib/server/csrf';
+import { rateLimiter, RATE_LIMITS, getClientIdentifier } from '$lib/server/rate-limit';
 
 // Initialise database defaults and start background jobs on server startup
 const initPromise = ensureDefaults()
@@ -15,6 +17,30 @@ const initPromise = ensureDefaults()
 // Session and protection middleware
 export const handle: Handle = async ({ event, resolve }) => {
 	await initPromise;
+
+	// Rate limiting - apply before authentication
+	const isApiPath = event.url.pathname.startsWith('/api/');
+	if (isApiPath) {
+		const clientId = getClientIdentifier(event);
+		let rateLimitConfig = RATE_LIMITS.general;
+
+		// Apply stricter limits for specific endpoints
+		if (event.url.pathname.startsWith('/api/auth') || event.url.pathname.startsWith('/api/setup')) {
+			rateLimitConfig = RATE_LIMITS.auth;
+		} else if (event.url.pathname.startsWith('/api/downloads')) {
+			rateLimitConfig = RATE_LIMITS.downloads;
+		} else if (event.url.pathname.startsWith('/api/settings')) {
+			rateLimitConfig = RATE_LIMITS.settings;
+		}
+
+		const isExceeded = rateLimiter.check(clientId, rateLimitConfig);
+		if (isExceeded) {
+			const info = rateLimiter.getInfo(clientId, rateLimitConfig);
+			const resetInSeconds = Math.ceil((info.reset - Date.now()) / 1000);
+			throw error(429, `Too many requests. Try again in ${resetInSeconds} seconds.`);
+		}
+	}
+
 	// Try Bearer token auth first (API keys)
 	const authHeader = event.request.headers.get('authorization');
 	if (authHeader?.startsWith('Bearer ')) {
@@ -44,14 +70,37 @@ export const handle: Handle = async ({ event, resolve }) => {
 				});
 
 				if (user) {
-					event.locals.session = {
-						user: {
-							id: user.id,
-							email: user.email,
-							name: user.name ?? undefined,
-							isAdmin: user.isAdmin,
-						},
-					};
+					// Check if password was changed after token was issued (session revocation)
+					if (user.passwordChangedAt) {
+						const passwordChangedTimestamp = Math.floor(user.passwordChangedAt.getTime() / 1000);
+						const tokenPasswordTimestamp = sessionData.passwordChangedAt || 0;
+
+						if (passwordChangedTimestamp > tokenPasswordTimestamp) {
+							// Password was changed after this token was issued - revoke session
+							console.info(`[Security] Session revoked for user ${user.email} - password changed`);
+							event.cookies.delete('wytui.session-token', { path: '/' });
+						} else {
+							// Session is valid
+							event.locals.session = {
+								user: {
+									id: user.id,
+									email: user.email,
+									name: user.name ?? undefined,
+									isAdmin: user.isAdmin,
+								},
+							};
+						}
+					} else {
+						// No password change timestamp, session is valid
+						event.locals.session = {
+							user: {
+								id: user.id,
+								email: user.email,
+								name: user.name ?? undefined,
+								isAdmin: user.isAdmin,
+							},
+						};
+					}
 				}
 			} else {
 				event.cookies.delete('wytui.session-token', { path: '/' });
@@ -63,13 +112,29 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (!event.locals.session?.user) {
 		const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
 		if (settings?.proxyAuthEnabled) {
-			const headerName = settings.proxyAuthHeader || 'X-Forwarded-User';
-			const proxyUser = event.request.headers.get(headerName);
+			// Validate request comes from trusted proxy IP
+			const trustedProxyIps = (process.env.TRUSTED_PROXY_IPS || '').split(',').filter(Boolean);
+			const forwardedFor = event.request.headers.get('x-forwarded-for');
+			const clientIp = forwardedFor ? forwardedFor.split(',')[0].trim() : event.getClientAddress();
 
-			if (proxyUser) {
-				// Treat header value as username/email — look up or auto-create
-				const identifier = proxyUser.trim();
-				if (identifier) {
+			// If TRUSTED_PROXY_IPS is set, validate it. If not set, log a warning.
+			if (trustedProxyIps.length > 0 && !trustedProxyIps.includes(clientIp)) {
+				console.warn(`[Security] Proxy auth attempt from untrusted IP: ${clientIp}`);
+			} else {
+				if (trustedProxyIps.length === 0) {
+					console.warn('[Security] TRUSTED_PROXY_IPS not set. Proxy authentication is accepting headers from any IP. This is insecure!');
+				}
+
+				const headerName = settings.proxyAuthHeader || 'X-Forwarded-User';
+				const proxyUser = event.request.headers.get(headerName);
+
+				if (proxyUser) {
+					// Log proxy auth events
+					console.info(`[Security] Proxy auth: ${proxyUser} from ${clientIp}`);
+
+					// Treat header value as username/email — look up or auto-create
+					const identifier = proxyUser.trim();
+					if (identifier) {
 					// Normalise to email-like if no @ present
 					const email = identifier.includes('@') ? identifier : `${identifier}@proxy.local`;
 
@@ -105,9 +170,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 						id: user.id,
 						email: user.email,
 						isAdmin: user.isAdmin,
+						passwordChangedAt: user.passwordChangedAt,
 					});
 				}
 			}
+		}
 		}
 	}
 
@@ -116,7 +183,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// Check if path is public
 	const isPublicPath = publicPaths.some((path) => event.url.pathname.startsWith(path));
-	const isApiPath = event.url.pathname.startsWith('/api/');
 
 	// If no users exist yet, redirect to setup (except setup pages and OIDC callback for first-user signup)
 	const isSetupPath = event.url.pathname.startsWith('/setup') || event.url.pathname.startsWith('/api/setup');
@@ -138,6 +204,25 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Let CORS preflight through so browser extensions can reach /api/downloads/quick
 	if (event.request.method === 'OPTIONS' && isApiPath) {
 		return await resolve(event);
+	}
+
+	// CSRF protection for state-changing requests
+	if (!isCsrfExempt(event.request)) {
+		// Skip CSRF check for public paths (setup, auth endpoints)
+		if (!isPublicPath) {
+			const isValid = validateCsrfToken(event.cookies, event.request);
+			if (!isValid) {
+				console.warn('CSRF validation failed for', event.request.method, event.url.pathname);
+				if (isApiPath) {
+					return new Response(JSON.stringify({ error: 'CSRF validation failed' }), {
+						status: 403,
+						headers: { 'Content-Type': 'application/json' },
+					});
+				} else {
+					throw redirect(303, '/auth/signin?error=csrf');
+				}
+			}
+		}
 	}
 
 	// If users exist and user is not authenticated and not on public path

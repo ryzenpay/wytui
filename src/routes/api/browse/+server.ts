@@ -4,6 +4,14 @@ import { resolve, normalize, dirname, basename } from 'path';
 import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from '@sveltejs/kit';
 
+// Whitelist of allowed base paths for directory browsing
+const ALLOWED_BASE_PATHS = [
+	process.env.DOWNLOADS_PATH || '/downloads',
+	process.env.LIBRARY_PATH || '/media',
+	process.env.MUSIC_PATH || '/music',
+	'/tmp',  // For temporary files
+];
+
 export const GET = apiRoute('/api/browse', 'GET', {
 	summary: 'Browse server directories',
 	tags: ['System'],
@@ -34,6 +42,15 @@ export const GET = apiRoute('/api/browse', 'GET', {
 
 	if (normalized.includes('..')) {
 		throw error(400, 'Invalid path');
+	}
+
+	// Validate path is within allowed base paths
+	const isAllowed = ALLOWED_BASE_PATHS.some((basePath) =>
+		normalized.startsWith(normalize(resolve(basePath)))
+	);
+
+	if (!isAllowed) {
+		throw error(403, 'Access denied. Path must be within allowed directories.');
 	}
 
 	try {

@@ -14,7 +14,18 @@ declare global {
 				};
 			} | null;
 		}
-		// interface PageData {}
+		interface PageData {
+			csrfToken?: string;
+			session?: {
+				user?: {
+					id: string;
+					email?: string;
+					name?: string;
+					image?: string;
+					isAdmin?: boolean;
+				};
+			} | null;
+		}
 		// interface PageState {}
 		// interface Platform {}
 	}

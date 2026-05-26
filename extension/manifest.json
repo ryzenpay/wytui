@@ -4,7 +4,21 @@
   "version": "1.0.0",
   "description": "Send any video to your wytui server for downloading.",
   "permissions": ["activeTab", "storage", "contextMenus"],
-  "host_permissions": ["<all_urls>"],
+  "host_permissions": [
+    "*://youtube.com/*",
+    "*://www.youtube.com/*",
+    "*://youtu.be/*",
+    "*://m.youtube.com/*",
+    "*://vimeo.com/*",
+    "*://www.vimeo.com/*",
+    "*://dailymotion.com/*",
+    "*://www.dailymotion.com/*",
+    "*://twitch.tv/*",
+    "*://www.twitch.tv/*"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -25,7 +39,18 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "*://youtube.com/*",
+        "*://www.youtube.com/*",
+        "*://youtu.be/*",
+        "*://m.youtube.com/*",
+        "*://vimeo.com/*",
+        "*://www.vimeo.com/*",
+        "*://dailymotion.com/*",
+        "*://www.dailymotion.com/*",
+        "*://twitch.tv/*",
+        "*://www.twitch.tv/*"
+      ],
       "js": ["content.js"],
       "css": ["content.css"]
     }

@@ -18,9 +18,27 @@ spec:
       labels:
         app: wytui-postgresql
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
       containers:
       - name: postgresql
         image: {{ .Values.postgresql.image }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop: ["ALL"]
+            add: ["CHOWN", "SETUID", "SETGID"]  # Required for PostgreSQL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
         ports:
         - containerPort: 5432
         env:

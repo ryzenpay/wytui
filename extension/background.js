@@ -71,18 +71,13 @@ async function lookupUrl(url) {
     if (!data.serverUrl || !data.apiKey) return { success: false, downloads: [] };
 
     const endpoint = `${data.serverUrl.replace(/\/+$/, '')}/api/downloads/quick?url=${encodeURIComponent(url)}`;
-    console.log('[wytui] lookupUrl GET', endpoint);
 
     const res = await fetch(endpoint, { headers: { Authorization: 'Bearer ' + data.apiKey } });
 
-    console.log('[wytui] lookupUrl response status:', res.status);
     if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.log('[wytui] lookupUrl error body:', body);
       return { success: false, downloads: [] };
     }
     const downloads = await res.json();
-    console.log('[wytui] lookupUrl downloads found:', downloads.length, downloads);
     return { success: true, downloads };
   } catch (err) {
     console.error('[wytui] lookupUrl exception:', err);

@@ -97,7 +97,6 @@ function updateStatus(url, key) {
 }
 
 async function lookupExisting(url) {
-  console.log('[wytui] lookupExisting called for:', url);
   let result;
   try {
     result = await chrome.runtime.sendMessage({ action: 'lookupUrl', url });
@@ -105,7 +104,6 @@ async function lookupExisting(url) {
     console.error('[wytui] sendMessage failed:', err);
     return;
   }
-  console.log('[wytui] lookupExisting result:', result);
   if (!result?.success || !result.downloads?.length) return;
 
   const dl = result.downloads[0];

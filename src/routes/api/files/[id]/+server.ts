@@ -109,6 +109,8 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 						'Content-Length': (end - start + 1).toString(),
 						'Content-Disposition': `${disposition}; filename="${filename}"`,
 						'Accept-Ranges': 'bytes',
+						'X-Content-Type-Options': 'nosniff',
+						'Cache-Control': 'private, no-store, max-age=0',
 					},
 				});
 			}
@@ -121,6 +123,8 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 				'Content-Length': fileSize.toString(),
 				'Content-Disposition': `${disposition}; filename="${filename}"`,
 				'Accept-Ranges': 'bytes',
+				'X-Content-Type-Options': 'nosniff',
+				'Cache-Control': 'private, no-store, max-age=0',
 			},
 		});
 	} catch (e: any) {

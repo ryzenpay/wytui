@@ -114,8 +114,13 @@ export const GET = apiRoute('/api/settings', 'GET', {
 			canUsePasswordOnly = !!adminWithPassword;
 		}
 
+		// Redact sensitive fields - show only if they're set, not the actual values
 		return json({
 			...settings,
+			jellyfinApiKey: settings.jellyfinApiKey ? '***SET***' : null,
+			plexToken: settings.plexToken ? '***SET***' : null,
+			ldapBindPassword: settings.ldapBindPassword ? '***SET***' : null,
+			appriseUrl: settings.appriseUrl ? '***SET***' : null,
 			cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
 			oidcConfigured: isOidcConfigured(),
 			oidcDisplayName: isOidcConfigured() ? getOidcDisplayName() : null,

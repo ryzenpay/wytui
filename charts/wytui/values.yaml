@@ -72,3 +72,7 @@ library:
     storageClass: ""
     accessModes:
       - ReadWriteOnce
+
+# Network policy configuration
+networkPolicy:
+  enabled: false

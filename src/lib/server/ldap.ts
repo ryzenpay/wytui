@@ -6,6 +6,19 @@ interface LdapUser {
 	name: string;
 }
 
+/**
+ * Escape special characters in LDAP filter strings to prevent injection attacks
+ * Based on RFC 4515 section 3
+ */
+function escapeLdapFilter(input: string): string {
+	return input
+		.replace(/\\/g, '\\5c')
+		.replace(/\*/g, '\\2a')
+		.replace(/\(/g, '\\28')
+		.replace(/\)/g, '\\29')
+		.replace(/\0/g, '\\00');
+}
+
 async function getLdapSettings() {
 	const settings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
 	if (!settings?.ldapEnabled || !settings.ldapUrl || !settings.ldapSearchBase) {
@@ -36,7 +49,9 @@ export async function authenticateLdap(username: string, password: string): Prom
 			await client.bind(config.bindDn, config.bindPassword);
 		}
 
-		const filter = config.searchFilter.replace(/\{\{username\}\}/g, username);
+		// Escape username to prevent LDAP injection
+		const escapedUsername = escapeLdapFilter(username);
+		const filter = config.searchFilter.replace(/\{\{username\}\}/g, escapedUsername);
 
 		const { searchEntries } = await client.search(config.searchBase, {
 			filter,
