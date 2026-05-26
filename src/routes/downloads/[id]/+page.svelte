@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { formatBytes, formatDuration } from '$lib/utils/format';
@@ -10,6 +11,7 @@
 	import ExternalLinkIcon from '$lib/components/icons/ExternalLinkIcon.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
+	import AddToPlaylistMenu from '$lib/components/playlist/AddToPlaylistMenu.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -17,6 +19,22 @@
 	let deleting = $state(false);
 	let promoting = $state(false);
 	let refreshing = $state(false);
+
+	// Playlist autoplay
+	let autoplay = $state(false);
+	onMount(() => {
+		autoplay = localStorage.getItem('playlist-autoplay') === 'true';
+	});
+
+	function handleVideoEnded() {
+		if (!autoplay || !data.playlistContext?.nextDownloadId) return;
+		goto(`/downloads/${data.playlistContext.nextDownloadId}?playlist=${data.playlistContext.playlistId}`);
+	}
+
+	function toggleAutoplay() {
+		autoplay = !autoplay;
+		localStorage.setItem('playlist-autoplay', String(autoplay));
+	}
 
 	// -- Watch progress saving --
 	let watchProgressTimer: ReturnType<typeof setInterval> | undefined;
@@ -147,12 +165,45 @@
 </svelte:head>
 
 <div class="detail-page">
-	<a href="/downloads" class="back-link">
-		<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-			<path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-		</svg>
-		Back to Downloads
-	</a>
+	{#if data.playlistContext}
+		<div class="playlist-nav-bar">
+			<a href="/playlists/{data.playlistContext.playlistId}" class="back-link">
+				<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+					<path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+				{data.playlistContext.playlistName}
+			</a>
+			<div class="playlist-nav-controls">
+				{#if data.playlistContext.prevDownloadId}
+					<a href="/downloads/{data.playlistContext.prevDownloadId}?playlist={data.playlistContext.playlistId}" class="btn btn-sm btn-secondary">
+						← Prev
+					</a>
+				{/if}
+				<span class="playlist-position">{data.playlistContext.currentPosition} / {data.playlistContext.totalItems}</span>
+				{#if data.playlistContext.nextDownloadId}
+					<a href="/downloads/{data.playlistContext.nextDownloadId}?playlist={data.playlistContext.playlistId}" class="btn btn-sm btn-secondary">
+						Next →
+					</a>
+				{/if}
+				<button
+					class="btn btn-sm"
+					class:btn-secondary={!autoplay}
+					class:btn-primary={autoplay}
+					onclick={toggleAutoplay}
+					title={autoplay ? 'Autoplay on' : 'Autoplay off'}
+				>
+					Autoplay {autoplay ? 'On' : 'Off'}
+				</button>
+			</div>
+		</div>
+	{:else}
+		<a href="/downloads" class="back-link">
+			<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+				<path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+			</svg>
+			Back to Downloads
+		</a>
+	{/if}
 
 	<div class="detail-layout">
 		<!-- Player / Thumbnail Area -->
@@ -162,6 +213,8 @@
 					src="/api/files/{download.id}"
 					poster={download.thumbnail || undefined}
 					videoId={download.videoId || undefined}
+					startTime={download.watchProgress?.position ?? 0}
+					onEnded={handleVideoEnded}
 				/>
 			{:else if isAudio && download.status === 'COMPLETED'}
 				<div class="audio-area">
@@ -308,6 +361,7 @@
 						<DownloadIcon />
 						Download File
 					</button>
+					<AddToPlaylistMenu downloadId={download.id} />
 					{#if download.storagePool === 'cache'}
 						<button class="btn btn-accent" onclick={handlePromote} disabled={promoting}>
 							<FolderDownIcon />
@@ -337,6 +391,29 @@
 			</div>
 		</div>
 	</div>
+
+	{#if data.similar && data.similar.length > 0}
+		<div class="similar-section">
+			<h3 class="similar-heading">More from {download.uploader}</h3>
+			<div class="similar-grid">
+				{#each data.similar as item}
+					<a href="/downloads/{item.id}" class="similar-card">
+						{#if item.thumbnail}
+							<img src={item.thumbnail} alt={item.title || ''} class="similar-thumb" />
+						{:else}
+							<div class="similar-thumb placeholder-thumb"></div>
+						{/if}
+						<div class="similar-info">
+							<p class="similar-title">{item.title || 'Untitled'}</p>
+							{#if item.duration}
+								<span class="similar-duration">{formatDuration(item.duration)}</span>
+							{/if}
+						</div>
+					</a>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -358,6 +435,31 @@
 
 	.back-link:hover {
 		color: var(--text-primary);
+	}
+
+	.playlist-nav-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-xl);
+		flex-wrap: wrap;
+	}
+
+	.playlist-nav-bar .back-link {
+		margin-bottom: 0;
+	}
+
+	.playlist-nav-controls {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+
+	.playlist-position {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		white-space: nowrap;
 	}
 
 	.detail-layout {
@@ -575,10 +677,73 @@
 		text-decoration: underline;
 	}
 
+	.similar-section {
+		margin-top: var(--spacing-2xl);
+		padding-top: var(--spacing-xl);
+		border-top: 1px solid var(--border);
+	}
+
+	.similar-heading {
+		font-size: 1rem;
+		font-weight: 600;
+		margin-bottom: var(--spacing-lg);
+		color: var(--text-secondary);
+	}
+
+	.similar-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+		gap: var(--spacing-md);
+	}
+
+	.similar-card {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+		text-decoration: none;
+		color: inherit;
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		transition: opacity var(--transition-fast);
+	}
+
+	.similar-card:hover {
+		opacity: 0.8;
+	}
+
+	.similar-thumb {
+		width: 100%;
+		aspect-ratio: 16/9;
+		object-fit: cover;
+		background: var(--bg-secondary);
+		border-radius: var(--radius-md);
+	}
+
+	.similar-info {
+		padding: 0 2px;
+	}
+
+	.similar-title {
+		font-size: 0.875rem;
+		font-weight: 500;
+		line-height: 1.4;
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		margin-bottom: 2px;
+	}
+
+	.similar-duration {
+		font-size: 0.75rem;
+		color: var(--text-secondary);
+	}
+
 	@media (max-width: 768px) {
 		.title { font-size: 1.25rem; }
 		.meta-grid { grid-template-columns: 1fr 1fr; }
 		.actions { flex-direction: column; }
 		.actions .btn { width: 100%; justify-content: center; }
+		.similar-grid { grid-template-columns: repeat(2, 1fr); }
 	}
 </style>

@@ -2,10 +2,13 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { showConfirm } from '$lib/stores/modal.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
 
 	let playlists = $state<any[]>([]);
 	let loading = $state(true);
+	let viewMode = $state<'grid' | 'list'>('grid');
 
 	let showCreateForm = $state(false);
 	let formName = $state('');
@@ -107,6 +110,27 @@
 		}
 	}
 
+	async function deletePlaylist(playlist: any) {
+		const confirmed = await showConfirm(
+			'Delete Playlist',
+			`Delete "${playlist.name}"? This cannot be undone.`,
+			'Delete'
+		);
+		if (!confirmed) return;
+
+		try {
+			const res = await fetch(`/api/playlists/${playlist.id}`, { method: 'DELETE' });
+			if (res.ok) {
+				addToast('success', 'Playlist deleted');
+				await loadPlaylists();
+			} else {
+				addToast('error', 'Failed to delete playlist');
+			}
+		} catch {
+			addToast('error', 'Failed to delete playlist');
+		}
+	}
+
 	function formatDate(date: string | Date): string {
 		return new Date(date).toLocaleDateString(undefined, {
 			year: 'numeric',
@@ -127,9 +151,12 @@
 				<h2>Playlists</h2>
 				<p class="text-muted">Organize your downloads into playlists</p>
 			</div>
-			<button class="btn btn-primary" onclick={() => (showCreateForm = !showCreateForm)}>
-				{showCreateForm ? 'Cancel' : 'Create Playlist'}
-			</button>
+			<div class="header-right">
+				<ViewToggle bind:view={viewMode} />
+				<button class="btn btn-primary" onclick={() => (showCreateForm = !showCreateForm)}>
+					{showCreateForm ? 'Cancel' : 'Create Playlist'}
+				</button>
+			</div>
 		</div>
 
 		{#if showCreateForm}
@@ -214,6 +241,34 @@
 				<p>No playlists yet</p>
 				<p class="text-muted">Create a playlist to organize your downloads</p>
 			</div>
+		{:else if viewMode === 'list'}
+			<div class="content-list">
+				{#each playlists as playlist}
+					<div class="list-row">
+						<button class="list-row-main" onclick={() => goto(`/playlists/${playlist.id}`)}>
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M3 12h18M3 6h18M3 18h18" />
+							</svg>
+							<div class="list-row-info">
+								<span class="list-row-name">{playlist.name}</span>
+								{#if playlist.description}
+									<span class="list-row-desc">{playlist.description}</span>
+								{/if}
+							</div>
+							<span class="list-row-count">{playlist.itemCount} item{playlist.itemCount !== 1 ? 's' : ''}</span>
+							<span class="list-row-date">{formatDate(playlist.updatedAt)}</span>
+						</button>
+						<div class="list-row-actions">
+							<button class="action-btn" onclick={(e) => { e.stopPropagation(); startEdit(playlist); }} title="Edit playlist">
+								<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+							</button>
+							<button class="action-btn danger" onclick={(e) => { e.stopPropagation(); deletePlaylist(playlist); }} title="Delete playlist">
+								<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+							</button>
+						</div>
+					</div>
+				{/each}
+			</div>
 		{:else}
 			<div class="content-grid">
 				{#each playlists as playlist}
@@ -247,7 +302,7 @@
 									<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
 								</svg>
 							</button>
-							<button class="action-btn danger" onclick={(e) => { e.stopPropagation(); /* TODO: delete */ }} title="Delete playlist">
+							<button class="action-btn danger" onclick={(e) => { e.stopPropagation(); deletePlaylist(playlist); }} title="Delete playlist">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
 								</svg>
@@ -328,11 +383,91 @@
 		margin-bottom: var(--spacing-sm);
 	}
 
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+
 	.content-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 		gap: var(--spacing-lg);
 		width: 100%;
+	}
+
+	.content-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+	}
+
+	.list-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-sm) var(--spacing-md);
+		transition: border-color var(--transition-fast);
+	}
+
+	.list-row:hover {
+		border-color: var(--border-light);
+	}
+
+	.list-row-main {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		flex: 1;
+		min-width: 0;
+		background: none;
+		border: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+		padding: 0;
+		min-height: unset;
+	}
+
+	.list-row-info {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.list-row-name {
+		font-weight: 500;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.list-row-desc {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.list-row-count,
+	.list-row-date {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	.list-row-actions {
+		display: flex;
+		gap: 4px;
+		flex-shrink: 0;
 	}
 
 	.content-card {

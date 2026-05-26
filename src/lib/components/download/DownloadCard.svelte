@@ -8,6 +8,7 @@
 	import ExternalLinkIcon from '$lib/components/icons/ExternalLinkIcon.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
+	import AddToPlaylistMenu from '$lib/components/playlist/AddToPlaylistMenu.svelte';
 
 	let {
 		download,
@@ -525,6 +526,7 @@
 					<DownloadIcon width={14} height={14} />
 					Download
 				</button>
+				<AddToPlaylistMenu downloadId={download.id} />
 				{#if download.storagePool === 'cache' && libraryConfigured}
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
 						<FolderDownIcon width={14} height={14} />

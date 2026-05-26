@@ -1,0 +1,277 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
+
+	type Channel = { name: string; count: number; thumbnail: string | null };
+
+	let channels = $state<Channel[]>([]);
+	let loading = $state(true);
+	let viewMode = $state<'grid' | 'list'>('grid');
+	let search = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+	onMount(() => loadChannels());
+
+	async function loadChannels(q = '') {
+		loading = true;
+		try {
+			const res = await fetch(`/api/channels${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+			if (res.ok) channels = await res.json();
+		} catch {
+			// ignore
+		} finally {
+			loading = false;
+		}
+	}
+
+	function handleSearchInput() {
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => loadChannels(search), 300);
+	}
+
+	function goToChannel(name: string) {
+		goto(`/downloads?uploader=${encodeURIComponent(name)}`);
+	}
+</script>
+
+<svelte:head>
+	<title>Channels - wytui</title>
+</svelte:head>
+
+<div class="page">
+	<div class="page-header">
+		<h1>Channels</h1>
+		<div class="header-right">
+			<input
+				class="search-input"
+				type="search"
+				placeholder="Search channels…"
+				bind:value={search}
+				oninput={handleSearchInput}
+			/>
+			<ViewToggle bind:view={viewMode} />
+		</div>
+	</div>
+
+	{#if loading}
+		<Skeleton count={12} variant="card" />
+	{:else if channels.length === 0}
+		<div class="empty-state">
+			<p>{search ? 'No channels match your search' : 'No completed downloads yet'}</p>
+		</div>
+	{:else if viewMode === 'list'}
+		<div class="channels-list">
+			{#each channels as channel}
+				<button class="channel-list-row" onclick={() => goToChannel(channel.name)}>
+					<div class="channel-list-avatar">
+						{#if channel.thumbnail}
+							<img src={channel.thumbnail} alt={channel.name} class="avatar-img" />
+						{:else}
+							<div class="avatar-placeholder small">
+								{channel.name.slice(0, 2).toUpperCase()}
+							</div>
+						{/if}
+					</div>
+					<span class="channel-list-name">{channel.name}</span>
+					<span class="channel-list-count">{channel.count} video{channel.count !== 1 ? 's' : ''}</span>
+				</button>
+			{/each}
+		</div>
+	{:else}
+		<div class="channels-grid">
+			{#each channels as channel}
+				<button class="channel-card" onclick={() => goToChannel(channel.name)}>
+					<div class="channel-avatar">
+						{#if channel.thumbnail}
+							<img src={channel.thumbnail} alt={channel.name} class="avatar-img" />
+						{:else}
+							<div class="avatar-placeholder">
+								{channel.name.slice(0, 2).toUpperCase()}
+							</div>
+						{/if}
+					</div>
+					<div class="channel-info">
+						<p class="channel-name">{channel.name}</p>
+						<p class="channel-count">{channel.count} video{channel.count !== 1 ? 's' : ''}</p>
+					</div>
+				</button>
+			{/each}
+		</div>
+	{/if}
+</div>
+
+<style>
+	.page {
+		max-width: 1200px;
+		margin: 0 auto;
+	}
+
+	.page-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-lg);
+		margin-bottom: var(--spacing-xl);
+		flex-wrap: wrap;
+	}
+
+	.page-header h1 {
+		font-size: 1.5rem;
+		font-weight: 700;
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+
+	.search-input {
+		width: 220px;
+		max-width: 100%;
+	}
+
+	.channels-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+	}
+
+	.channel-list-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		text-align: left;
+		color: inherit;
+		font: inherit;
+		min-height: unset;
+		transition: border-color var(--transition-fast);
+	}
+
+	.channel-list-row:hover {
+		border-color: var(--border-light);
+	}
+
+	.channel-list-avatar {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+
+	.channel-list-name {
+		flex: 1;
+		font-weight: 500;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.channel-list-count {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+		flex-shrink: 0;
+	}
+
+	.avatar-placeholder.small {
+		font-size: 0.875rem;
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: var(--spacing-2xl);
+		background: var(--bg-secondary);
+		border: 1px dashed var(--border);
+		border-radius: var(--radius-lg);
+		color: var(--text-secondary);
+	}
+
+	.channels-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+		gap: var(--spacing-md);
+	}
+
+	.channel-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--spacing-md);
+		padding: var(--spacing-lg);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		cursor: pointer;
+		text-align: center;
+		transition: border-color var(--transition-fast), background var(--transition-fast);
+		min-height: unset;
+		min-width: unset;
+		color: inherit;
+		font: inherit;
+	}
+
+	.channel-card:hover {
+		border-color: var(--border-light);
+		background: var(--bg-tertiary);
+	}
+
+	.channel-avatar {
+		width: 72px;
+		height: 72px;
+		border-radius: 50%;
+		overflow: hidden;
+		flex-shrink: 0;
+	}
+
+	.avatar-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.avatar-placeholder {
+		width: 100%;
+		height: 100%;
+		background: var(--accent-primary);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: white;
+	}
+
+	.channel-info {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.channel-name {
+		font-size: 0.9375rem;
+		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 150px;
+	}
+
+	.channel-count {
+		font-size: 0.8125rem;
+		color: var(--text-secondary);
+	}
+
+	@media (max-width: 640px) {
+		.channels-grid {
+			grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+		}
+	}
+</style>

@@ -125,6 +125,41 @@
 		}
 	}
 
+	let reordering = $state(false);
+
+	async function moveItem(index: number, direction: 'top' | 'up' | 'down' | 'bottom') {
+		const items = [...playlist.items];
+		let targetIndex: number;
+		if (direction === 'top') targetIndex = 0;
+		else if (direction === 'up') targetIndex = index - 1;
+		else if (direction === 'down') targetIndex = index + 1;
+		else targetIndex = items.length - 1;
+
+		const [moved] = items.splice(index, 1);
+		items.splice(targetIndex, 0, moved);
+
+		const previous = playlist.items;
+		playlist.items = items;
+		reordering = true;
+
+		try {
+			const res = await fetch(`/api/playlists/${playlistId}/items`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ itemIds: items.map((i: any) => i.id) }),
+			});
+			if (!res.ok) {
+				playlist.items = previous;
+				addToast('error', 'Failed to reorder items');
+			}
+		} catch {
+			playlist.items = previous;
+			addToast('error', 'Failed to reorder items');
+		} finally {
+			reordering = false;
+		}
+	}
+
 	function formatDate(date: string | Date): string {
 		return new Date(date).toLocaleDateString(undefined, {
 			year: 'numeric',
@@ -139,7 +174,12 @@
 </svelte:head>
 
 <div class="page">
-	<a href="/playlists" class="back-link">Back to Playlists</a>
+	<a href="/playlists" class="back-link">
+		<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+			<path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+		</svg>
+		Back to Playlists
+	</a>
 
 	{#if loading}
 		<Skeleton count={4} variant="row" />
@@ -201,9 +241,43 @@
 				{#each playlist.items as item, index}
 					<div class="item-card">
 						<span class="item-position">{index + 1}</span>
+						<div class="reorder-controls">
+							<button
+								class="reorder-btn"
+								onclick={() => moveItem(index, 'top')}
+								disabled={index === 0 || reordering}
+								title="Move to top"
+							>
+								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+							</button>
+							<button
+								class="reorder-btn"
+								onclick={() => moveItem(index, 'up')}
+								disabled={index === 0 || reordering}
+								title="Move up"
+							>
+								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+							</button>
+							<button
+								class="reorder-btn"
+								onclick={() => moveItem(index, 'down')}
+								disabled={index === playlist.items.length - 1 || reordering}
+								title="Move down"
+							>
+								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+							</button>
+							<button
+								class="reorder-btn"
+								onclick={() => moveItem(index, 'bottom')}
+								disabled={index === playlist.items.length - 1 || reordering}
+								title="Move to bottom"
+							>
+								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 6 12 11 17 6"/><polyline points="7 13 12 18 17 13"/></svg>
+							</button>
+						</div>
 						<button
 							class="item-content"
-							onclick={() => goto(`/downloads/${item.downloadId}`)}
+							onclick={() => goto(`/downloads/${item.downloadId}?playlist=${playlistId}`)}
 						>
 							{#if item.download.thumbnail}
 								<img
@@ -252,15 +326,18 @@
 	}
 
 	.back-link {
-		display: inline-block;
-		color: var(--accent-primary);
-		font-size: 0.875rem;
-		margin-bottom: var(--spacing-lg);
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+		color: var(--text-secondary);
 		text-decoration: none;
+		font-size: 0.875rem;
+		margin-bottom: var(--spacing-xl);
+		transition: color var(--transition-fast);
 	}
 
 	.back-link:hover {
-		text-decoration: underline;
+		color: var(--text-primary);
 	}
 
 	.empty-state {
@@ -406,6 +483,44 @@
 		gap: var(--spacing-md);
 		font-size: 0.75rem;
 		color: var(--text-secondary);
+	}
+
+	.reorder-controls {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		flex-shrink: 0;
+		opacity: 0;
+		transition: opacity var(--transition-fast);
+	}
+
+	.item-card:hover .reorder-controls {
+		opacity: 1;
+	}
+
+	.reorder-btn {
+		background: none;
+		border: none;
+		color: var(--text-secondary);
+		padding: 2px 4px;
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: unset;
+		min-width: unset;
+		transition: color var(--transition-fast), background var(--transition-fast);
+	}
+
+	.reorder-btn:hover:not(:disabled) {
+		color: var(--text-primary);
+		background: var(--bg-hover, rgba(255,255,255,0.08));
+	}
+
+	.reorder-btn:disabled {
+		opacity: 0.2;
+		cursor: default;
 	}
 
 	.remove-btn {

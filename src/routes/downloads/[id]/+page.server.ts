@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, url }) => {
 	if (!locals.session?.user?.id) {
 		throw error(401, 'Authentication required');
 	}
@@ -38,8 +38,58 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		watchProgress: download.watchProgress[0] ?? null,
 	};
 
+	// Playlist navigation context
+	let playlistContext: {
+		playlistId: string;
+		playlistName: string;
+		prevDownloadId: string | null;
+		nextDownloadId: string | null;
+		currentPosition: number;
+		totalItems: number;
+	} | null = null;
+
+	const playlistId = url.searchParams.get('playlist');
+	if (playlistId) {
+		const playlist = await prisma.playlist.findUnique({
+			where: { id: playlistId },
+			include: { items: { orderBy: { position: 'asc' }, select: { id: true, downloadId: true } } },
+		});
+		if (playlist && playlist.userId === locals.session.user.id) {
+			const idx = playlist.items.findIndex((item) => item.downloadId === params.id);
+			if (idx !== -1) {
+				playlistContext = {
+					playlistId,
+					playlistName: playlist.name,
+					prevDownloadId: idx > 0 ? playlist.items[idx - 1].downloadId : null,
+					nextDownloadId: idx < playlist.items.length - 1 ? playlist.items[idx + 1].downloadId : null,
+					currentPosition: idx + 1,
+					totalItems: playlist.items.length,
+				};
+			}
+		}
+	}
+
+	// Similar videos — same uploader, exclude current, max 6
+	let similar: { id: string; title: string | null; thumbnail: string | null; uploader: string | null; duration: number | null }[] = [];
+	if (download.uploader) {
+		const rows = await prisma.download.findMany({
+			where: {
+				userId: locals.session.user.id,
+				uploader: download.uploader,
+				status: 'COMPLETED',
+				id: { not: params.id },
+			},
+			select: { id: true, title: true, thumbnail: true, uploader: true, duration: true },
+			orderBy: { completedAt: 'desc' },
+			take: 6,
+		});
+		similar = rows;
+	}
+
 	return {
 		download: serialized,
 		jellyfinUrl: settings?.jellyfinExternalUrl || settings?.jellyfinUrl || '',
+		playlistContext,
+		similar,
 	};
 };

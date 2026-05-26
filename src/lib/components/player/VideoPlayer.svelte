@@ -1,5 +1,19 @@
 <script lang="ts">
-	let { src, poster, videoId }: { src: string; poster?: string; videoId?: string } = $props();
+	let {
+		src,
+		poster,
+		videoId,
+		startTime = 0,
+		subtitles = [],
+		onEnded,
+	}: {
+		src: string;
+		poster?: string;
+		videoId?: string;
+		startTime?: number;
+		subtitles?: { label: string; lang: string; src: string }[];
+		onEnded?: () => void;
+	} = $props();
 
 	// -- Element refs --
 	let wrapperEl: HTMLDivElement | undefined = $state();
@@ -21,6 +35,11 @@
 	let speedMenuOpen = $state(false);
 	let skipNotification = $state('');
 	let skipNotificationTimer: ReturnType<typeof setTimeout> | undefined;
+	let theaterMode = $state(false);
+	let pipActive = $state(false);
+	let showHelp = $state(false);
+	let helpTimer: ReturnType<typeof setTimeout> | undefined;
+	let activeSubtitleIndex = $state(-1); // -1 = off
 
 	// -- SponsorBlock --
 	type SBSegment = {
@@ -139,6 +158,13 @@
 	function handleMetadata() {
 		if (!videoEl) return;
 		duration = videoEl.duration;
+		if (startTime > 0 && startTime < videoEl.duration - 5) {
+			videoEl.currentTime = startTime;
+		}
+	}
+
+	function handleEnded() {
+		onEnded?.();
 	}
 
 	function handlePlay() {
@@ -213,6 +239,46 @@
 		} else {
 			wrapperEl.requestFullscreen();
 		}
+	}
+
+	function toggleTheaterMode() {
+		theaterMode = !theaterMode;
+		if (theaterMode && document.fullscreenElement) {
+			document.exitFullscreen();
+		}
+	}
+
+	async function togglePip() {
+		if (!videoEl) return;
+		if (document.pictureInPictureElement) {
+			await document.exitPictureInPicture();
+			pipActive = false;
+		} else {
+			await videoEl.requestPictureInPicture();
+			pipActive = true;
+		}
+	}
+
+	$effect(() => {
+		function onPipLeave() { pipActive = false; }
+		videoEl?.addEventListener('leavepictureinpicture', onPipLeave);
+		return () => videoEl?.removeEventListener('leavepictureinpicture', onPipLeave);
+	});
+
+	function cycleSubtitle() {
+		if (!videoEl || subtitles.length === 0) return;
+		const tracks = videoEl.textTracks;
+		const nextIndex = activeSubtitleIndex >= subtitles.length - 1 ? -1 : activeSubtitleIndex + 1;
+		for (let i = 0; i < tracks.length; i++) {
+			tracks[i].mode = i === nextIndex ? 'showing' : 'disabled';
+		}
+		activeSubtitleIndex = nextIndex;
+	}
+
+	function showHelpOverlay() {
+		showHelp = true;
+		if (helpTimer) clearTimeout(helpTimer);
+		helpTimer = setTimeout(() => { showHelp = false; }, 4000);
 	}
 
 	$effect(() => {
@@ -399,6 +465,18 @@
 			case 'F':
 				toggleFullscreen();
 				break;
+			case 't':
+			case 'T':
+				toggleTheaterMode();
+				break;
+			case 'p':
+			case 'P':
+				if (document.pictureInPictureEnabled) togglePip();
+				break;
+			case 'c':
+			case 'C':
+				cycleSubtitle();
+				break;
 			case 'm':
 			case 'M':
 				toggleMute();
@@ -408,6 +486,14 @@
 				break;
 			case '>':
 				changeSpeed(1);
+				break;
+			case '?':
+				showHelpOverlay();
+				break;
+			case 'Escape':
+				if (theaterMode) toggleTheaterMode();
+				else if (showHelp) showHelp = false;
+				else handled = false;
 				break;
 			default:
 				if (e.key >= '0' && e.key <= '9' && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -460,6 +546,7 @@
 <div
 	class="video-player-wrapper"
 	class:controls-hidden={!controlsVisible && !paused}
+	class:theater-mode={theaterMode}
 	bind:this={wrapperEl}
 	tabindex="0"
 	onkeydown={handleKeydown}
@@ -482,8 +569,13 @@
 		onpause={handlePause}
 		onvolumechange={handleVolumeChange}
 		onratechange={handleRateChange}
+		onended={handleEnded}
 		class="video-element"
-	></video>
+	>
+		{#each subtitles as sub, i}
+			<track kind="subtitles" label={sub.label} srclang={sub.lang} src={sub.src} default={i === 0} />
+		{/each}
+	</video>
 
 	<!-- Big play button overlay when paused -->
 	{#if paused && currentTime === 0}
@@ -578,26 +670,59 @@
 			</div>
 
 			<!-- Volume -->
-			<button class="ctrl-btn" onclick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
-				{#if volumeIcon === 'muted'}
+			<div class="volume-control">
+				<button class="ctrl-btn" onclick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
+					{#if volumeIcon === 'muted'}
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+							<line x1="23" y1="9" x2="17" y2="15" />
+							<line x1="17" y1="9" x2="23" y2="15" />
+						</svg>
+					{:else if volumeIcon === 'low'}
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+							<path d="M15.54 8.46a5 5 0 010 7.07" />
+						</svg>
+					{:else}
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
+							<path d="M15.54 8.46a5 5 0 010 7.07" />
+							<path d="M19.07 4.93a10 10 0 010 14.14" />
+						</svg>
+					{/if}
+				</button>
+				<input
+					class="volume-slider"
+					type="range"
+					min="0"
+					max="1"
+					step="0.05"
+					value={muted ? 0 : volume}
+					oninput={(e) => {
+						if (!videoEl) return;
+						const v = parseFloat((e.target as HTMLInputElement).value);
+						videoEl.volume = v;
+						if (v > 0) videoEl.muted = false;
+					}}
+					aria-label="Volume"
+				/>
+			</div>
+
+			<!-- Subtitles -->
+			{#if subtitles.length > 0}
+				<button
+					class="ctrl-btn"
+					class:subtitle-active={activeSubtitleIndex >= 0}
+					onclick={cycleSubtitle}
+					title={activeSubtitleIndex >= 0 ? `Subtitles: ${subtitles[activeSubtitleIndex]?.label}` : 'Subtitles off'}
+					aria-label="Toggle subtitles"
+				>
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
-						<line x1="23" y1="9" x2="17" y2="15" />
-						<line x1="17" y1="9" x2="23" y2="15" />
+						<rect x="2" y="4" width="20" height="16" rx="2" />
+						<path d="M7 15h4M15 15h2M7 11h2M13 11h4" stroke-linecap="round" />
 					</svg>
-				{:else if volumeIcon === 'low'}
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
-						<path d="M15.54 8.46a5 5 0 010 7.07" />
-					</svg>
-				{:else}
-					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none" />
-						<path d="M15.54 8.46a5 5 0 010 7.07" />
-						<path d="M19.07 4.93a10 10 0 010 14.14" />
-					</svg>
-				{/if}
-			</button>
+				</button>
+			{/if}
 
 			<!-- Chromecast -->
 			{#if castAvailable}
@@ -608,6 +733,31 @@
 					</svg>
 				</button>
 			{/if}
+
+			<!-- Picture-in-Picture -->
+			{#if typeof document !== 'undefined' && document.pictureInPictureEnabled}
+				<button class="ctrl-btn" class:pip-active={pipActive} onclick={togglePip} aria-label={pipActive ? 'Exit picture-in-picture' : 'Picture-in-picture'}>
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="2" y="4" width="20" height="16" rx="2" />
+						<rect x="12" y="11" width="8" height="6" rx="1" fill="currentColor" stroke="none" />
+					</svg>
+				</button>
+			{/if}
+
+			<!-- Theater mode -->
+			<button class="ctrl-btn" class:theater-active={theaterMode} onclick={toggleTheaterMode} aria-label={theaterMode ? 'Exit theater mode' : 'Theater mode'}>
+				{#if theaterMode}
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="2" y="6" width="20" height="12" rx="2" />
+					</svg>
+				{:else}
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<rect x="2" y="4" width="20" height="16" rx="2" />
+						<line x1="2" y1="8" x2="22" y2="8" />
+						<line x1="2" y1="16" x2="22" y2="16" />
+					</svg>
+				{/if}
+			</button>
 
 			<!-- Fullscreen -->
 			<button class="ctrl-btn" onclick={toggleFullscreen} aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
@@ -627,6 +777,28 @@
 	<!-- Skip notification toast -->
 	{#if skipNotification}
 		<div class="skip-toast">{skipNotification}</div>
+	{/if}
+
+	<!-- Help overlay -->
+	{#if showHelp}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="help-overlay" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()}>
+			<h4>Keyboard Shortcuts</h4>
+			<div class="help-grid">
+				<span>Space</span><span>Play / Pause</span>
+				<span>← / →</span><span>Seek ±5s</span>
+				<span>↑ / ↓</span><span>Volume ±10%</span>
+				<span>0–9</span><span>Jump to %</span>
+				<span>F</span><span>Fullscreen</span>
+				<span>T</span><span>Theater mode</span>
+				<span>P</span><span>Picture-in-picture</span>
+				<span>M</span><span>Mute</span>
+				<span>C</span><span>Cycle subtitles</span>
+				<span>&lt; / &gt;</span><span>Speed down / up</span>
+				<span>?</span><span>Show this help</span>
+				<span>Esc</span><span>Exit theater / help</span>
+			</div>
+		</div>
 	{/if}
 </div>
 
@@ -803,7 +975,10 @@
 		flex-shrink: 0;
 	}
 
-	.cast-active {
+	.cast-active,
+	.pip-active,
+	.theater-active,
+	.subtitle-active {
 		color: var(--accent-primary, #6366f1);
 	}
 
@@ -871,6 +1046,89 @@
 	.speed-option.active {
 		color: var(--accent-primary, #3b82f6);
 		font-weight: 600;
+	}
+
+	/* Theater mode */
+	.theater-mode {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		border-radius: 0;
+		background: #000;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.theater-mode .video-element {
+		max-height: 95vh;
+		max-width: 95vw;
+		width: auto;
+	}
+
+	/* Volume control */
+	.volume-control {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.volume-slider {
+		width: 0;
+		opacity: 0;
+		transition: width var(--transition-normal), opacity var(--transition-normal);
+		cursor: pointer;
+		accent-color: #ef4444;
+		height: 4px;
+	}
+
+	.volume-control:hover .volume-slider,
+	.volume-slider:focus {
+		width: 72px;
+		opacity: 1;
+	}
+
+	/* Help overlay */
+	.help-overlay {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background: rgba(0, 0, 0, 0.88);
+		border: 1px solid rgba(255,255,255,0.12);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-lg);
+		color: white;
+		z-index: 30;
+		min-width: 280px;
+		backdrop-filter: blur(8px);
+	}
+
+	.help-overlay h4 {
+		margin: 0 0 var(--spacing-md);
+		font-size: 0.875rem;
+		font-weight: 600;
+		text-align: center;
+		color: rgba(255,255,255,0.7);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.help-grid {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: 6px 16px;
+		font-size: 0.8125rem;
+	}
+
+	.help-grid span:nth-child(odd) {
+		font-family: monospace;
+		color: var(--accent-primary, #3b82f6);
+		white-space: nowrap;
+	}
+
+	.help-grid span:nth-child(even) {
+		color: rgba(255,255,255,0.8);
 	}
 
 	/* Skip notification toast */

@@ -95,6 +95,16 @@ class PlaylistService {
 		});
 	}
 
+	async getPlaylistsForDownload(userId: string, downloadId: string) {
+		const items = await prisma.playlistItem.findMany({
+			where: { downloadId },
+			include: { playlist: { select: { id: true, name: true, userId: true } } },
+		});
+		return items
+			.filter((item) => item.playlist.userId === userId)
+			.map((item) => ({ id: item.playlist.id, name: item.playlist.name }));
+	}
+
 	async reorderItems(playlistId: string, userId: string, itemIds: string[]) {
 		const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
 		if (!playlist) throw new Error('Playlist not found');

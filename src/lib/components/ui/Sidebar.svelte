@@ -20,6 +20,7 @@
 
 	const libraryItems: NavItem[] = [
 		{ label: 'Downloads', href: '/downloads', icon: 'download' },
+		{ label: 'Channels', href: '/channels', icon: 'channel' },
 		{ label: 'Subscriptions', href: '/subscriptions', icon: 'broadcast' },
 		{ label: 'Monitors', href: '/monitors', icon: 'eye' },
 		{ label: 'Playlists', href: '/playlists', icon: 'playlist' }
@@ -93,6 +94,13 @@
 							<path d="M3 10h6" />
 							<path d="M3 15h4" />
 							<path d="M14 10v6l4-3-4-3z" />
+						{:else if item.icon === 'channel'}
+							<path d="M3 5h14" />
+							<path d="M3 10h14" />
+							<path d="M3 15h14" />
+							<circle cx="17" cy="5" r="2" />
+							<circle cx="17" cy="10" r="2" />
+							<circle cx="17" cy="15" r="2" />
 						{:else if item.icon === 'search'}
 							<circle cx="9" cy="9" r="5" />
 							<path d="M13 13l4 4" />
@@ -218,6 +226,17 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="mobile-menu-backdrop" onclick={() => (mobileMenuOpen = false)}></div>
 		<div class="mobile-menu">
+			<a href="/channels" class="mobile-menu-item" class:active={isActive('/channels')} onclick={() => (mobileMenuOpen = false)}>
+				<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M3 5h14" />
+					<path d="M3 10h14" />
+					<path d="M3 15h14" />
+					<circle cx="17" cy="5" r="2" />
+					<circle cx="17" cy="10" r="2" />
+					<circle cx="17" cy="15" r="2" />
+				</svg>
+				<span>Channels</span>
+			</a>
 			<a href="/monitors" class="mobile-menu-item" class:active={isActive('/monitors')} onclick={() => (mobileMenuOpen = false)}>
 				<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z" />

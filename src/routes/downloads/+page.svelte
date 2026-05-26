@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
 	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
 	import DownloadListRow from '$lib/components/download/DownloadListRow.svelte';
@@ -140,6 +141,10 @@
 	});
 
 	onMount(() => {
+		// Pre-apply uploader filter from URL (e.g. from /channels page)
+		const uploaderParam = $page.url.searchParams.get('uploader');
+		if (uploaderParam) channelFilter = uploaderParam;
+
 		loadSettings();
 		loadCompletedDownloads();
 		loadCacheUsage();
