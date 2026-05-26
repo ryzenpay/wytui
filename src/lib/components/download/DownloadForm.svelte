@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { addToast } from "$lib/stores/toast.svelte";
+  import { onSSEEvent } from "$lib/stores/sse.svelte";
 
   let url = $state("");
   let selectedVideoProfileId = $state<string | null>(null);
@@ -13,6 +15,10 @@
   let savingProfile = $state(false);
   let showSaveDialog = $state(false);
   let newProfileName = $state("");
+
+  // Playlist import state
+  let playlistImporting = $state(false);
+  let playlistProgress = $state<{ playlistTitle?: string; total?: number; created?: number; skipped?: number; errors?: number; current?: number } | null>(null);
 
   // Basic mode stackable options
   let audioQuality = $state("0");
@@ -1143,6 +1149,74 @@
     profiles.filter((p: any) => p.isSystem && p.audioOnly).slice(0, 3),
   );
   let customProfiles = $derived(profiles.filter((p: any) => !p.isSystem));
+
+  let isPlaylistUrl = $derived.by(() => {
+    const trimmed = url.trim();
+    if (!trimmed || trimmed.includes('\n')) return false;
+    try {
+      const u = new URL(trimmed);
+      const host = u.hostname.toLowerCase();
+      if (host.includes('youtube.com') || host.includes('youtu.be')) {
+        return u.searchParams.has('list') || u.pathname.startsWith('/playlist');
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  async function handlePlaylistImport() {
+    if (!url.trim() || !activeProfileId) {
+      error = "Please enter a playlist URL and select a profile";
+      return;
+    }
+
+    playlistImporting = true;
+    playlistProgress = null;
+    error = "";
+
+    // Listen for SSE progress events
+    const unsubProgress = onSSEEvent('playlist:import:progress', (data: any) => {
+      playlistProgress = data;
+    });
+    const unsubComplete = onSSEEvent('playlist:import:complete', (data: any) => {
+      playlistProgress = data;
+      addToast('success', `Imported ${data.created} video${data.created !== 1 ? 's' : ''} from "${data.playlistTitle}"${data.skipped ? ` (${data.skipped} skipped)` : ''}`);
+    });
+
+    try {
+      const body: any = { url: url.trim(), profileId: activeProfileId, saveToLibrary };
+      if (advancedMode) {
+        const cf = buildCustomFlags();
+        if (cf.length > 0) body.customFlags = cf;
+      } else {
+        const bf = buildBasicFlags();
+        if (bf.length > 0) body.customFlags = bf;
+      }
+
+      const res = await fetch("/api/playlists/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to import playlist");
+      }
+
+      url = "";
+    } catch (e: any) {
+      error = e.message;
+      addToast('error', e.message);
+    } finally {
+      playlistImporting = false;
+      unsubProgress();
+      unsubComplete();
+      // Keep progress visible briefly after completion
+      setTimeout(() => { playlistProgress = null; }, 5000);
+    }
+  }
 </script>
 
 <div class="download-form">
@@ -1576,13 +1650,66 @@
       <div class="error-message">{error}</div>
     {/if}
 
-    <button type="submit" class="btn btn-primary btn-lg" disabled={loading}>
-      {#if loading}
-        Downloading...
-      {:else}
-        Download
-      {/if}
-    </button>
+    {#if playlistProgress}
+      <div class="playlist-progress">
+        <div class="playlist-progress-header">
+          <span class="playlist-progress-title">Importing: {playlistProgress.playlistTitle || 'Playlist'}</span>
+          {#if playlistProgress.total && playlistProgress.current}
+            <span class="playlist-progress-count">{playlistProgress.current} / {playlistProgress.total}</span>
+          {/if}
+        </div>
+        {#if playlistProgress.total}
+          <div class="playlist-progress-bar">
+            <div
+              class="playlist-progress-fill"
+              style="width: {Math.round(((playlistProgress.current || 0) / playlistProgress.total) * 100)}%"
+            ></div>
+          </div>
+          <div class="playlist-progress-stats">
+            <span class="stat-created">{playlistProgress.created || 0} created</span>
+            {#if playlistProgress.skipped}
+              <span class="stat-skipped">{playlistProgress.skipped} skipped</span>
+            {/if}
+            {#if playlistProgress.errors}
+              <span class="stat-errors">{playlistProgress.errors} failed</span>
+            {/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
+    {#if isPlaylistUrl}
+      <div class="submit-row">
+        <button type="submit" class="btn btn-primary btn-lg" disabled={loading || playlistImporting}>
+          {#if loading}
+            Downloading...
+          {:else}
+            Download Single
+          {/if}
+        </button>
+        <button
+          type="button"
+          class="btn btn-accent btn-lg"
+          disabled={loading || playlistImporting}
+          onclick={handlePlaylistImport}
+        >
+          {#if playlistImporting}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            Importing...
+          {:else}
+            Import Playlist
+          {/if}
+        </button>
+      </div>
+    {:else}
+      <button type="submit" class="btn btn-primary btn-lg" disabled={loading}>
+        {#if loading}
+          Downloading...
+        {:else}
+          Download
+        {/if}
+      </button>
+    {/if}
   </form>
 </div>
 
@@ -2148,6 +2275,103 @@
   button[type="submit"] {
     width: 100%;
   }
+
+  .submit-row {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+
+  .submit-row button {
+    flex: 1;
+  }
+
+  .submit-row button[type="submit"] {
+    flex: 0 1 auto;
+  }
+
+  :global(.btn-accent) {
+    background: var(--accent-primary);
+    color: white;
+    border: 1px solid var(--accent-primary);
+  }
+
+  :global(.btn-accent:hover:not(:disabled)) {
+    opacity: 0.9;
+  }
+
+  :global(.btn-accent:disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .submit-row :global(.btn-accent) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 1s linear infinite; }
+
+  /* Playlist progress */
+  .playlist-progress {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+
+  .playlist-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .playlist-progress-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .playlist-progress-count {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-left: var(--spacing-sm);
+    flex-shrink: 0;
+  }
+
+  .playlist-progress-bar {
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .playlist-progress-fill {
+    height: 100%;
+    background: var(--accent-primary);
+    border-radius: var(--radius-sm);
+    transition: width 0.3s ease;
+  }
+
+  .playlist-progress-stats {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: 0.75rem;
+  }
+
+  .stat-created { color: var(--success, #22c55e); }
+  .stat-skipped { color: var(--text-tertiary); }
+  .stat-errors { color: var(--error); }
 
   @media (max-width: 768px) {
     .download-form {
