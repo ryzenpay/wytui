@@ -332,7 +332,7 @@
 		padding: var(--spacing-lg) var(--spacing-sm) var(--spacing-md);
 		justify-content: center;
 		flex-direction: column;
-		gap: var(--spacing-xs);
+		gap: var(--spacing-md);
 	}
 
 	.logo {
@@ -552,6 +552,12 @@
 	.sidebar.collapsed .user-card {
 		justify-content: center;
 		padding: 8px;
+		flex-direction: column;
+		gap: var(--spacing-lg);
+	}
+
+	.sidebar.collapsed .sidebar-footer {
+		gap: var(--spacing-sm);
 	}
 
 	.user-avatar {
