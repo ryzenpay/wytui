@@ -5,6 +5,7 @@ import { copyFile, unlink, mkdir, access, writeFile } from 'fs/promises';
 import { join, basename, resolve, extname } from 'path';
 import { musicMetadataService } from './music-metadata.service';
 import { ytdlpService } from './ytdlp.service';
+import { plexService } from './plex.service';
 
 function sanitizeFilename(name: string): string {
 	return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Unknown';
@@ -392,18 +393,27 @@ class LibraryService {
 
 	async triggerLibraryScan(): Promise<void> {
 		const settings = await this.getSettings();
-		if (!settings.jellyfinUrl || !settings.jellyfinApiKey) return;
 
-		try {
-			const url = `${settings.jellyfinUrl.replace(/\/$/, '')}/Library/Refresh`;
-			await fetch(url, {
-				method: 'POST',
-				headers: {
-					'X-Emby-Token': settings.jellyfinApiKey,
-				},
+		// Jellyfin scan
+		if (settings.jellyfinUrl && settings.jellyfinApiKey) {
+			try {
+				const url = `${settings.jellyfinUrl.replace(/\/$/, '')}/Library/Refresh`;
+				await fetch(url, {
+					method: 'POST',
+					headers: {
+						'X-Emby-Token': settings.jellyfinApiKey,
+					},
+				});
+			} catch (error) {
+				console.error('[LibraryService] Jellyfin scan failed:', error);
+			}
+		}
+
+		// Plex scan
+		if (settings.plexUrl && settings.plexToken) {
+			plexService.notifyLibraryScan(settings.plexUrl, settings.plexToken).catch((error) => {
+				console.error('[LibraryService] Plex scan failed:', error);
 			});
-		} catch (error) {
-			console.error('[LibraryService] Jellyfin scan failed:', error);
 		}
 	}
 

@@ -338,6 +338,10 @@ model Settings {
   jellyfinApiKey      String?
   jellyfinExternalUrl String?
 
+  // Plex integration
+  plexUrl             String?
+  plexToken           String?
+
   // Auto-cleanup settings
   cleanupEnabled         Boolean  @default(false)
   cleanupUserIds         String[] @default([])
