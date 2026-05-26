@@ -41,6 +41,8 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'ldapBindPassword',
 	'ldapSearchBase',
 	'ldapSearchFilter',
+	'proxyAuthEnabled',
+	'proxyAuthHeader',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -153,6 +155,8 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		ldapBindPassword: { type: 'string', description: 'LDAP bind password', nullable: true },
 		ldapSearchBase: { type: 'string', description: 'LDAP search base DN', nullable: true },
 		ldapSearchFilter: { type: 'string', description: 'LDAP search filter template', nullable: true },
+		proxyAuthEnabled: { type: 'boolean', description: 'Enable reverse-proxy authentication headers' },
+		proxyAuthHeader: { type: 'string', description: 'Header name for proxy auth (e.g. X-Forwarded-User)' },
 	},
 	responses: {
 		200: {
@@ -305,6 +309,14 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 			if (!Array.isArray(updates.cleanupProfileTypes) || !updates.cleanupProfileTypes.every((t: unknown) => allowed.includes(t as string))) {
 				throw error(400, 'cleanupProfileTypes must only contain "video" or "music"');
 			}
+		}
+
+		if (updates.proxyAuthHeader !== undefined) {
+			const header = String(updates.proxyAuthHeader).trim();
+			if (!header || !/^[a-zA-Z0-9-]+$/.test(header)) {
+				throw error(400, 'proxyAuthHeader must be a valid HTTP header name (letters, digits, hyphens)');
+			}
+			updates.proxyAuthHeader = header;
 		}
 
 		const settings = await prisma.settings.update({

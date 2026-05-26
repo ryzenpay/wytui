@@ -343,6 +343,10 @@ model Settings {
   backupCron       String?
   backupPath       String?
 
+  // Reverse-proxy auth
+  proxyAuthEnabled Boolean @default(false)
+  proxyAuthHeader  String  @default("X-Forwarded-User")
+
   // LDAP
   ldapEnabled      Boolean @default(false)
   ldapUrl          String?

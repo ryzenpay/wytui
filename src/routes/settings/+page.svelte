@@ -91,7 +91,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'proxyAuthEnabled', 'proxyAuthHeader'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -956,6 +956,34 @@
 								placeholder={'(uid={{username}})'}
 							/>
 							<p class="help-text">Use {"{{username}}"} as placeholder. For Active Directory use (sAMAccountName={"{{username}}"})</p>
+						</div>
+					{/if}
+				</div>
+
+				<div class="settings-section">
+					<h2>Reverse Proxy Auth</h2>
+					<div class="form-group">
+						<label>
+							<input type="checkbox" bind:checked={settings.proxyAuthEnabled} />
+							Enable reverse proxy authentication
+						</label>
+						<p class="help-text">Automatically log in users based on a header set by your reverse proxy (Authelia, Authentik, etc.)</p>
+					</div>
+
+					{#if settings.proxyAuthEnabled}
+						<div class="info-box warning-box" style="margin-bottom: var(--spacing-lg);">
+							Only enable this if wytui is behind a trusted reverse proxy that sets the authentication header. If users can reach wytui directly, they can forge the header and impersonate any user.
+						</div>
+
+						<div class="form-group nested-field">
+							<label for="proxyAuthHeader">Auth Header Name</label>
+							<input
+								type="text"
+								id="proxyAuthHeader"
+								bind:value={settings.proxyAuthHeader}
+								placeholder="X-Forwarded-User"
+							/>
+							<p class="help-text">The HTTP header your reverse proxy sets with the authenticated username or email. Common values: <code>X-Forwarded-User</code>, <code>Remote-User</code>, <code>X-Authentik-Username</code></p>
 						</div>
 					{/if}
 				</div>
