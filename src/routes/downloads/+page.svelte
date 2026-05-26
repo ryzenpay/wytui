@@ -20,9 +20,7 @@
 	let channelDropdownOpen = $state(false);
 	let sortOption = $state<'newest' | 'oldest' | 'largest' | 'smallest' | 'longest' | 'shortest' | 'uploader'>('newest');
 	let sortDropdownOpen = $state(false);
-	let searchFilterDropdownOpen = $state(false);
 	let searchQuery = $state('');
-	let searchVideoType = $state('all');
 	let searchResults = $state<any[]>([]);
 	let searchTotal = $state(0);
 	let searchLoading = $state(false);
@@ -62,7 +60,6 @@
 
 	$effect(() => {
 		const q = searchQuery;
-		const vt = searchVideoType;
 		const sp = completedFilter;
 		const uf = channelFilter;
 
@@ -79,7 +76,6 @@
 		searchDebounceTimer = setTimeout(async () => {
 			try {
 				const params = new URLSearchParams({ q, limit: '50' });
-				if (vt !== 'all') params.set('videoType', vt);
 				if (sp !== 'all') params.set('storagePool', sp);
 				if (uf !== 'all') params.set('uploader', uf);
 
@@ -397,29 +393,6 @@
 					<button class="search-clear-btn" aria-label="Clear search" onclick={() => (searchQuery = '')}>
 						<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
 					</button>
-				{/if}
-			</div>
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="filter-dropdown" onkeydown={(e) => { if (e.key === 'Escape') searchFilterDropdownOpen = false; }}>
-				<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); searchFilterDropdownOpen = !searchFilterDropdownOpen; }}>
-					<span class="channel-dropdown-label">{
-						({ all: 'All types', regular: 'Regular', short: 'Short', stream: 'Stream' } as Record<string, string>)[searchVideoType]
-					}</span>
-					<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={searchFilterDropdownOpen}>
-						<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-					</svg>
-				</button>
-				{#if searchFilterDropdownOpen}
-					<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
-						<div class="channel-dropdown-options">
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'all'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'all'; searchFilterDropdownOpen = false; }}>All types</button>
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'regular'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'regular'; searchFilterDropdownOpen = false; }}>Regular</button>
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'short'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'short'; searchFilterDropdownOpen = false; }}>Short</button>
-							<button class="channel-dropdown-option" class:selected={searchVideoType === 'stream'} onclick={(e) => { e.stopPropagation(); searchVideoType = 'stream'; searchFilterDropdownOpen = false; }}>Stream</button>
-						</div>
-					</div>
-					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div class="channel-dropdown-backdrop" onclick={() => (searchFilterDropdownOpen = false)}></div>
 				{/if}
 			</div>
 		</div>
@@ -791,8 +764,6 @@
 		.search-bar-section { flex-direction: column; }
 		.search-bar-wrapper { min-width: unset; }
 		.search-input-main { font-size: 1rem; }
-		.filter-dropdown { width: 100%; }
-		.filter-dropdown .channel-dropdown-trigger { width: 100%; justify-content: center; }
 		.section-header { flex-direction: column; align-items: stretch; }
 		.section-header-left { justify-content: space-between; }
 		.section-header-right { flex-wrap: wrap; }
