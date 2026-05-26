@@ -91,7 +91,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'plexUrl', 'plexToken', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -99,6 +99,7 @@
 	let cacheQuotaExceedsDisk = $derived(diskTotalGB !== null && cacheQuotaGB > diskTotalGB);
 	let libraryEnabled = $derived(settings ? !!settings.libraryPath : false);
 	let jellyfinEnabled = $derived(settings ? !!(settings.jellyfinUrl || settings.jellyfinApiKey) : false);
+	let plexEnabled = $derived(settings ? !!(settings.plexUrl || settings.plexToken) : false);
 	let cleanupEnabled = $derived(settings ? !!settings.cleanupEnabled : false);
 
 	async function loadDiskInfo() {
@@ -221,6 +222,44 @@
 			jellyfinTestResult = { success: false, message: 'Request failed' };
 		} finally {
 			testingJellyfin = false;
+		}
+	}
+
+	let testingPlex = $state(false);
+	let plexTestResult = $state<{ success: boolean; message: string } | null>(null);
+
+	function togglePlex(enabled: boolean) {
+		if (!settings) return;
+		plexTestResult = null;
+		if (enabled) {
+			settings.plexUrl = settings.plexUrl || 'http://localhost:32400';
+			settings.plexToken = settings.plexToken || '';
+		} else {
+			settings.plexUrl = null;
+			settings.plexToken = null;
+		}
+	}
+
+	async function testPlexConnection() {
+		if (!settings?.plexUrl || !settings?.plexToken) return;
+		testingPlex = true;
+		plexTestResult = null;
+		try {
+			const res = await fetch('/api/settings/plex/test', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ url: settings.plexUrl, token: settings.plexToken }),
+			});
+			const data = await res.json();
+			if (data.success) {
+				plexTestResult = { success: true, message: `Connected to ${data.serverName}` };
+			} else {
+				plexTestResult = { success: false, message: data.error };
+			}
+		} catch {
+			plexTestResult = { success: false, message: 'Request failed' };
+		} finally {
+			testingPlex = false;
 		}
 	}
 
@@ -780,6 +819,63 @@
 									</div>
 									<p class="help-text">Which download types to auto-clean</p>
 								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<div class="settings-section">
+					<h2>Plex</h2>
+
+					<div class="form-group">
+						<label class="toggle-label">
+							<input
+								type="checkbox"
+								checked={plexEnabled}
+								onchange={(e) => togglePlex(e.currentTarget.checked)}
+							/>
+							Enable Plex Integration
+						</label>
+						<p class="help-text">Triggers a library scan when downloads are saved to library</p>
+					</div>
+
+					{#if plexEnabled}
+						<div class="form-row nested-field">
+							<div class="form-group">
+								<label for="plexUrl">Server URL</label>
+								<input
+									type="text"
+									id="plexUrl"
+									bind:value={settings.plexUrl}
+									placeholder="http://localhost:32400"
+								/>
+							</div>
+
+							<div class="form-group">
+								<label for="plexToken">Token</label>
+								<input
+									type="password"
+									id="plexToken"
+									bind:value={settings.plexToken}
+									placeholder="Enter Plex token"
+								/>
+								<p class="help-text">Find your token at plex.tv/claim or in Plex server XML</p>
+							</div>
+						</div>
+						<div class="jellyfin-test nested-field">
+							<button
+								type="button"
+								class="btn-secondary btn-sm btn-with-icon"
+								onclick={testPlexConnection}
+								disabled={testingPlex || !settings.plexUrl || !settings.plexToken}
+							>
+								<ZapIcon width={14} height={14} />
+								{testingPlex ? 'Testing...' : 'Test Connection'}
+							</button>
+							{#if plexTestResult}
+								<span class="test-result" class:success={plexTestResult.success} class:error={!plexTestResult.success}>
+									{plexTestResult.message}
+								</span>
 							{/if}
 						</div>
 					{/if}
