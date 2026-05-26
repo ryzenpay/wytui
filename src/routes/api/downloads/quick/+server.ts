@@ -13,6 +13,40 @@ export const OPTIONS: RequestHandler = async () => {
 	return new Response(null, { status: 204, headers: corsHeaders });
 };
 
+export const GET: RequestHandler = async ({ url, locals }) => {
+	if (!locals.session?.user?.id) {
+		return json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
+	}
+
+	const lookupUrl = url.searchParams.get('url');
+	if (!lookupUrl) {
+		return json({ error: 'Missing url parameter' }, { status: 400, headers: corsHeaders });
+	}
+
+	const downloads = await prisma.download.findMany({
+		where: {
+			userId: locals.session.user.id,
+			url: lookupUrl,
+			status: { notIn: ['DELETED'] },
+		},
+		select: {
+			id: true,
+			title: true,
+			thumbnail: true,
+			status: true,
+			storagePool: true,
+			duration: true,
+			uploader: true,
+			filesize: true,
+			completedAt: true,
+			profile: { select: { name: true } },
+		},
+		orderBy: { createdAt: 'desc' },
+	});
+
+	return json(downloads, { headers: corsHeaders });
+};
+
 export const POST = apiRoute('/api/downloads/quick', 'POST', {
 	summary: 'Quick download (browser extension)',
 	description: 'Simplified endpoint for browser extensions. Accepts just a URL and uses the default profile.',

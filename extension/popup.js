@@ -13,10 +13,17 @@ const viewLink = document.getElementById('viewLink');
 const serverUrlInput = document.getElementById('serverUrl');
 const apiKeyInput = document.getElementById('apiKey');
 const saveBtn = document.getElementById('saveBtn');
+const existingWrap = document.getElementById('existingWrap');
+const existingTitle = document.getElementById('existingTitle');
+const existingStatus = document.getElementById('existingStatus');
+const existingProfile = document.getElementById('existingProfile');
+const existingViewLink = document.getElementById('existingViewLink');
+const redownloadBtn = document.getElementById('redownloadBtn');
 
 let currentTabUrl = '';
 let serverUrl = '';
 let saveToLibrary = false;
+let existingLocked = false;
 
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach((btn) => {
@@ -55,9 +62,10 @@ chrome.storage.local.get(['serverUrl', 'apiKey'], async (data) => {
     }
   }
 
-  // Load profiles if configured
+  // Load profiles and check for existing downloads if configured
   if (data.serverUrl && data.apiKey) {
     loadProfiles();
+    if (currentTabUrl) lookupExisting(currentTabUrl);
   }
 });
 
@@ -80,13 +88,58 @@ function updateStatus(url, key) {
   if (url && key) {
     statusDot.className = 'status-dot connected';
     statusText.textContent = 'Connected';
-    downloadBtn.disabled = false;
+    if (!existingLocked) downloadBtn.disabled = false;
   } else {
     statusDot.className = 'status-dot';
     statusText.textContent = 'Not configured';
     downloadBtn.disabled = true;
   }
 }
+
+async function lookupExisting(url) {
+  console.log('[wytui] lookupExisting called for:', url);
+  let result;
+  try {
+    result = await chrome.runtime.sendMessage({ action: 'lookupUrl', url });
+  } catch (err) {
+    console.error('[wytui] sendMessage failed:', err);
+    return;
+  }
+  console.log('[wytui] lookupExisting result:', result);
+  if (!result?.success || !result.downloads?.length) return;
+
+  const dl = result.downloads[0];
+  existingTitle.textContent = dl.title || url;
+  existingViewLink.href = serverUrl.replace(/\/+$/, '') + '/downloads/' + dl.id;
+
+  const statusMap = {
+    COMPLETED: ['completed', 'Completed'],
+    PENDING: ['pending', 'Pending'],
+    DOWNLOADING: ['downloading', 'Downloading'],
+    FETCHING_INFO: ['downloading', 'Fetching info'],
+    PROCESSING: ['downloading', 'Processing'],
+    FAILED: ['failed', 'Failed'],
+    CANCELLED: ['failed', 'Cancelled'],
+  };
+  const [cls, label] = statusMap[dl.status] || ['other', dl.status];
+  existingStatus.className = 'existing-status ' + cls;
+  existingStatus.textContent = label;
+  existingProfile.textContent = dl.profile?.name || '';
+
+  existingLocked = true;
+  existingWrap.classList.add('visible');
+  downloadBtn.disabled = true;
+  libraryToggleRow.style.opacity = '0.4';
+  libraryToggleRow.style.pointerEvents = 'none';
+}
+
+redownloadBtn.addEventListener('click', () => {
+  existingLocked = false;
+  existingWrap.classList.remove('visible');
+  downloadBtn.disabled = false;
+  libraryToggleRow.style.opacity = '';
+  libraryToggleRow.style.pointerEvents = '';
+});
 
 async function loadProfiles() {
   profileSelect.disabled = true;
@@ -117,7 +170,7 @@ async function loadProfiles() {
     profileSelect.appendChild(opt);
   });
 
-  profileSelect.disabled = false;
+  if (!existingLocked) profileSelect.disabled = false;
 
   // Select default profile
   const defaultProfile = result.profiles.find((p) => p.isDefault);

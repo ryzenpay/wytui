@@ -68,7 +68,7 @@
       border-bottom: 2px solid transparent;
       margin-bottom: -1px;
     }
-    .tab-btn.active { color: #7c3aed; border-bottom-color: #7c3aed; }
+    .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
     .tab-btn:hover:not(.active) { color: #a0a0a0; }
 
     /* Panels */
@@ -107,7 +107,7 @@
       border-radius: 4px;
       transition: color 150ms ease;
     }
-    .url-open-btn:hover { color: #7c3aed; }
+    .url-open-btn:hover { color: #3b82f6; }
 
     /* Form controls */
     .form-group { margin-bottom: 10px; }
@@ -142,7 +142,7 @@
       padding-right: 28px;
       cursor: pointer;
     }
-    select:focus, input:focus { border-color: #7c3aed; }
+    select:focus, input:focus { border-color: #3b82f6; }
     input::placeholder { color: #606060; }
     select option { background: #1e1e1e; }
 
@@ -178,7 +178,7 @@
       top: 3px; left: 3px;
       transition: transform 150ms ease;
     }
-    .toggle.on { background: #7c3aed; }
+    .toggle.on { background: #3b82f6; }
     .toggle.on::after { transform: translateX(16px); }
 
     /* Buttons */
@@ -198,8 +198,8 @@
       transition: background 150ms ease, opacity 150ms ease;
     }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-primary { background: #7c3aed; color: #fff; }
-    .btn-primary:hover:not(:disabled) { background: #6d28d9; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #2563eb; }
     .btn-secondary { background: #1e1e1e; color: #ffffff; border: 1px solid #3a3a3a; }
     .btn-secondary:hover:not(:disabled) { background: #2a2a2a; }
     .btn-ghost {
@@ -231,7 +231,7 @@
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      color: #7c3aed;
+      color: #3b82f6;
       text-decoration: none;
       font-size: 12px;
       margin-top: 6px;
@@ -247,6 +247,88 @@
     /* Save row */
     .save-row { display: flex; justify-content: flex-end; }
     .btn-save { width: auto; padding: 7px 16px; font-size: 12px; }
+
+    /* Existing download banner */
+    .existing-wrap {
+      display: none;
+      margin-bottom: 12px;
+      border: 1px solid rgba(16,185,129,0.3);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .existing-wrap.visible { display: block; }
+    .existing-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      background: rgba(16,185,129,0.08);
+      font-size: 11px;
+      font-weight: 600;
+      color: #10b981;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .existing-item {
+      padding: 8px 10px;
+      background: #141414;
+    }
+    .existing-title {
+      font-size: 12px;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .existing-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #606060;
+    }
+    .existing-status {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .existing-status.completed { background: rgba(16,185,129,0.15); color: #10b981; }
+    .existing-status.pending, .existing-status.downloading { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    .existing-status.failed { background: rgba(239,68,68,0.15); color: #ef4444; }
+    .existing-status.other { background: rgba(160,160,160,0.1); color: #a0a0a0; }
+    .existing-view {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      color: #3b82f6;
+      text-decoration: none;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .existing-view:hover { text-decoration: underline; }
+    .existing-footer {
+      padding: 6px 10px;
+      background: #141414;
+      border-top: 1px solid #1e1e1e;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .btn-redownload {
+      background: none;
+      border: none;
+      color: #606060;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0;
+      transition: color 150ms ease;
+    }
+    .btn-redownload:hover { color: #a0a0a0; }
   </style>
 </head>
 <body>
@@ -286,6 +368,28 @@
           <path d="M11 3h6v6M17 3l-9 9M8 5H4a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-4"/>
         </svg>
       </button>
+    </div>
+
+    <!-- Existing download banner -->
+    <div class="existing-wrap" id="existingWrap">
+      <div class="existing-header">
+        <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 3.5a1 1 0 011 1V10a1 1 0 01-2 0V6.5a1 1 0 011-1zm0 7a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5z"/></svg>
+        Already in wytui
+      </div>
+      <div class="existing-item" id="existingItem">
+        <div class="existing-title" id="existingTitle"></div>
+        <div class="existing-meta">
+          <span class="existing-status" id="existingStatus"></span>
+          <span id="existingProfile"></span>
+          <a class="existing-view" id="existingViewLink" href="#" target="_blank">
+            <svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3h6v6M17 3l-9 9M8 5H4a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-4"/></svg>
+            View
+          </a>
+        </div>
+      </div>
+      <div class="existing-footer">
+        <button class="btn-redownload" id="redownloadBtn">Download anyway →</button>
+      </div>
     </div>
 
     <!-- Profile selector -->

@@ -1,3 +1,27 @@
+// Strip tracking/session params so stored URLs match on lookup
+function normalizeUrl(url) {
+  try {
+    const u = new URL(url);
+    // YouTube watch page: keep only v=
+    if ((u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') && u.pathname === '/watch') {
+      const v = u.searchParams.get('v');
+      if (v) return `https://www.youtube.com/watch?v=${v}`;
+    }
+    // youtu.be short links: keep only the path
+    if (u.hostname === 'youtu.be') {
+      return `https://youtu.be${u.pathname}`;
+    }
+    // Generic: remove fragment and known tracking params
+    u.hash = '';
+    for (const p of ['si', 'feature', 'pp', 'index', 'utm_source', 'utm_medium', 'utm_campaign', 'fbclid', 'gclid']) {
+      u.searchParams.delete(p);
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 // Create context menu on install — works on any page
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -11,7 +35,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== 'send-to-wytui') return;
 
-  const url = info.linkUrl || info.pageUrl;
+  const url = normalizeUrl(info.linkUrl || info.pageUrl);
   if (!url) return;
 
   const result = await sendToWytui(url);
@@ -28,7 +52,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 // Handle messages from popup and content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'quickDownload') {
-    sendToWytui(message.url, message.profileId, message.saveToLibrary).then(sendResponse);
+    sendToWytui(normalizeUrl(message.url), message.profileId, message.saveToLibrary).then(sendResponse);
     return true;
   }
   if (message.action === 'fetchProfiles') {
@@ -36,7 +60,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.action === 'lookupUrl') {
-    lookupUrl(message.url).then(sendResponse);
+    lookupUrl(normalizeUrl(message.url)).then(sendResponse);
     return true;
   }
 });
@@ -46,15 +70,22 @@ async function lookupUrl(url) {
     const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
     if (!data.serverUrl || !data.apiKey) return { success: false, downloads: [] };
 
-    const res = await fetch(
-      `${data.serverUrl.replace(/\/+$/, '')}/api/downloads/quick?url=${encodeURIComponent(url)}`,
-      { headers: { Authorization: 'Bearer ' + data.apiKey } }
-    );
+    const endpoint = `${data.serverUrl.replace(/\/+$/, '')}/api/downloads/quick?url=${encodeURIComponent(url)}`;
+    console.log('[wytui] lookupUrl GET', endpoint);
 
-    if (!res.ok) return { success: false, downloads: [] };
+    const res = await fetch(endpoint, { headers: { Authorization: 'Bearer ' + data.apiKey } });
+
+    console.log('[wytui] lookupUrl response status:', res.status);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.log('[wytui] lookupUrl error body:', body);
+      return { success: false, downloads: [] };
+    }
     const downloads = await res.json();
+    console.log('[wytui] lookupUrl downloads found:', downloads.length, downloads);
     return { success: true, downloads };
-  } catch {
+  } catch (err) {
+    console.error('[wytui] lookupUrl exception:', err);
     return { success: false, downloads: [] };
   }
 }
