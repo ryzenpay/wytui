@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { formatBytes, formatDuration } from '$lib/utils/format';
 	import VideoPlayer from '$lib/components/player/VideoPlayer.svelte';
 	import TagEditor from '$lib/components/ui/TagEditor.svelte';
@@ -17,9 +18,55 @@
 
 	let { data }: { data: PageData } = $props();
 	let download = $state(data.download);
+	let tasks = $state<any[]>(data.downloadTasks ?? []);
 	let deleting = $state(false);
 	let promoting = $state(false);
 	let refreshing = $state(false);
+
+	const TASK_LABELS: Record<string, string> = {
+		download: 'Download',
+		merge: 'Merge Formats',
+		metadata: 'Embed Metadata',
+		thumbnail: 'Embed Thumbnail',
+		subtitle: 'Embed Subtitles',
+		sponsorblock: 'SponsorBlock',
+		convert: 'Convert',
+	};
+
+	const TASK_ICONS: Record<string, string> = {
+		download: 'M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2',
+		merge: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+		metadata: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+		thumbnail: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+		subtitle: 'M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z',
+		sponsorblock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+		convert: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+	};
+
+	let showTasks = $derived(
+		tasks.length > 0 && ['DOWNLOADING', 'PROCESSING', 'COMPLETED', 'FAILED'].includes(download.status)
+	);
+
+	// Listen for SSE task updates
+	$effect(() => {
+		const unsub1 = onSSEEvent('download:tasks', (eventData: any) => {
+			if (eventData.id === download.id) {
+				tasks = eventData.tasks;
+			}
+		});
+		const unsub2 = onSSEEvent('download:task', (eventData: any) => {
+			if (eventData.id === download.id) {
+				const idx = tasks.findIndex((t: any) => t.id === eventData.task.id);
+				if (idx >= 0) {
+					tasks[idx] = eventData.task;
+					tasks = [...tasks];
+				} else {
+					tasks = [...tasks, eventData.task];
+				}
+			}
+		});
+		return () => { unsub1(); unsub2(); };
+	});
 
 	// Playlist autoplay
 	let autoplay = $state(false);
@@ -400,6 +447,59 @@
 		</div>
 	</div>
 
+	{#if showTasks}
+		<div class="tasks-section">
+			<h3 class="tasks-heading">Processing Steps</h3>
+			<div class="task-timeline">
+				{#each tasks as task (task.id)}
+					<div class="task-step" class:task-pending={task.status === 'pending'} class:task-in-progress={task.status === 'in_progress'} class:task-completed={task.status === 'completed'} class:task-failed={task.status === 'failed'} class:task-skipped={task.status === 'skipped'}>
+						<div class="task-indicator">
+							{#if task.status === 'completed'}
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+									<polyline points="20 6 9 17 4 12"/>
+								</svg>
+							{:else if task.status === 'failed'}
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+									<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+								</svg>
+							{:else if task.status === 'in_progress'}
+								<div class="task-spinner"></div>
+							{:else if task.status === 'skipped'}
+								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<line x1="5" y1="12" x2="19" y2="12"/>
+								</svg>
+							{:else}
+								<div class="task-dot"></div>
+							{/if}
+						</div>
+						<div class="task-content">
+							<div class="task-header">
+								<div class="task-icon">
+									<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d={TASK_ICONS[task.type] || TASK_ICONS.convert}/>
+									</svg>
+								</div>
+								<span class="task-type">{TASK_LABELS[task.type] || task.type}</span>
+								<span class="task-status-badge task-status-{task.status}">{task.status.replace('_', ' ')}</span>
+							</div>
+							{#if task.status === 'in_progress' && task.progress != null}
+								<div class="task-progress-bar">
+									<div class="task-progress-fill" style="width: {Math.min(100, task.progress)}%"></div>
+								</div>
+							{/if}
+							{#if task.message}
+								<p class="task-message">{task.message}</p>
+							{/if}
+							{#if task.startedAt && task.completedAt}
+								<p class="task-timing">{Math.round((new Date(task.completedAt).getTime() - new Date(task.startedAt).getTime()) / 1000)}s</p>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
 	{#if data.similar && data.similar.length > 0}
 		<div class="similar-section">
 			<h3 class="similar-heading">More from <a href="/channels/{encodeURIComponent(download.uploader)}" class="similar-channel-link">{download.uploader}</a></h3>
@@ -761,6 +861,203 @@
 	.similar-duration {
 		font-size: 0.75rem;
 		color: var(--text-secondary);
+	}
+
+	/* Task timeline */
+	.tasks-section {
+		margin-top: var(--spacing-xl);
+		padding-top: var(--spacing-xl);
+		border-top: 1px solid var(--border);
+	}
+
+	.tasks-heading {
+		font-size: 1rem;
+		font-weight: 600;
+		margin-bottom: var(--spacing-lg);
+		color: var(--text-secondary);
+	}
+
+	.task-timeline {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		position: relative;
+	}
+
+	.task-step {
+		display: flex;
+		gap: var(--spacing-md);
+		position: relative;
+		padding-bottom: var(--spacing-lg);
+	}
+
+	.task-step:last-child {
+		padding-bottom: 0;
+	}
+
+	/* Vertical line connecting steps */
+	.task-step:not(:last-child)::after {
+		content: '';
+		position: absolute;
+		left: 11px;
+		top: 24px;
+		bottom: 0;
+		width: 2px;
+		background: var(--border);
+	}
+
+	.task-step.task-completed:not(:last-child)::after {
+		background: var(--success);
+	}
+
+	.task-step.task-in-progress:not(:last-child)::after {
+		background: var(--accent-primary);
+	}
+
+	.task-indicator {
+		flex-shrink: 0;
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--bg-tertiary);
+		border: 2px solid var(--border);
+		position: relative;
+		z-index: 1;
+	}
+
+	.task-completed .task-indicator {
+		background: rgba(16, 185, 129, 0.15);
+		border-color: var(--success);
+		color: var(--success);
+	}
+
+	.task-failed .task-indicator {
+		background: rgba(239, 68, 68, 0.15);
+		border-color: var(--error);
+		color: var(--error);
+	}
+
+	.task-in-progress .task-indicator {
+		background: rgba(59, 130, 246, 0.15);
+		border-color: var(--accent-primary);
+		color: var(--accent-primary);
+	}
+
+	.task-skipped .task-indicator {
+		opacity: 0.5;
+		color: var(--text-tertiary);
+	}
+
+	.task-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--text-tertiary);
+	}
+
+	.task-spinner {
+		width: 12px;
+		height: 12px;
+		border: 2px solid transparent;
+		border-top-color: var(--accent-primary);
+		border-radius: 50%;
+		animation: task-spin 0.8s linear infinite;
+	}
+
+	@keyframes task-spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.task-content {
+		flex: 1;
+		min-width: 0;
+		padding-top: 1px;
+	}
+
+	.task-header {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+
+	.task-icon {
+		color: var(--text-tertiary);
+		display: flex;
+		align-items: center;
+	}
+
+	.task-type {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--text-primary);
+	}
+
+	.task-status-badge {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		padding: 1px 6px;
+		border-radius: var(--radius-sm);
+		margin-left: auto;
+	}
+
+	.task-status-pending {
+		background: var(--bg-tertiary);
+		color: var(--text-tertiary);
+	}
+
+	.task-status-in_progress {
+		background: rgba(59, 130, 246, 0.15);
+		color: var(--accent-primary);
+	}
+
+	.task-status-completed {
+		background: rgba(16, 185, 129, 0.15);
+		color: var(--success);
+	}
+
+	.task-status-failed {
+		background: rgba(239, 68, 68, 0.15);
+		color: var(--error);
+	}
+
+	.task-status-skipped {
+		background: var(--bg-tertiary);
+		color: var(--text-tertiary);
+	}
+
+	.task-progress-bar {
+		margin-top: var(--spacing-xs);
+		height: 4px;
+		background: var(--bg-tertiary);
+		border-radius: 2px;
+		overflow: hidden;
+	}
+
+	.task-progress-fill {
+		height: 100%;
+		background: var(--accent-primary);
+		border-radius: 2px;
+		transition: width 0.3s ease;
+	}
+
+	.task-message {
+		margin-top: 2px;
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.task-timing {
+		margin-top: 2px;
+		font-size: 0.6875rem;
+		color: var(--text-tertiary);
 	}
 
 	@media (max-width: 768px) {

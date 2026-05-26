@@ -30,6 +30,12 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		where: { id: 'singleton' },
 	});
 
+	// Load download tasks for in-progress or recently completed downloads
+	const downloadTasks = await prisma.downloadTask.findMany({
+		where: { downloadId: params.id },
+		orderBy: { createdAt: 'asc' },
+	});
+
 	const serialized = {
 		...download,
 		filesize: download.filesize?.toString() ?? null,
@@ -92,6 +98,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 
 	return {
 		download: serialized,
+		downloadTasks,
 		jellyfinUrl: settings?.jellyfinExternalUrl || settings?.jellyfinUrl || '',
 		playlistContext,
 		similar,

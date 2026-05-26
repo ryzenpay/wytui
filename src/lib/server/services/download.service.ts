@@ -24,6 +24,23 @@ function serializeDownload(download: any): any {
 	};
 }
 
+/** Map yt-dlp post-processing module names to task types */
+const MODULE_TO_TASK_TYPE: Record<string, string> = {
+	'SponsorBlock': 'sponsorblock',
+	'ModifyChapters': 'sponsorblock',
+	'Merger': 'merge',
+	'Metadata': 'metadata',
+	'EmbedSubtitle': 'subtitle',
+	'EmbedThumbnail': 'thumbnail',
+	'ExtractAudio': 'convert',
+	'FFmpegVideoConvertor': 'convert',
+	'FFmpegMetadata': 'metadata',
+	'ThumbnailsConvertor': 'thumbnail',
+	'FixupM3u8': 'merge',
+	'FixupDuplicateMoov': 'merge',
+	'FixupStretchedRatio': 'merge',
+};
+
 class DownloadService {
 	// Track active download processes
 	private activeProcesses = new Map<string, ChildProcess>();
@@ -39,6 +56,12 @@ class DownloadService {
 
 	// Guard against multiple error handler invocations per download
 	private handlingError = new Set<string>();
+
+	// Track which tasks have been created for a download
+	private downloadTaskIds = new Map<string, Map<string, string>>();
+
+	// Track the last post-processing module name for ffmpeg progress mapping
+	private lastPostProcessModule = new Map<string, string>();
 
 	private emitToOwner(event: string, data: any, downloadId: string): void {
 		const userId = this.downloadOwners.get(downloadId);
@@ -219,6 +242,97 @@ class DownloadService {
 	}
 
 	/**
+	 * Create initial download tasks for expected processing steps
+	 */
+	private async createInitialTasks(downloadId: string, customFlags: string[]): Promise<void> {
+		const taskTypes = ['download'];
+
+		// Detect expected post-processing steps from flags
+		const flagStr = customFlags.join(' ').toLowerCase();
+		if (flagStr.includes('--embed-thumbnail') || flagStr.includes('--write-thumbnail')) {
+			taskTypes.push('thumbnail');
+		}
+		if (flagStr.includes('--embed-subs') || flagStr.includes('--write-sub') || flagStr.includes('--write-auto-sub')) {
+			taskTypes.push('subtitle');
+		}
+		if (flagStr.includes('--embed-metadata') || flagStr.includes('--add-metadata')) {
+			taskTypes.push('metadata');
+		}
+		if (flagStr.includes('--sponsorblock-mark') || flagStr.includes('--sponsorblock-remove')) {
+			taskTypes.push('sponsorblock');
+		}
+		if (flagStr.includes('--extract-audio') || flagStr.includes('-x')) {
+			taskTypes.push('convert');
+		}
+		if (flagStr.includes('--recode-video') || flagStr.includes('--remux-video')) {
+			taskTypes.push('convert');
+		}
+
+		// Always expect merge (yt-dlp often merges audio+video)
+		if (!taskTypes.includes('merge')) {
+			taskTypes.push('merge');
+		}
+
+		// Deduplicate
+		const uniqueTypes = [...new Set(taskTypes)];
+
+		const taskMap = new Map<string, string>();
+
+		for (const type of uniqueTypes) {
+			const task = await prisma.downloadTask.create({
+				data: {
+					downloadId,
+					type,
+					status: 'pending',
+				},
+			});
+			taskMap.set(type, task.id);
+		}
+
+		this.downloadTaskIds.set(downloadId, taskMap);
+
+		// Broadcast initial tasks
+		const tasks = await prisma.downloadTask.findMany({ where: { downloadId } });
+		this.emitToOwner('download:tasks', { id: downloadId, tasks }, downloadId);
+	}
+
+	/**
+	 * Update a task's status and broadcast the change
+	 */
+	private async updateTask(
+		downloadId: string,
+		taskType: string,
+		data: { status?: string; progress?: number; message?: string; startedAt?: Date; completedAt?: Date }
+	): Promise<void> {
+		const taskMap = this.downloadTaskIds.get(downloadId);
+		let taskId = taskMap?.get(taskType);
+
+		// If no task exists for this type, create one dynamically
+		if (!taskId) {
+			const task = await prisma.downloadTask.create({
+				data: {
+					downloadId,
+					type: taskType,
+					status: 'pending',
+				},
+			});
+			taskId = task.id;
+			if (!taskMap) {
+				this.downloadTaskIds.set(downloadId, new Map([[taskType, taskId]]));
+			} else {
+				taskMap.set(taskType, taskId);
+			}
+		}
+
+		const updated = await prisma.downloadTask.update({
+			where: { id: taskId },
+			data,
+		});
+
+		this.emitToOwner('download:task', { id: downloadId, task: updated }, downloadId);
+	}
+
+	/**
 	 * Phase 2: Execute download
 	 */
 	private async executeDownload(downloadId: string): Promise<void> {
@@ -266,6 +380,15 @@ class DownloadService {
 		if (download.duration) {
 			this.downloadDurations.set(downloadId, download.duration);
 		}
+
+		// Create initial task records for this download
+		await this.createInitialTasks(downloadId, mergedFlags);
+
+		// Mark download task as in_progress
+		await this.updateTask(downloadId, 'download', {
+			status: 'in_progress',
+			startedAt: new Date(),
+		});
 
 		// Spawn download process
 		const proc = ytdlpService.spawnDownload(
@@ -331,13 +454,35 @@ class DownloadService {
 			const step = this.processingSteps.get(downloadId) || 'Processing';
 			const duration = this.downloadDurations.get(downloadId);
 			let detail = '';
+			let pct: number | undefined;
 			if (duration && data.timeSeconds) {
-				const pct = Math.min(100, Math.round((data.timeSeconds / duration) * 100));
+				pct = Math.min(100, Math.round((data.timeSeconds / duration) * 100));
 				detail = data.speed ? `${pct}% · ${data.speed}` : `${pct}%`;
 			} else if (data.speed) {
 				detail = data.speed;
 			}
 			const processingStep = detail ? `${step} (${detail})` : step;
+
+			// Update in-progress task with ffmpeg progress percentage
+			if (pct !== undefined) {
+				const taskMap = this.downloadTaskIds.get(downloadId);
+				if (taskMap) {
+					for (const [type, taskId] of taskMap) {
+						// Find the currently in_progress task and update its progress
+						// We use the last known step to infer the current task type
+						const currentModule = this.lastPostProcessModule.get(downloadId);
+						const taskType = currentModule ? MODULE_TO_TASK_TYPE[currentModule] : undefined;
+						if (taskType && type === taskType) {
+							this.updateTask(downloadId, taskType, {
+								progress: pct,
+								message: processingStep,
+							});
+							break;
+						}
+					}
+				}
+			}
+
 			this.emitToOwner('download:progress', {
 				id: downloadId,
 				status: 'PROCESSING',
@@ -349,12 +494,32 @@ class DownloadService {
 		// Handle post-processing step
 		if (data.type === 'postprocess' && data.step) {
 			if (!this.processingSteps.has(downloadId)) {
+				// Mark download task as completed when entering post-processing
+				this.updateTask(downloadId, 'download', {
+					status: 'completed',
+					progress: 100,
+					completedAt: new Date(),
+				});
 				this.updateDownload(downloadId, {
 					status: DownloadStatus.PROCESSING,
 					speed: null,
 					eta: null,
 				});
 			}
+
+			// Map the step name back to a task type and update it
+			if (data.module) {
+				const taskType = MODULE_TO_TASK_TYPE[data.module];
+				if (taskType) {
+					// Complete the previous task of same type if re-entering
+					this.updateTask(downloadId, taskType, {
+						status: 'in_progress',
+						message: data.step,
+						startedAt: new Date(),
+					});
+				}
+			}
+
 			this.processingSteps.set(downloadId, data.step);
 			this.emitToOwner('download:progress', {
 				id: downloadId,
@@ -390,6 +555,12 @@ class DownloadService {
 				this.updateDebounce.delete(downloadId);
 			}, 1000)
 		);
+
+		// Update the download task progress (debounced alongside DB update)
+		this.updateTask(downloadId, 'download', {
+			progress,
+			message: speed ? `${speed} - ETA ${eta}` : undefined,
+		});
 
 		this.emitToOwner('download:progress', {
 			id: downloadId,
@@ -447,8 +618,25 @@ class DownloadService {
 			}
 		}
 
+		// Mark all remaining pending/in_progress tasks as completed (or skipped)
+		await prisma.downloadTask.updateMany({
+			where: {
+				downloadId,
+				status: { in: ['in_progress'] },
+			},
+			data: { status: 'completed', completedAt: new Date() },
+		});
+		await prisma.downloadTask.updateMany({
+			where: {
+				downloadId,
+				status: 'pending',
+			},
+			data: { status: 'skipped' },
+		});
+
 		this.processingSteps.delete(downloadId);
 		this.downloadDurations.delete(downloadId);
+		this.downloadTaskIds.delete(downloadId);
 		this.emitToOwner('download:complete', { id: downloadId, download }, downloadId);
 		this.downloadOwners.delete(downloadId);
 
@@ -502,8 +690,18 @@ class DownloadService {
 					error,
 				});
 
+				// Mark all non-completed tasks as failed
+				await prisma.downloadTask.updateMany({
+					where: {
+						downloadId,
+						status: { in: ['pending', 'in_progress'] },
+					},
+					data: { status: 'failed', message: error },
+				});
+
 				this.processingSteps.delete(downloadId);
-		this.downloadDurations.delete(downloadId);
+				this.downloadDurations.delete(downloadId);
+				this.downloadTaskIds.delete(downloadId);
 				this.emitToOwner('download:failed', { id: downloadId, error }, downloadId);
 				this.downloadOwners.delete(downloadId);
 
@@ -543,6 +741,7 @@ class DownloadService {
 
 		this.processingSteps.delete(downloadId);
 		this.downloadDurations.delete(downloadId);
+		this.downloadTaskIds.delete(downloadId);
 		this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
 		this.downloadOwners.delete(downloadId);
 	}
@@ -648,6 +847,16 @@ class DownloadService {
 			downloadedBytes: updated.downloadedBytes?.toString() ?? null,
 			totalBytes: updated.totalBytes?.toString() ?? null,
 		};
+	}
+
+	/**
+	 * Get tasks for a download
+	 */
+	async getTasksForDownload(downloadId: string): Promise<any[]> {
+		return prisma.downloadTask.findMany({
+			where: { downloadId },
+			orderBy: { createdAt: 'asc' },
+		});
 	}
 
 	/**

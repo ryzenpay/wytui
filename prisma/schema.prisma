@@ -179,6 +179,7 @@ model Download {
   storagePool String    @default("cache") // "cache" | "library"
 
   // Relations
+  downloadTasks  DownloadTask[]
   watchProgress  WatchProgress[]
   playlistItems  PlaylistItem[]
   subtitleLines  SubtitleLine[]
@@ -214,6 +215,22 @@ model SubtitleLine {
 
   @@index([downloadId])
   @@map("subtitle_lines")
+}
+
+model DownloadTask {
+  id          String    @id @default(cuid())
+  downloadId  String
+  download    Download  @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+  type        String
+  status      String    @default("pending")
+  progress    Float?
+  message     String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([downloadId])
+  @@map("download_tasks")
 }
 
 enum DownloadStatus {

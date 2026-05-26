@@ -456,7 +456,7 @@ export class YtdlpService {
 									'FixupStretchedRatio': 'Fixing aspect ratio',
 								};
 								const step = stepMap[module] || `Processing (${module})`;
-								onProgress({ type: 'postprocess', step });
+								onProgress({ type: 'postprocess', step, module });
 							}
 						}
 					}
