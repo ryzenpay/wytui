@@ -46,6 +46,7 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'proxyAuthEnabled',
 	'proxyAuthHeader',
 	'versionCheckEnabled',
+	'rydEnabled',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -163,6 +164,7 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		proxyAuthEnabled: { type: 'boolean', description: 'Enable reverse-proxy authentication headers' },
 		proxyAuthHeader: { type: 'string', description: 'Header name for proxy auth (e.g. X-Forwarded-User)' },
 		versionCheckEnabled: { type: 'boolean', description: 'Enable automatic version update checks' },
+		rydEnabled: { type: 'boolean', description: 'Enable Return YouTube Dislike integration' },
 	},
 	responses: {
 		200: {

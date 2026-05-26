@@ -91,7 +91,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled', 'rydEnabled'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -856,6 +856,20 @@
 							placeholder="Disabled"
 						/>
 						<p class="help-text">Automatically delete watched cache downloads after this many days. Set to 0 or leave empty to disable. Library items are never auto-deleted.</p>
+					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Return YouTube Dislike</h2>
+					<div class="form-group">
+						<label>
+							<input
+								type="checkbox"
+								bind:checked={settings.rydEnabled}
+							/>
+							Enable dislike counts
+						</label>
+						<p class="help-text">Fetch dislike counts from the Return YouTube Dislike API when downloading videos. When enabled, video IDs are sent to an external service (<a href="https://returnyoutubedislike.com" target="_blank" rel="noopener noreferrer">returnyoutubedislike.com</a>).</p>
 					</div>
 				</div>
 

@@ -169,7 +169,7 @@ class DownloadService {
 			}
 
 			let dislikeCount: number | undefined;
-			if (metadata.videoId) {
+			if (metadata.videoId && settings.rydEnabled) {
 				try {
 					const rydRes = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`);
 					if (rydRes.ok) {
@@ -589,9 +589,10 @@ class DownloadService {
 
 		const metadata = await ytdlpService.fetchMetadata(download.url);
 
-		// Fetch RYD dislike count
+		// Fetch RYD dislike count if enabled
 		let dislikeCount: number | undefined;
-		if (metadata.videoId) {
+		const settings = await this.getSettings();
+		if (metadata.videoId && settings.rydEnabled) {
 			try {
 				const rydRes = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`);
 				if (rydRes.ok) {
