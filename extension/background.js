@@ -1,19 +1,9 @@
-// Strip tracking/session params so stored URLs match on lookup
+// Strip tracking params and fragment so stored URLs match on lookup
 function normalizeUrl(url) {
   try {
     const u = new URL(url);
-    // YouTube watch page: keep only v=
-    if ((u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') && u.pathname === '/watch') {
-      const v = u.searchParams.get('v');
-      if (v) return `https://www.youtube.com/watch?v=${v}`;
-    }
-    // youtu.be short links: keep only the path
-    if (u.hostname === 'youtu.be') {
-      return `https://youtu.be${u.pathname}`;
-    }
-    // Generic: remove fragment and known tracking params
     u.hash = '';
-    for (const p of ['si', 'feature', 'pp', 'index', 'utm_source', 'utm_medium', 'utm_campaign', 'fbclid', 'gclid']) {
+    for (const p of ['si', 'feature', 'pp', 'index', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'fbclid', 'gclid', 'ref', 'igshid']) {
       u.searchParams.delete(p);
     }
     return u.toString();
@@ -26,7 +16,7 @@ function normalizeUrl(url) {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'send-to-wytui',
-    title: 'Send to wytui',
+    title: 'Send URL to wytui',
     contexts: ['link', 'page'],
   });
 });

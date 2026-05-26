@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "wytui",
   "version": "1.0.0",
-  "description": "Send any video to your wytui server for downloading.",
+  "description": "Quickly send URLs from any page to your self-hosted wytui instance.",
   "browser_specific_settings": {
     "gecko": {
       "id": "wytui@wytui",
@@ -11,16 +11,6 @@
   },
   "permissions": ["activeTab", "storage", "contextMenus"],
   "host_permissions": [
-    "*://youtube.com/*",
-    "*://www.youtube.com/*",
-    "*://youtu.be/*",
-    "*://m.youtube.com/*",
-    "*://vimeo.com/*",
-    "*://www.vimeo.com/*",
-    "*://dailymotion.com/*",
-    "*://www.dailymotion.com/*",
-    "*://twitch.tv/*",
-    "*://www.twitch.tv/*",
     "*://*/*"
   ],
   "content_security_policy": {
@@ -47,18 +37,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://youtube.com/*",
-        "*://www.youtube.com/*",
-        "*://youtu.be/*",
-        "*://m.youtube.com/*",
-        "*://vimeo.com/*",
-        "*://www.vimeo.com/*",
-        "*://dailymotion.com/*",
-        "*://www.dailymotion.com/*",
-        "*://twitch.tv/*",
-        "*://www.twitch.tv/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["content.css"]
     }
