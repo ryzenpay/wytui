@@ -14,6 +14,7 @@ export const GET = apiRoute('/api/search', 'GET', {
 		videoType: { type: 'string', description: 'Filter by video type' },
 		storagePool: { type: 'string', description: 'Filter by storage pool' },
 		uploader: { type: 'string', description: 'Filter by uploader name' },
+		watchState: { type: 'string', description: 'Filter by watch state', enum: ['watched', 'unwatched', 'in_progress'] },
 	},
 	responses: { 200: { description: 'Search results' } },
 }, async ({ locals, url }) => {
@@ -32,6 +33,7 @@ export const GET = apiRoute('/api/search', 'GET', {
 		videoType: url.searchParams.get('videoType') || undefined,
 		storagePool: url.searchParams.get('storagePool') || undefined,
 		uploader: url.searchParams.get('uploader') || undefined,
+		watchState: (url.searchParams.get('watchState') as 'watched' | 'unwatched' | 'in_progress') || undefined,
 	});
 
 	return new Response(JSON.stringify(result), {
