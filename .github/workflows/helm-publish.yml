@@ -18,10 +18,10 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4.2.0
+        uses: actions/checkout@v4
 
       - name: Install Helm
-        uses: azure/setup-helm@v4.2.0
+        uses: azure/setup-helm@v4
 
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
