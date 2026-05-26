@@ -304,25 +304,30 @@
 
 			<div class="actions">
 				{#if download.status === 'COMPLETED'}
-					<button class="btn btn-primary btn-icon" onclick={downloadFile} aria-label="Download file" title="Download file">
+					<button class="btn btn-primary" onclick={downloadFile}>
 						<DownloadIcon />
+						Download File
 					</button>
 					{#if download.storagePool === 'cache'}
-						<button class="btn btn-accent btn-icon" onclick={handlePromote} disabled={promoting} aria-label="Save to library" title="Save to library">
+						<button class="btn btn-accent" onclick={handlePromote} disabled={promoting}>
 							<FolderDownIcon />
+							{promoting ? 'Moving...' : 'Save to Library'}
 						</button>
 					{/if}
 					{#if data.jellyfinUrl}
-						<button class="btn btn-secondary btn-icon" onclick={openInJellyfin} aria-label="Open in Jellyfin" title="Open in Jellyfin">
+						<button class="btn btn-secondary" onclick={openInJellyfin}>
 							<ExternalLinkIcon />
+							Open in Jellyfin
 						</button>
 					{/if}
 				{/if}
-				<button class="btn btn-secondary btn-icon" onclick={handleRefreshMetadata} disabled={refreshing} aria-label="Refresh metadata" title="Refresh metadata">
+				<button class="btn btn-secondary" onclick={handleRefreshMetadata} disabled={refreshing}>
 					<RefreshIcon />
+					{refreshing ? 'Refreshing...' : 'Refresh Metadata'}
 				</button>
-				<button class="btn btn-danger btn-icon" onclick={handleDelete} disabled={deleting} aria-label="Delete" title="Delete">
+				<button class="btn btn-danger" onclick={handleDelete} disabled={deleting}>
 					<TrashIcon />
+					{deleting ? 'Deleting...' : 'Delete'}
 				</button>
 			</div>
 

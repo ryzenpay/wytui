@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
+	import PlayIcon from '$lib/components/icons/PlayIcon.svelte';
 
 	interface Job {
 		name: string;
@@ -118,8 +119,9 @@
 				<h2>Scheduled Tasks</h2>
 				<p class="text-muted">Background jobs and their run history</p>
 			</div>
-			<button class="btn btn-secondary btn-icon" onclick={loadScheduler} disabled={loading} aria-label="Refresh" title="Refresh">
+			<button class="btn btn-secondary" onclick={loadScheduler} disabled={loading}>
 				<RefreshIcon />
+				Refresh
 			</button>
 		</div>
 
@@ -160,6 +162,7 @@
 											disabled={runningJobs.has(job.name)}
 											onclick={() => runJob(job.name)}
 										>
+											<PlayIcon width={14} height={14} />
 											{runningJobs.has(job.name) ? 'Running...' : 'Run Now'}
 										</button>
 									</td>
@@ -373,10 +376,6 @@
 		max-width: 300px;
 	}
 
-	.btn-sm {
-		padding: var(--spacing-xs) var(--spacing-md);
-		font-size: 0.8125rem;
-	}
 
 	.btn-secondary {
 		background: var(--bg-tertiary);

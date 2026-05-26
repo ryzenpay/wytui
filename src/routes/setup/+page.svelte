@@ -160,7 +160,7 @@
 	.setup-card {
 		background: var(--bg-elevated);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-lg);
+		border-radius: var(--radius-lg);
 		padding: var(--spacing-lg);
 		max-width: 380px;
 		width: 100%;
@@ -213,7 +213,7 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: var(--bg-secondary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		color: var(--text-primary);
 		font-size: 0.875rem;
 		transition: var(--transition-fast);
@@ -243,7 +243,7 @@
 		background: var(--accent-primary);
 		color: white;
 		border: none;
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		font-size: 0.875rem;
 		font-weight: 600;
 		cursor: pointer;
@@ -293,7 +293,7 @@
 		border: 1px solid var(--error);
 		color: var(--error);
 		padding: var(--spacing-sm) var(--spacing-md);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		margin-bottom: var(--spacing-md);
 		font-size: 0.8125rem;
 	}
@@ -303,7 +303,7 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: rgba(59, 130, 246, 0.1);
 		border: 1px solid rgba(59, 130, 246, 0.3);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		font-size: 0.75rem;
 		color: var(--text-secondary);
 		line-height: 1.5;
@@ -337,7 +337,7 @@
 		background: var(--bg-secondary);
 		color: var(--text-primary);
 		border: 1px solid rgba(255, 255, 255, 0.2);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		font-size: 0.875rem;
 		font-weight: 600;
 		text-align: center;

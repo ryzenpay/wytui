@@ -2,6 +2,12 @@
 	import { goto } from '$app/navigation';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import type { Download } from '$lib/types';
+	import XIcon from '$lib/components/icons/XIcon.svelte';
+	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
+	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
+	import ExternalLinkIcon from '$lib/components/icons/ExternalLinkIcon.svelte';
+	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
+	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
 
 	let {
 		download,
@@ -106,8 +112,12 @@
 		seekToPosition(e.clientX);
 	}
 
+	let justDragged = false;
+
 	function handleProgressMouseUp(e: MouseEvent) {
 		isDragging = false;
+		justDragged = true;
+		requestAnimationFrame(() => { justDragged = false; });
 		window.removeEventListener('mousemove', handleProgressMouseMove);
 		window.removeEventListener('mouseup', handleProgressMouseUp);
 		if (progressBarEl) {
@@ -278,7 +288,12 @@
 	}
 
 	function handleCardClick(e: MouseEvent) {
-		if (selectionMode || download.status !== 'COMPLETED') return;
+		if (justDragged) return;
+		if (selectionMode) {
+			onToggleSelect?.();
+			return;
+		}
+		if (download.status !== 'COMPLETED') return;
 		const target = e.target as HTMLElement;
 		if (target.closest('button, a, video, audio')) return;
 		goto(`/downloads/${download.id}`);
@@ -349,6 +364,11 @@
 					muted
 					preload="metadata"
 				></video>
+			{/if}
+			{#if !showPreview && download.status === 'COMPLETED'}
+				<div class="play-overlay">
+					<svg viewBox="0 0 24 24" fill="white" width="36" height="36"><path d="M8 5v14l11-7z"/></svg>
+				</div>
 			{/if}
 			{#if showPreview}
 				<video
@@ -495,16 +515,19 @@
 		<div class="actions">
 			{#if download.status === 'DOWNLOADING' || download.status === 'PENDING' || download.status === 'FETCHING_INFO' || download.status === 'PROCESSING'}
 				<button class="btn btn-sm btn-danger" onclick={cancelDownload}>
+					<XIcon width={14} height={14} />
 					Cancel
 				</button>
 			{/if}
 
 			{#if download.status === 'COMPLETED'}
 				<button class="btn btn-sm btn-primary" onclick={downloadFile}>
+					<DownloadIcon width={14} height={14} />
 					Download
 				</button>
 				{#if download.storagePool === 'cache' && libraryConfigured}
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
+						<FolderDownIcon width={14} height={14} />
 						{promoting ? 'Saving...' : 'Save to Library'}
 					</button>
 				{/if}
@@ -515,6 +538,7 @@
 						target="_blank"
 						rel="noopener"
 					>
+						<ExternalLinkIcon width={14} height={14} />
 						Open in Jellyfin
 					</a>
 				{/if}
@@ -522,18 +546,21 @@
 
 			{#if download.status === 'DELETED'}
 				<button class="btn btn-sm btn-primary" onclick={redownload} disabled={redownloading}>
+					<DownloadIcon width={14} height={14} />
 					{redownloading ? 'Redownloading...' : 'Redownload'}
 				</button>
 			{/if}
 
 			{#if download.status === 'FAILED' || download.status === 'CANCELLED'}
 				<button class="btn btn-sm btn-primary" onclick={retryDownload}>
+					<RefreshIcon width={14} height={14} />
 					Retry
 				</button>
 			{/if}
 
 			{#if download.status === 'COMPLETED' || download.status === 'FAILED' || download.status === 'CANCELLED' || download.status === 'DELETED'}
 				<button class="btn btn-sm btn-secondary" onclick={deleteDownload}>
+					<TrashIcon width={14} height={14} />
 					Delete
 				</button>
 			{/if}
@@ -560,8 +587,34 @@
 		box-shadow: var(--shadow-md);
 	}
 
-	.download-card.clickable {
+	.download-card.clickable,
+	.download-card.selecting {
 		cursor: pointer;
+	}
+
+	.download-card.clickable:hover h3 {
+		color: var(--accent-primary);
+	}
+
+	.play-overlay {
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.3);
+		opacity: 0;
+		transition: opacity 0.2s;
+		pointer-events: none;
+	}
+
+	.download-card.clickable:hover .play-overlay {
+		opacity: 1;
+	}
+
+	.play-overlay svg {
+		filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 	}
 
 	.download-card.selected {
@@ -794,6 +847,7 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+		transition: color 0.15s;
 	}
 
 	.header-badges {

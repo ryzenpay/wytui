@@ -5,6 +5,12 @@
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
+	import ZapIcon from '$lib/components/icons/ZapIcon.svelte';
+	import BellIcon from '$lib/components/icons/BellIcon.svelte';
+	import UsersIcon from '$lib/components/icons/UsersIcon.svelte';
+	import LockIcon from '$lib/components/icons/LockIcon.svelte';
+	import ShieldIcon from '$lib/components/icons/ShieldIcon.svelte';
+	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
 
 	interface Props {
 		data: {
@@ -22,15 +28,13 @@
 
 	let settings = $state<any>(null);
 	let users = $state<any[]>([]);
-	let analytics = $state<any>(null);
 	let loading = $state(true);
 	let saving = $state(false);
 	let settingsLoaded = $state(false);
 	let settingsSnapshot = $state('');
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
-	let analyticsLoading = $state(false);
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
-	let activeTab = $state<'general' | 'users' | 'analytics'>('general');
+	let activeTab = $state<'general' | 'users'>('general');
 
 	// Create user form
 	let showCreateUser = $state(false);
@@ -56,20 +60,6 @@
 			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo()]);
 		}
 	});
-
-	async function loadAnalytics() {
-		analyticsLoading = true;
-		try {
-			const res = await fetch('/api/analytics');
-			if (res.ok) {
-				analytics = await res.json();
-			}
-		} catch (e) {
-			console.error('Failed to load analytics:', e);
-		} finally {
-			analyticsLoading = false;
-		}
-	}
 
 	async function loadSettings() {
 		loading = true;
@@ -367,14 +357,6 @@
 		passwordError = '';
 	}
 
-	function formatBytes(bytes: number): string {
-		if (bytes === 0) return '0 B';
-		const k = 1024;
-		const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(k));
-		return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-	}
-
 	async function loadApiKeys() {
 		try {
 			const res = await fetch('/api/keys');
@@ -471,16 +453,6 @@
 					onclick={() => (activeTab = 'general')}
 				>
 					General
-				</button>
-				<button
-					class="tab"
-					class:active={activeTab === 'analytics'}
-					onclick={() => {
-						activeTab = 'analytics';
-						if (!analytics) loadAnalytics();
-					}}
-				>
-					Analytics
 				</button>
 				<button
 					class="tab"
@@ -680,10 +652,11 @@
 						<div class="jellyfin-test nested-field">
 							<button
 								type="button"
-								class="btn-secondary btn-sm"
+								class="btn-secondary btn-sm btn-with-icon"
 								onclick={testJellyfinConnection}
 								disabled={testingJellyfin || !settings.jellyfinUrl || !settings.jellyfinApiKey}
 							>
+								<ZapIcon width={14} height={14} />
 								{testingJellyfin ? 'Testing...' : 'Test Connection'}
 							</button>
 							{#if jellyfinTestResult}
@@ -716,8 +689,9 @@
 									{#if loadingJellyfinUsers}
 										<p class="text-muted">Loading users...</p>
 									{:else if jellyfinUsers.length === 0}
-										<button class="btn-secondary btn-sm btn-icon" onclick={loadJellyfinUsers} aria-label={jellyfinUsersError ? 'Retry' : 'Load Jellyfin users'} title={jellyfinUsersError ? 'Retry' : 'Load Jellyfin users'}>
-											<RefreshIcon />
+										<button class="btn-secondary btn-sm btn-with-icon" onclick={loadJellyfinUsers}>
+											<UsersIcon width={14} height={14} />
+											{jellyfinUsersError ? 'Retry' : 'Load Jellyfin Users'}
 										</button>
 										{#if jellyfinUsersError}
 											<span class="test-result error">{jellyfinUsersError}</span>
@@ -735,8 +709,9 @@
 												</label>
 											{/each}
 										</div>
-										<button class="btn-secondary btn-sm btn-icon" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;" aria-label="Refresh" title="Refresh">
-											<RefreshIcon />
+										<button class="btn-secondary btn-sm btn-with-icon" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;">
+											<RefreshIcon width={14} height={14} />
+											Refresh
 										</button>
 									{/if}
 									<p class="help-text">Item is deleted only when ALL selected users have watched it</p>
@@ -873,10 +848,11 @@
 						<div class="jellyfin-test nested-field">
 							<button
 								type="button"
-								class="btn-secondary btn-sm"
+								class="btn-secondary btn-sm btn-with-icon"
 								onclick={testNotification}
 								disabled={testingNotification}
 							>
+								<BellIcon width={14} height={14} />
 								{testingNotification ? 'Sending...' : 'Test Notification'}
 							</button>
 							{#if notificationTestResult}
@@ -1023,123 +999,6 @@
 			</div>
 		{/if}
 
-		{#if activeTab === 'analytics'}
-			{#if analyticsLoading}
-				<Skeleton count={6} variant="row" />
-			{:else if analytics}
-				<div class="settings-section">
-					<div class="section-header">
-						<h2>Analytics Overview</h2>
-						<button class="btn-secondary btn-sm btn-icon" onclick={loadAnalytics} aria-label="Refresh analytics" title="Refresh analytics">
-						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-					</button>
-					</div>
-
-					<div class="analytics-grid">
-						<div class="stat-card">
-							<div class="stat-label">Total Downloads</div>
-							<div class="stat-value">{analytics.overview.totalDownloads.toLocaleString()}</div>
-						</div>
-						<div class="stat-card">
-							<div class="stat-label">Completed</div>
-							<div class="stat-value success">{analytics.overview.completedDownloads.toLocaleString()}</div>
-						</div>
-						<div class="stat-card">
-							<div class="stat-label">Failed</div>
-							<div class="stat-value error">{analytics.overview.failedDownloads.toLocaleString()}</div>
-						</div>
-						<div class="stat-card">
-							<div class="stat-label">Active</div>
-							<div class="stat-value">{analytics.overview.activeDownloads.toLocaleString()}</div>
-						</div>
-						<div class="stat-card">
-							<div class="stat-label">Success Rate</div>
-							<div class="stat-value">{analytics.overview.successRate}%</div>
-						</div>
-						<div class="stat-card">
-							<div class="stat-label">Avg File Size</div>
-							<div class="stat-value">{formatBytes(analytics.avgFilesize)}</div>
-						</div>
-					</div>
-				</div>
-
-				<div class="settings-section">
-					<h2>Storage Usage</h2>
-					<div class="storage-bars">
-						<div class="storage-row">
-							<span class="storage-label">Cache</span>
-							<div class="storage-bar">
-								<div class="storage-fill cache" style="width: {Math.min(100, (Number(analytics.storage.cacheBytes) / Number(analytics.storage.cacheQuotaBytes)) * 100)}%"></div>
-							</div>
-							<span class="storage-value">{formatBytes(Number(analytics.storage.cacheBytes))} / {formatBytes(Number(analytics.storage.cacheQuotaBytes))}</span>
-						</div>
-						<div class="storage-row">
-							<span class="storage-label">Library</span>
-							<div class="storage-bar">
-								<div class="storage-fill library" style="width: {Math.min(100, (Number(analytics.storage.libraryBytes) / Number(analytics.storage.totalBytes)) * 100)}%"></div>
-							</div>
-							<span class="storage-value">{formatBytes(Number(analytics.storage.libraryBytes))}</span>
-						</div>
-						<div class="storage-row">
-							<span class="storage-label">Total</span>
-							<div class="storage-bar">
-								<div class="storage-fill total" style="width: 100%"></div>
-							</div>
-							<span class="storage-value">{formatBytes(Number(analytics.storage.totalBytes))}</span>
-						</div>
-					</div>
-				</div>
-
-				<div class="analytics-columns">
-					<div class="settings-section">
-						<h2>Top Uploaders</h2>
-						<div class="top-list">
-							{#each analytics.topUploaders as uploader}
-								<div class="top-item">
-									<span class="top-name">{uploader.uploader}</span>
-									<span class="top-count">{uploader.count}</span>
-								</div>
-							{/each}
-							{#if analytics.topUploaders.length === 0}
-								<div class="empty-state">No data yet</div>
-							{/if}
-						</div>
-					</div>
-
-					<div class="settings-section">
-						<h2>Active Subscriptions</h2>
-						<div class="top-list">
-							{#each analytics.activeSubscriptions as sub}
-								<div class="top-item">
-									<span class="top-name">{sub.name}</span>
-									<span class="top-count">{sub.downloadCount}</span>
-								</div>
-							{/each}
-							{#if analytics.activeSubscriptions.length === 0}
-								<div class="empty-state">No subscriptions yet</div>
-							{/if}
-						</div>
-					</div>
-				</div>
-
-				<div class="settings-section">
-					<h2>Downloads Per Day (Last 30 Days)</h2>
-					<div class="chart">
-						{#each analytics.downloadsPerDay as day}
-							<div class="chart-bar-container">
-								<div class="chart-bar" style="height: {Math.min(100, (day.count / Math.max(...analytics.downloadsPerDay.map((d: any) => d.count))) * 100)}%"></div>
-								<div class="chart-label">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
-								<div class="chart-value">{day.count}</div>
-							</div>
-						{/each}
-						{#if analytics.downloadsPerDay.length === 0}
-							<div class="empty-state">No downloads in the last 30 days</div>
-						{/if}
-					</div>
-				</div>
-			{/if}
-		{/if}
-
 		{#if activeTab === 'users'}
 			<div class="settings-section">
 				<div class="section-header">
@@ -1226,41 +1085,40 @@
 								</div>
 							</div>
 							<div class="user-actions">
-								<!-- Password change button -->
 								{#if user.id === data.session?.user?.id}
-									<!-- User can always change their own password -->
 									<button
-										class="btn-secondary btn-sm"
+										class="btn-secondary btn-sm btn-with-icon"
 										onclick={() => openPasswordChange(user.id)}
 									>
+										<LockIcon width={14} height={14} />
 										Change Password
 									</button>
 								{:else if data.session?.user?.isAdmin && !user.isAdmin}
-									<!-- Admin can change non-admin users' passwords -->
 									<button
-										class="btn-secondary btn-sm"
+										class="btn-secondary btn-sm btn-with-icon"
 										onclick={() => openPasswordChange(user.id)}
 									>
+										<LockIcon width={14} height={14} />
 										Change Password
 									</button>
 								{/if}
 
-								<!-- Admin toggle (admin only) -->
 								{#if data.session?.user?.isAdmin}
 									<button
-										class="btn-secondary btn-sm"
+										class="btn-secondary btn-sm btn-with-icon"
 										onclick={() => toggleAdmin(user)}
 									>
+										<ShieldIcon width={14} height={14} />
 										{user.isAdmin ? 'Demote' : 'Promote'}
 									</button>
 								{/if}
 
-								<!-- Delete (admin only) -->
 								{#if data.session?.user?.isAdmin}
 									<button
-										class="btn-danger btn-sm"
+										class="btn-danger btn-sm btn-with-icon"
 										onclick={() => deleteUser(user)}
 									>
+										<TrashIcon width={14} height={14} />
 										Delete
 									</button>
 								{/if}
@@ -1457,7 +1315,7 @@
 	.settings-section {
 		background: var(--bg-secondary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-lg);
+		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		margin-bottom: var(--spacing-lg);
 	}
@@ -1568,7 +1426,7 @@
 		padding: var(--spacing-md);
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		color: var(--text-primary);
 		font-size: 1rem;
 	}
@@ -1579,7 +1437,7 @@
 		padding-right: calc(var(--spacing-md) + 20px);
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		color: var(--text-primary);
 		font-size: 1rem;
 	}
@@ -1608,7 +1466,7 @@
 	.info-box {
 		background: rgba(59, 130, 246, 0.1);
 		border: 1px solid rgba(59, 130, 246, 0.3);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		padding: var(--spacing-md);
 		font-size: 0.875rem;
 	}
@@ -1629,7 +1487,7 @@
 	.create-user-form {
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		padding: var(--spacing-lg);
 		margin-bottom: var(--spacing-xl);
 	}
@@ -1671,7 +1529,7 @@
 		border: 1px solid var(--error);
 		color: var(--error);
 		padding: var(--spacing-md);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		margin-bottom: var(--spacing-lg);
 		font-size: 0.875rem;
 	}
@@ -1685,7 +1543,7 @@
 	.user-card {
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		padding: var(--spacing-lg);
 		display: flex;
 		justify-content: space-between;
@@ -1739,7 +1597,7 @@
 	.btn-danger {
 		padding: var(--spacing-md) var(--spacing-lg);
 		border: none;
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		font-weight: 600;
 		cursor: pointer;
 		transition: var(--transition-fast);
@@ -1789,6 +1647,16 @@
 
 	.btn-icon svg {
 		display: block;
+	}
+
+	.btn-with-icon {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+	}
+
+	.btn-with-icon :global(svg) {
+		flex-shrink: 0;
 	}
 
 	.btn-lg {
@@ -1893,180 +1761,6 @@
 		border: 1px solid var(--accent-primary);
 	}
 
-	/* Analytics styles */
-	.analytics-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: var(--spacing-md);
-		margin-bottom: var(--spacing-lg);
-	}
-
-	.stat-card {
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--radius-md);
-		padding: var(--spacing-lg);
-		text-align: center;
-	}
-
-	.stat-label {
-		font-size: 0.75rem;
-		color: var(--text-secondary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		margin-bottom: var(--spacing-sm);
-	}
-
-	.stat-value {
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.stat-value.success {
-		color: var(--success, #22c55e);
-	}
-
-	.stat-value.error {
-		color: var(--error);
-	}
-
-	.storage-bars {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-md);
-	}
-
-	.storage-row {
-		display: grid;
-		grid-template-columns: 80px 1fr 120px;
-		gap: var(--spacing-md);
-		align-items: center;
-	}
-
-	.storage-label {
-		font-size: 0.875rem;
-		color: var(--text-secondary);
-		font-weight: 500;
-	}
-
-	.storage-bar {
-		height: 24px;
-		background: var(--bg-tertiary);
-		border-radius: var(--radius-sm);
-		overflow: hidden;
-		position: relative;
-	}
-
-	.storage-fill {
-		height: 100%;
-		transition: width 0.3s ease;
-	}
-
-	.storage-fill.cache {
-		background: linear-gradient(90deg, #3b82f6, #60a5fa);
-	}
-
-	.storage-fill.library {
-		background: linear-gradient(90deg, #8b5cf6, #a78bfa);
-	}
-
-	.storage-fill.total {
-		background: linear-gradient(90deg, #10b981, #34d399);
-	}
-
-	.storage-value {
-		font-size: 0.875rem;
-		color: var(--text-primary);
-		font-weight: 500;
-		text-align: right;
-	}
-
-	.analytics-columns {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: var(--spacing-lg);
-	}
-
-	.top-list {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing-sm);
-	}
-
-	.top-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.05);
-		border-radius: var(--radius-sm);
-	}
-
-	.top-name {
-		font-size: 0.875rem;
-		color: var(--text-primary);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.top-count {
-		font-size: 0.875rem;
-		color: var(--text-secondary);
-		font-weight: 600;
-		background: var(--bg-secondary);
-		padding: 2px 8px;
-		border-radius: 10px;
-		min-width: 30px;
-		text-align: center;
-	}
-
-	.chart {
-		display: flex;
-		gap: 4px;
-		height: 200px;
-		align-items: flex-end;
-		padding: var(--spacing-md);
-		background: var(--bg-tertiary);
-		border-radius: var(--radius-md);
-		overflow-x: auto;
-	}
-
-	.chart-bar-container {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--spacing-xs);
-		min-width: 40px;
-		height: 100%;
-		justify-content: flex-end;
-	}
-
-	.chart-bar {
-		width: 100%;
-		min-height: 2px;
-		background: linear-gradient(180deg, var(--accent-primary), rgba(59, 130, 246, 0.6));
-		border-radius: 2px 2px 0 0;
-		transition: height 0.3s ease;
-	}
-
-	.chart-label {
-		font-size: 0.625rem;
-		color: var(--text-tertiary);
-		writing-mode: vertical-rl;
-		text-orientation: mixed;
-		white-space: nowrap;
-		transform: rotate(180deg);
-	}
-
-	.chart-value {
-		font-size: 0.6875rem;
-		color: var(--text-secondary);
-		font-weight: 600;
-	}
-
 	/* Modal styles */
 	.modal-overlay {
 		position: fixed;
@@ -2085,7 +1779,7 @@
 	.modal-content {
 		background: var(--bg-secondary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-lg);
+		border-radius: var(--radius-lg);
 		max-width: 500px;
 		width: 100%;
 		max-height: 90vh;
@@ -2139,19 +1833,6 @@
 	@media (max-width: 768px) {
 		.page {
 			padding: 0 var(--spacing-sm);
-		}
-
-		.analytics-grid {
-			grid-template-columns: repeat(2, 1fr);
-		}
-
-		.analytics-columns {
-			grid-template-columns: 1fr;
-		}
-
-		.storage-row {
-			grid-template-columns: 60px 1fr 90px;
-			gap: var(--spacing-sm);
 		}
 
 		.tabs {

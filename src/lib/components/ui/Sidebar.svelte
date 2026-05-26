@@ -27,6 +27,7 @@
 
 	const systemItems: NavItem[] = [
 		{ label: 'Settings', href: '/settings', icon: 'gear' },
+		{ label: 'Analytics', href: '/analytics', icon: 'chart' },
 		{ label: 'Scheduler', href: '/scheduler', icon: 'clock' }
 	];
 
@@ -116,6 +117,11 @@
 							{#if item.icon === 'gear'}
 								<circle cx="10" cy="10" r="3" />
 								<path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.2 4.2l1.4 1.4M14.4 14.4l1.4 1.4M4.2 15.8l1.4-1.4M14.4 5.6l1.4-1.4" />
+							{:else if item.icon === 'chart'}
+								<path d="M4 16V10" />
+								<path d="M8 16V6" />
+								<path d="M12 16V8" />
+								<path d="M16 16V4" />
 							{:else if item.icon === 'clock'}
 								<circle cx="10" cy="10" r="7" />
 								<path d="M10 6v4l3 2" />

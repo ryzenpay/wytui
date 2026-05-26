@@ -189,7 +189,7 @@
 		padding-right: 2.5rem;
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		color: var(--text-primary);
 		font-size: 1rem;
 		font-family: monospace;
@@ -228,7 +228,7 @@
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.15);
 		border-top: none;
-		border-radius: 0 0 var(--border-radius-md) var(--border-radius-md);
+		border-radius: 0 0 var(--radius-md) var(--radius-md);
 		max-height: 240px;
 		overflow-y: auto;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);

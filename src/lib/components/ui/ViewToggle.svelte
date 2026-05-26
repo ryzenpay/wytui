@@ -58,20 +58,20 @@
 	.view-toggle {
 		display: inline-flex;
 		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
+		border: 1px solid rgba(255, 255, 255, 0.1);
 		border-radius: var(--radius-md);
-		padding: 2px;
+		padding: 3px;
 	}
 
 	.toggle-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 30px;
-		height: 30px;
+		width: 28px;
+		height: 28px;
 		padding: 0;
 		border: none;
-		border-radius: 6px;
+		border-radius: var(--radius-sm);
 		background: transparent;
 		color: var(--text-tertiary);
 		cursor: pointer;

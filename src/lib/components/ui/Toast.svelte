@@ -45,7 +45,7 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: var(--bg-tertiary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 		color: var(--text-primary);
 		font-size: 0.875rem;

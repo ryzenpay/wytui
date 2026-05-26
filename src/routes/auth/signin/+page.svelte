@@ -114,7 +114,7 @@
 		max-width: 360px;
 		background: var(--bg-elevated);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-lg);
+		border-radius: var(--radius-lg);
 		padding: var(--spacing-lg);
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 	}
@@ -157,7 +157,7 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: var(--bg-secondary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		color: var(--text-primary);
 		font-size: 0.875rem;
 		transition: var(--transition-fast);
@@ -177,7 +177,7 @@
 	.success-message {
 		background: rgba(16, 185, 129, 0.1);
 		border: 1px solid var(--success);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		padding: var(--spacing-sm) var(--spacing-md);
 		color: var(--success);
 		font-size: 0.8125rem;
@@ -187,7 +187,7 @@
 	.error-message {
 		background: rgba(239, 68, 68, 0.1);
 		border: 1px solid var(--error);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		padding: var(--spacing-sm) var(--spacing-md);
 		color: var(--error);
 		font-size: 0.8125rem;
@@ -200,7 +200,7 @@
 		background: var(--accent-primary);
 		color: white;
 		border: none;
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		font-size: 0.875rem;
 		font-weight: 600;
 		cursor: pointer;
@@ -224,7 +224,7 @@
 		background: var(--bg-secondary);
 		color: var(--text-primary);
 		border: 1px solid rgba(255, 255, 255, 0.2);
-		border-radius: var(--border-radius-md);
+		border-radius: var(--radius-md);
 		font-size: 0.875rem;
 		font-weight: 600;
 		text-align: center;
