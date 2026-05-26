@@ -99,14 +99,24 @@ async function fetchProfiles() {
     const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
     if (!data.serverUrl) return { success: false, status: 0, profiles: [] };
 
-    const res = await fetch(`${data.serverUrl.replace(/\/+$/, '')}/api/profiles`, {
-      credentials: authCredentials(data.apiKey),
-      headers: authHeaders(data.apiKey),
-    });
+    const base = data.serverUrl.replace(/\/+$/, '');
+    const opts = { credentials: authCredentials(data.apiKey), headers: authHeaders(data.apiKey) };
 
-    if (!res.ok) return { success: false, status: res.status, profiles: [] };
-    const profiles = await res.json();
-    return { success: true, status: 200, profiles };
+    const [profilesRes, settingsRes] = await Promise.all([
+      fetch(`${base}/api/profiles`, opts),
+      fetch(`${base}/api/settings`, opts),
+    ]);
+
+    if (!profilesRes.ok) return { success: false, status: profilesRes.status, profiles: [] };
+
+    const profiles = await profilesRes.json();
+    let libraryEnabled = false;
+    if (settingsRes.ok) {
+      const settings = await settingsRes.json();
+      libraryEnabled = !!(settings.libraryPath);
+    }
+
+    return { success: true, status: 200, profiles, libraryEnabled };
   } catch {
     return { success: false, status: 0, profiles: [] };
   }

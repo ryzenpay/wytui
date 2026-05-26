@@ -89,6 +89,7 @@ chrome.storage.local.get(['serverUrl', 'apiKey'], async (data) => {
 
   updateStatus(data.apiKey ? 'connected-key' : 'connected-session');
   setConfigured(true);
+  applyLibraryVisibility(profileResult);
   populateProfiles(profileResult);
   if (currentTabUrl) lookupExisting(currentTabUrl);
 });
@@ -179,6 +180,10 @@ redownloadBtn.addEventListener('click', () => {
   libraryToggleRow.style.pointerEvents = '';
 });
 
+function applyLibraryVisibility(result) {
+  libraryToggleRow.style.display = result?.libraryEnabled ? '' : 'none';
+}
+
 function populateProfiles(result) {
   profileSelect.innerHTML = '';
 
@@ -231,6 +236,7 @@ saveBtn.addEventListener('click', () => {
     }
     updateStatus(key ? 'connected-key' : 'connected-session');
     setConfigured(true);
+    applyLibraryVisibility(profileResult);
     populateProfiles(profileResult);
   });
 });
