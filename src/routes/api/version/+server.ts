@@ -2,45 +2,25 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
 
 interface VersionCache {
-	currentVersion: string;
-	latestVersion: string;
+	currentSha: string;
+	latestSha: string;
 	updateAvailable: boolean;
-	releaseUrl: string;
 	checkedAt: number;
 }
 
 let cache: VersionCache | null = null;
 const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour
+const COMMITS_URL = 'https://github.com/willuhmjs/wytui/commits/main';
 
-function getCurrentVersion(): string {
-	try {
-		const pkg = JSON.parse(readFileSync(resolve('package.json'), 'utf-8'));
-		return pkg.version || '0.0.0';
-	} catch {
-		return '0.0.0';
-	}
-}
-
-function compareVersions(current: string, latest: string): boolean {
-	const parse = (v: string) => v.replace(/^v/, '').split('.').map(Number);
-	const c = parse(current);
-	const l = parse(latest);
-	for (let i = 0; i < Math.max(c.length, l.length); i++) {
-		const cv = c[i] || 0;
-		const lv = l[i] || 0;
-		if (lv > cv) return true;
-		if (lv < cv) return false;
-	}
-	return false;
+function getCurrentSha(): string {
+	return (process.env.GIT_SHA || 'unknown').slice(0, 7);
 }
 
 export const GET = apiRoute('/api/version', 'GET', {
 	summary: 'Check for app updates',
-	description: 'Compares current app version with latest GitHub release. Results are cached for 1 hour.',
+	description: 'Compares the running commit SHA with the latest commit on main. Results are cached for 1 hour.',
 	tags: ['Settings'],
 	auth: true,
 	responses: {
@@ -49,10 +29,10 @@ export const GET = apiRoute('/api/version', 'GET', {
 			schema: {
 				type: 'object',
 				properties: {
-					currentVersion: { type: 'string' },
-					latestVersion: { type: 'string' },
+					currentSha: { type: 'string' },
+					latestSha: { type: 'string' },
 					updateAvailable: { type: 'boolean' },
-					releaseUrl: { type: 'string' },
+					commitsUrl: { type: 'string' },
 				},
 			},
 		},
@@ -62,78 +42,46 @@ export const GET = apiRoute('/api/version', 'GET', {
 		throw error(401, 'Authentication required');
 	}
 
-	// Check if version checking is enabled
 	const settings = await prisma.settings.findUnique({
 		where: { id: 'singleton' },
 		select: { versionCheckEnabled: true },
 	});
 
+	const currentSha = getCurrentSha();
+
 	if (!settings?.versionCheckEnabled) {
-		const currentVersion = getCurrentVersion();
-		return json({
-			currentVersion,
-			latestVersion: currentVersion,
-			updateAvailable: false,
-			releaseUrl: '',
-		});
+		return json({ currentSha, latestSha: currentSha, updateAvailable: false, commitsUrl: COMMITS_URL });
 	}
 
-	// Return cached result if still fresh
 	if (cache && Date.now() - cache.checkedAt < CACHE_DURATION_MS) {
 		return json({
-			currentVersion: cache.currentVersion,
-			latestVersion: cache.latestVersion,
+			currentSha: cache.currentSha,
+			latestSha: cache.latestSha,
 			updateAvailable: cache.updateAvailable,
-			releaseUrl: cache.releaseUrl,
+			commitsUrl: COMMITS_URL,
 		});
 	}
 
-	const currentVersion = getCurrentVersion();
-
 	try {
-		const res = await fetch('https://api.github.com/repos/willuhmjs/wytui/releases/latest', {
+		const res = await fetch('https://api.github.com/repos/willuhmjs/wytui/commits/main', {
 			headers: {
-				'Accept': 'application/vnd.github.v3+json',
-				'User-Agent': `wytui/${currentVersion}`,
+				Accept: 'application/vnd.github.v3+json',
+				'User-Agent': `wytui/${currentSha}`,
 			},
 		});
 
 		if (!res.ok) {
-			// GitHub API error — return current version without update info
-			return json({
-				currentVersion,
-				latestVersion: currentVersion,
-				updateAvailable: false,
-				releaseUrl: '',
-			});
+			return json({ currentSha, latestSha: currentSha, updateAvailable: false, commitsUrl: COMMITS_URL });
 		}
 
-		const release = await res.json();
-		const latestVersion = (release.tag_name || '').replace(/^v/, '');
-		const releaseUrl = release.html_url || `https://github.com/willuhmjs/wytui/releases`;
-		const updateAvailable = compareVersions(currentVersion, latestVersion);
+		const commit = await res.json();
+		const latestSha = (commit.sha || '').slice(0, 7);
+		const updateAvailable = !!latestSha && currentSha !== 'unknown' && latestSha !== currentSha;
 
-		cache = {
-			currentVersion,
-			latestVersion,
-			updateAvailable,
-			releaseUrl,
-			checkedAt: Date.now(),
-		};
+		cache = { currentSha, latestSha, updateAvailable, checkedAt: Date.now() };
 
-		return json({
-			currentVersion,
-			latestVersion,
-			updateAvailable,
-			releaseUrl,
-		});
+		return json({ currentSha, latestSha, updateAvailable, commitsUrl: COMMITS_URL });
 	} catch {
-		// Network error — gracefully degrade
-		return json({
-			currentVersion,
-			latestVersion: currentVersion,
-			updateAvailable: false,
-			releaseUrl: '',
-		});
+		return json({ currentSha, latestSha: currentSha, updateAvailable: false, commitsUrl: COMMITS_URL });
 	}
 }) satisfies RequestHandler;

@@ -38,6 +38,7 @@ COPY --from=builder --chown=nodejs:nodejs /app/prisma.config.ts ./
 
 USER nodejs
 EXPOSE 3000
-ENV NODE_ENV=production PORT=3000
+ARG GIT_SHA=unknown
+ENV NODE_ENV=production PORT=3000 GIT_SHA=$GIT_SHA
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node build"]

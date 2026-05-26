@@ -49,8 +49,7 @@
 
 	// Version check
 	let updateAvailable = $state(false);
-	let latestVersion = $state('');
-	let releaseUrl = $state('');
+	let commitsUrl = $state('');
 
 	onMount(async () => {
 		try {
@@ -58,8 +57,7 @@
 			if (res.ok) {
 				const data = await res.json();
 				updateAvailable = data.updateAvailable;
-				latestVersion = data.latestVersion;
-				releaseUrl = data.releaseUrl;
+				commitsUrl = data.commitsUrl;
 			}
 		} catch {
 			// Version check is best-effort
@@ -75,7 +73,7 @@
 				<div class="logo-row">
 					<h1>wytui</h1>
 					{#if updateAvailable}
-						<a href={releaseUrl} target="_blank" rel="noopener noreferrer" class="update-badge" title="Update available: v{latestVersion}">
+						<a href={commitsUrl} target="_blank" rel="noopener noreferrer" class="update-badge" title="New commits available — pull the latest image">
 							<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M10 3v10M6 9l4 4 4-4" />
 								<path d="M4 15h12" />
@@ -87,7 +85,7 @@
 				<div class="logo-row">
 					<h1 class="logo-collapsed">w</h1>
 					{#if updateAvailable}
-						<span class="update-dot" title="Update available: v{latestVersion}"></span>
+						<span class="update-dot" title="New commits available — pull the latest image"></span>
 					{/if}
 				</div>
 			{/if}
