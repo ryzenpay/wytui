@@ -1016,7 +1016,7 @@
       // If single URL, use original API
       if (urls.length === 1) {
         body.url = urls[0];
-        const res = await fetch("/api/downloads", {
+        const res = await csrfFetch("/api/downloads", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -1029,7 +1029,7 @@
       } else {
         // Batch submission
         body.urls = urls;
-        const res = await fetch("/api/downloads/batch", {
+        const res = await csrfFetch("/api/downloads/batch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -1053,7 +1053,7 @@
     if (!newProfileName.trim()) return;
     savingProfile = true;
     try {
-      const res = await fetch("/api/profiles", {
+      const res = await csrfFetch("/api/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1195,7 +1195,7 @@
         if (bf.length > 0) body.customFlags = bf;
       }
 
-      const res = await fetch("/api/playlists/import", {
+      const res = await csrfFetch("/api/playlists/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

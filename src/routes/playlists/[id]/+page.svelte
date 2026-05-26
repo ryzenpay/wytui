@@ -110,7 +110,7 @@
 		if (!confirmed) return;
 
 		try {
-			const res = await fetch(`/api/playlists/${playlistId}/items`, {
+			const res = await csrfFetch(`/api/playlists/${playlistId}/items`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ downloadId }),
@@ -144,7 +144,7 @@
 		reordering = true;
 
 		try {
-			const res = await fetch(`/api/playlists/${playlistId}/items`, {
+			const res = await csrfFetch(`/api/playlists/${playlistId}/items`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ itemIds: items.map((i: any) => i.id) }),

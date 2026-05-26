@@ -180,7 +180,7 @@
 
 	async function toggleSubscription(id: string, enabled: boolean) {
 		try {
-			await fetch(`/api/subscriptions/${id}`, {
+			await csrfFetch(`/api/subscriptions/${id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ enabled: !enabled }),
@@ -237,7 +237,7 @@
 	async function saveEditSub() {
 		if (!editingSub) return;
 		try {
-			const res = await fetch(`/api/subscriptions/${editingSub.id}`, {
+			const res = await csrfFetch(`/api/subscriptions/${editingSub.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -262,7 +262,7 @@
 	async function backfillFromDate(id: string) {
 		if (!backfillDate) return;
 		try {
-			await fetch(`/api/subscriptions/${id}/backfill`, {
+			await csrfFetch(`/api/subscriptions/${id}/backfill`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ dateAfter: backfillDate }),
@@ -282,7 +282,7 @@
 		);
 		if (!confirmed) return;
 		try {
-			await fetch(`/api/subscriptions/${id}/backfill`, {
+			await csrfFetch(`/api/subscriptions/${id}/backfill`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({}),

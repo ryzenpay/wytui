@@ -104,7 +104,7 @@
 			if (Math.abs(position - lastSavedPosition) < 2) return;
 			lastSavedPosition = position;
 
-			fetch(`/api/watch-progress/${download.id}`, {
+			csrfFetch(`/api/watch-progress/${download.id}`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ position, duration: dur })
