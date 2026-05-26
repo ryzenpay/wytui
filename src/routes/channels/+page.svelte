@@ -32,7 +32,7 @@
 	}
 
 	function goToChannel(name: string) {
-		goto(`/downloads?uploader=${encodeURIComponent(name)}`);
+		goto(`/channels/${encodeURIComponent(name)}`);
 	}
 </script>
 
