@@ -365,6 +365,11 @@ export class YtdlpService {
 	 * Check if a flag is allowed (whitelist approach)
 	 */
 	private isFlagAllowed(flag: string): boolean {
+		// Skip non-flag values (arguments that don't start with -)
+		if (!flag.startsWith('-')) {
+			return true;
+		}
+
 		// Extract flag name (everything before '=' if present)
 		const flagName = flag.split('=')[0].toLowerCase();
 
@@ -377,6 +382,15 @@ export class YtdlpService {
 	 */
 	findDangerousFlag(flags: string[]): string | null {
 		for (const flag of flags) {
+			// Skip non-flag values (arguments that don't start with -)
+			if (!flag.startsWith('-')) {
+				// Still check for shell metacharacters in values
+				if (/[;&|$`]/.test(flag)) {
+					return flag;
+				}
+				continue;
+			}
+
 			if (!this.isFlagAllowed(flag)) {
 				return flag;
 			}
@@ -393,6 +407,16 @@ export class YtdlpService {
 	 */
 	private filterDangerousFlags(flags: string[]): string[] {
 		return flags.filter((flag) => {
+			// Keep non-flag values (arguments that don't start with -)
+			// but check for shell metacharacters
+			if (!flag.startsWith('-')) {
+				if (/[;&|$`]/.test(flag)) {
+					console.warn(`Filtered value with dangerous characters: ${flag}`);
+					return false;
+				}
+				return true;
+			}
+
 			if (!this.isFlagAllowed(flag)) {
 				console.warn(`Filtered non-whitelisted flag: ${flag}`);
 				return false;
