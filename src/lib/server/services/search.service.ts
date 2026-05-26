@@ -1,7 +1,204 @@
 import { prisma } from '../db';
+import { Prisma } from '@prisma/client';
 
 class SearchService {
+	/**
+	 * Sanitize search query for PostgreSQL tsquery format.
+	 * Removes special FTS characters and converts to & (AND) operator format.
+	 */
+	private sanitizeQuery(query: string): string {
+		return query
+			.trim()
+			.replace(/[&|!():*]/g, ' ')
+			.split(/\s+/)
+			.filter(word => word.length > 0)
+			.join(' & ');
+	}
 	async search(query: string, userId: string, options: {
+		limit?: number;
+		offset?: number;
+		videoType?: string;
+		storagePool?: string;
+		uploader?: string;
+		watchState?: 'watched' | 'unwatched' | 'in_progress';
+		minHeight?: number;
+		maxHeight?: number;
+		dateFrom?: Date;
+		dateTo?: Date;
+	} = {}) {
+		// Try full-text search first, fall back to LIKE on error
+		try {
+			return await this.fullTextSearch(query, userId, options);
+		} catch (error) {
+			console.error('[Search] Full-text search failed, falling back to LIKE:', error);
+			return await this.likeSearch(query, userId, options);
+		}
+	}
+
+	/**
+	 * PostgreSQL full-text search with ts_rank ranking.
+	 */
+	private async fullTextSearch(query: string, userId: string, options: {
+		limit?: number;
+		offset?: number;
+		videoType?: string;
+		storagePool?: string;
+		uploader?: string;
+		watchState?: 'watched' | 'unwatched' | 'in_progress';
+		minHeight?: number;
+		maxHeight?: number;
+		dateFrom?: Date;
+		dateTo?: Date;
+	} = {}) {
+		const { limit = 20, offset = 0, videoType, storagePool, uploader, watchState, minHeight, maxHeight, dateFrom, dateTo } = options;
+
+		const sanitized = this.sanitizeQuery(query);
+
+		// Build WHERE conditions
+		const conditions: string[] = [
+			`d."userId" = ${Prisma.sql`${userId}`}`,
+			`d.status = 'COMPLETED'`,
+			`d.search_vector @@ to_tsquery('english', ${Prisma.sql`${sanitized}`})`,
+		];
+
+		if (videoType) {
+			conditions.push(`d."videoType" = ${Prisma.sql`${videoType}`}`);
+		}
+		if (storagePool) {
+			conditions.push(`d."storagePool" = ${Prisma.sql`${storagePool}`}`);
+		}
+		if (uploader) {
+			conditions.push(`d.uploader ILIKE ${Prisma.sql`${'%' + uploader + '%'}`}`);
+		}
+		if (minHeight !== undefined) {
+			conditions.push(`d.height >= ${Prisma.sql`${minHeight}`}`);
+		}
+		if (maxHeight !== undefined) {
+			conditions.push(`d.height <= ${Prisma.sql`${maxHeight}`}`);
+		}
+		if (dateFrom) {
+			conditions.push(`d."createdAt" >= ${Prisma.sql`${dateFrom}`}`);
+		}
+		if (dateTo) {
+			const endOfDay = new Date(dateTo);
+			endOfDay.setHours(23, 59, 59, 999);
+			conditions.push(`d."createdAt" <= ${Prisma.sql`${endOfDay}`}`);
+		}
+
+		// Handle watchState with subquery
+		if (watchState === 'watched') {
+			conditions.push(`EXISTS (
+				SELECT 1 FROM watch_progress wp
+				WHERE wp."downloadId" = d.id
+				AND wp."userId" = ${Prisma.sql`${userId}`}
+				AND wp.watched = true
+			)`);
+		} else if (watchState === 'unwatched') {
+			conditions.push(`NOT EXISTS (
+				SELECT 1 FROM watch_progress wp
+				WHERE wp."downloadId" = d.id
+				AND wp."userId" = ${Prisma.sql`${userId}`}
+				AND (wp.watched = true OR wp.position > 0)
+			)`);
+		} else if (watchState === 'in_progress') {
+			conditions.push(`EXISTS (
+				SELECT 1 FROM watch_progress wp
+				WHERE wp."downloadId" = d.id
+				AND wp."userId" = ${Prisma.sql`${userId}`}
+				AND wp.watched = false
+				AND wp.position > 0
+			)`);
+		}
+
+		const whereClause = conditions.join(' AND ');
+
+		// Execute FTS query with ranking
+		const results = await prisma.$queryRaw<any[]>`
+			SELECT
+				d.id,
+				d.url,
+				d.status,
+				d.title,
+				d.thumbnail,
+				d.duration,
+				d.uploader,
+				d."channelUrl",
+				d."uploadDate",
+				d.format,
+				d.filesize,
+				d.height,
+				d."videoType",
+				d.description,
+				d.category,
+				d.tags,
+				d."dislikeCount",
+				d."videoId",
+				d.artist,
+				d.album,
+				d."trackNumber",
+				d."releaseYear",
+				d."musicBrainzId",
+				d.progress,
+				d.speed,
+				d.eta,
+				d."downloadedBytes",
+				d."totalBytes",
+				d.filename,
+				d.filepath,
+				d."customFlags",
+				d.error,
+				d."retryCount",
+				d."profileId",
+				d."userId",
+				d."storagePool",
+				d."subscriptionId",
+				d."createdAt",
+				d."updatedAt",
+				d."startedAt",
+				d."completedAt",
+				d."allWatchedAt",
+				ts_rank(d.search_vector, to_tsquery('english', ${sanitized})) as rank
+			FROM downloads d
+			WHERE ${Prisma.raw(whereClause)}
+			ORDER BY rank DESC, d."completedAt" DESC
+			LIMIT ${limit}
+			OFFSET ${offset}
+		`;
+
+		// Get total count
+		const countResult = await prisma.$queryRaw<[{ count: bigint }]>`
+			SELECT COUNT(*)::int as count
+			FROM downloads d
+			WHERE ${Prisma.raw(whereClause)}
+		`;
+		const total = Number(countResult[0]?.count ?? 0);
+
+		// Search subtitles in parallel
+		const subtitleData = await this.searchSubtitlesFTS(query, userId, { storagePool, uploader });
+
+		return {
+			results: results.map(r => ({
+				...r,
+				filesize: r.filesize?.toString() ?? null,
+				downloadedBytes: r.downloadedBytes?.toString() ?? null,
+				totalBytes: r.totalBytes?.toString() ?? null,
+				uploadDate: r.uploadDate ? new Date(r.uploadDate) : null,
+				createdAt: new Date(r.createdAt),
+				updatedAt: new Date(r.updatedAt),
+				startedAt: r.startedAt ? new Date(r.startedAt) : null,
+				completedAt: r.completedAt ? new Date(r.completedAt) : null,
+				allWatchedAt: r.allWatchedAt ? new Date(r.allWatchedAt) : null,
+			})),
+			total,
+			subtitleMatches: subtitleData.results,
+			subtitleTotal: subtitleData.total,
+		};
+	}
+
+	/**
+	 * LIKE-based search fallback (original implementation).
+	 */
+	private async likeSearch(query: string, userId: string, options: {
 		limit?: number;
 		offset?: number;
 		videoType?: string;
@@ -112,7 +309,84 @@ class SearchService {
 	}
 
 	/**
-	 * Search within indexed subtitle text.
+	 * Full-text search within subtitle text using PostgreSQL tsvector.
+	 * Returns matching lines grouped by download.
+	 */
+	private async searchSubtitlesFTS(query: string, userId: string, filters: {
+		storagePool?: string;
+		uploader?: string;
+	} = {}) {
+		const sanitized = this.sanitizeQuery(query);
+
+		// Build WHERE conditions
+		const conditions: string[] = [
+			`d."userId" = ${Prisma.sql`${userId}`}`,
+			`d.status = 'COMPLETED'`,
+			`sl.search_vector @@ to_tsquery('english', ${Prisma.sql`${sanitized}`})`,
+		];
+
+		if (filters.storagePool) {
+			conditions.push(`d."storagePool" = ${Prisma.sql`${filters.storagePool}`}`);
+		}
+		if (filters.uploader) {
+			conditions.push(`d.uploader ILIKE ${Prisma.sql`${'%' + filters.uploader + '%'}`}`);
+		}
+
+		const whereClause = conditions.join(' AND ');
+
+		// Execute FTS query with ranking
+		const results = await prisma.$queryRaw<any[]>`
+			SELECT
+				sl.id,
+				sl."downloadId",
+				sl."startTime",
+				sl."endTime",
+				sl.text,
+				sl.lang,
+				d.id as "download_id",
+				d.title as "download_title",
+				d.thumbnail as "download_thumbnail",
+				d.uploader as "download_uploader",
+				d.duration as "download_duration",
+				ts_rank(sl.search_vector, to_tsquery('english', ${sanitized})) as rank
+			FROM subtitle_lines sl
+			INNER JOIN downloads d ON sl."downloadId" = d.id
+			WHERE ${Prisma.raw(whereClause)}
+			ORDER BY rank DESC, sl."startTime" ASC
+			LIMIT 30
+		`;
+
+		// Get total count
+		const countResult = await prisma.$queryRaw<[{ count: bigint }]>`
+			SELECT COUNT(*)::int as count
+			FROM subtitle_lines sl
+			INNER JOIN downloads d ON sl."downloadId" = d.id
+			WHERE ${Prisma.raw(whereClause)}
+		`;
+		const total = Number(countResult[0]?.count ?? 0);
+
+		return {
+			results: results.map(r => ({
+				id: r.id,
+				downloadId: r.downloadId,
+				startTime: r.startTime,
+				endTime: r.endTime,
+				text: r.text,
+				lang: r.lang,
+				download: {
+					id: r.download_id,
+					title: r.download_title,
+					thumbnail: r.download_thumbnail,
+					uploader: r.download_uploader,
+					duration: r.download_duration,
+				},
+			})),
+			total,
+		};
+	}
+
+	/**
+	 * LIKE-based subtitle search fallback.
 	 * Returns matching lines grouped by download.
 	 */
 	private async searchSubtitles(query: string, userId: string, filters: {

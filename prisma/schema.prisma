@@ -202,6 +202,8 @@ model Download {
   @@index([createdAt])
   @@index([storagePool])
   @@index([videoId])
+  // Note: PostgreSQL full-text search vector (search_vector tsvector) is managed
+  // as a GENERATED column via migration. It combines title, description, and uploader.
   @@map("downloads")
 }
 
@@ -215,6 +217,8 @@ model SubtitleLine {
   lang       String   @default("en")
 
   @@index([downloadId])
+  // Note: PostgreSQL full-text search vector (search_vector tsvector) is managed
+  // as a GENERATED column via migration for subtitle text search.
   @@map("subtitle_lines")
 }
 
