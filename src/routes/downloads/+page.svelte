@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
 	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
 	import DownloadListRow from '$lib/components/download/DownloadListRow.svelte';
@@ -287,7 +288,7 @@
 
 		clearingCache = true;
 		try {
-			await fetch('/api/library/clear', { method: 'POST' });
+			await csrfFetch('/api/library/clear', { method: 'POST' });
 			await Promise.all([loadCompletedDownloads(), loadCacheUsage()]);
 		} catch (e) {
 			console.error('Failed to clear cache:', e);
@@ -327,7 +328,7 @@
 		bulkActing = true;
 		try {
 			await Promise.all(
-				[...selectedIds].map((id) => fetch(`/api/downloads/${id}`, { method: 'DELETE' }))
+				[...selectedIds].map((id) => csrfFetch(`/api/downloads/${id}`, { method: 'DELETE' }))
 			);
 			addToast('success', `Deleted ${count} download${count !== 1 ? 's' : ''}`);
 			exitSelectionMode();
@@ -363,7 +364,7 @@
 		try {
 			await Promise.all(
 				[...selectedIds].map((id) =>
-					fetch(`/api/playlists/${playlistId}/items`, {
+					csrfFetch(`/api/playlists/${playlistId}/items`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ downloadId: id }),
@@ -391,7 +392,7 @@
 		bulkActing = true;
 		try {
 			await Promise.all(
-				ids.map((id) => fetch(`/api/downloads/${id}/promote`, { method: 'POST' }))
+				ids.map((id) => csrfFetch(`/api/downloads/${id}/promote`, { method: 'POST' }))
 			);
 			addToast('success', `Moved ${ids.length} download${ids.length !== 1 ? 's' : ''} to library`);
 			exitSelectionMode();

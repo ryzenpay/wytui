@@ -3,6 +3,7 @@
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import CheckIcon from '$lib/components/icons/CheckIcon.svelte';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
@@ -147,7 +148,7 @@
 		e.preventDefault();
 		subFormError = '';
 		try {
-			const res = await fetch('/api/subscriptions', {
+			const res = await csrfFetch('/api/subscriptions', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -199,7 +200,7 @@
 		if (!confirmed) return;
 
 		try {
-			await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
+			await csrfFetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
 			await loadSubscriptions();
 		} catch (e) {
 			console.error('Failed to delete subscription:', e);
@@ -210,7 +211,7 @@
 		if (checkingNow.has(id)) return;
 		checkingNow = new Set([...checkingNow, id]);
 		try {
-			await fetch(`/api/subscriptions/${id}/check`, { method: 'POST' });
+			await csrfFetch(`/api/subscriptions/${id}/check`, { method: 'POST' });
 		} catch (e) {
 			console.error('Failed to check subscription:', e);
 		} finally {

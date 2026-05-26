@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { showConfirm } from '$lib/stores/modal.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import type { Download } from '$lib/types';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
 	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
@@ -190,7 +191,7 @@
 		if (!confirmed) return;
 
 		try {
-			await fetch(`/api/downloads/${download.id}/cancel`, { method: 'POST' });
+			await csrfFetch(`/api/downloads/${download.id}/cancel`, { method: 'POST' });
 		} catch (e) {
 			console.error('Failed to cancel:', e);
 		}
@@ -205,7 +206,7 @@
 		if (!confirmed) return;
 
 		try {
-			await fetch(`/api/downloads/${download.id}`, { method: 'DELETE' });
+			await csrfFetch(`/api/downloads/${download.id}`, { method: 'DELETE' });
 		} catch (e) {
 			console.error('Failed to delete:', e);
 		}
@@ -216,12 +217,12 @@
 			const body: any = { url: download.url, profileId: download.profileId };
 			if (download.storagePool === 'library') body.saveToLibrary = true;
 			if (download.customFlags?.length) body.customFlags = download.customFlags;
-			await fetch('/api/downloads', {
+			await csrfFetch('/api/downloads', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body),
 			});
-			await fetch(`/api/downloads/${download.id}`, { method: 'DELETE' });
+			await csrfFetch(`/api/downloads/${download.id}`, { method: 'DELETE' });
 		} catch (e) {
 			console.error('Failed to retry:', e);
 		}
@@ -236,7 +237,7 @@
 			if (download.storagePool === 'library') body.saveToLibrary = true;
 			if (download.customFlags?.length) body.customFlags = download.customFlags;
 
-			const res = await fetch('/api/downloads', {
+			const res = await csrfFetch('/api/downloads', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(body),
@@ -276,7 +277,7 @@
 	async function promoteToLibrary() {
 		promoting = true;
 		try {
-			const res = await fetch(`/api/downloads/${download.id}/promote`, { method: 'POST' });
+			const res = await csrfFetch(`/api/downloads/${download.id}/promote`, { method: 'POST' });
 			if (res.ok) {
 				const updated = await res.json();
 				download.storagePool = updated.storagePool;

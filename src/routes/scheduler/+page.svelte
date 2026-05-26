@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 	import PlayIcon from '$lib/components/icons/PlayIcon.svelte';
 
@@ -52,7 +53,7 @@
 	async function runJob(jobName: string) {
 		runningJobs = new Set([...runningJobs, jobName]);
 		try {
-			const res = await fetch(`/api/scheduler/${jobName}/run`, {
+			const res = await csrfFetch(`/api/scheduler/${jobName}/run`, {
 				method: 'POST',
 			});
 			if (res.ok) {

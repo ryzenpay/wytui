@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { navigating } from '$app/stores';
 	import { connectSSE, disconnectSSE, getSSEState } from '$lib/stores/sse.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import Sidebar from '$lib/components/ui/Sidebar.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Toast from '$lib/components/ui/Toast.svelte';
@@ -26,7 +27,7 @@
 	});
 
 	async function handleSignout() {
-		await fetch('/auth/signout', { method: 'POST' });
+		await csrfFetch('/auth/signout', { method: 'POST' });
 		window.location.href = '/auth/signin';
 	}
 </script>

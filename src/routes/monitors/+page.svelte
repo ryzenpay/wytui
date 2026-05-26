@@ -3,6 +3,7 @@
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import CheckIcon from '$lib/components/icons/CheckIcon.svelte';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
@@ -100,7 +101,7 @@
 		e.preventDefault();
 		monFormError = '';
 		try {
-			const res = await fetch('/api/monitors', {
+			const res = await csrfFetch('/api/monitors', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -129,7 +130,7 @@
 
 	async function toggleMonitor(id: string, enabled: boolean) {
 		try {
-			await fetch(`/api/monitors/${id}`, {
+			await csrfFetch(`/api/monitors/${id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ enabled: !enabled }),
@@ -149,7 +150,7 @@
 		if (!confirmed) return;
 
 		try {
-			await fetch(`/api/monitors/${id}`, { method: 'DELETE' });
+			await csrfFetch(`/api/monitors/${id}`, { method: 'DELETE' });
 			await loadMonitors();
 		} catch (e) {
 			console.error('Failed to delete monitor:', e);
@@ -173,7 +174,7 @@
 	async function saveEditMonitor() {
 		if (!editingMonitor) return;
 		try {
-			const res = await fetch(`/api/monitors/${editingMonitor.id}`, {
+			const res = await csrfFetch(`/api/monitors/${editingMonitor.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

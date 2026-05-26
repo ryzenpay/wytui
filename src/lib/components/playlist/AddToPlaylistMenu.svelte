@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import ListPlusIcon from '$lib/components/icons/ListPlusIcon.svelte';
 
 	let { downloadId }: { downloadId: string } = $props();
@@ -56,7 +57,7 @@
 
 		const method = playlist.hasItem ? 'DELETE' : 'POST';
 		try {
-			const res = await fetch(`/api/playlists/${playlist.id}/items`, {
+			const res = await csrfFetch(`/api/playlists/${playlist.id}/items`, {
 				method,
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ downloadId }),
@@ -82,7 +83,7 @@
 		if (!newName.trim()) return;
 		creating = true;
 		try {
-			const res = await fetch('/api/playlists', {
+			const res = await csrfFetch('/api/playlists', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: newName.trim() }),
@@ -94,7 +95,7 @@
 			}
 			const created = await res.json();
 			// Add download to new playlist immediately
-			await fetch(`/api/playlists/${created.id}/items`, {
+			await csrfFetch(`/api/playlists/${created.id}/items`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ downloadId }),

@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { formatBytes, formatDuration } from '$lib/utils/format';
 	import VideoPlayer from '$lib/components/player/VideoPlayer.svelte';
@@ -139,7 +140,7 @@
 
 		deleting = true;
 		try {
-			const res = await fetch(`/api/downloads/${download.id}`, { method: 'DELETE' });
+			const res = await csrfFetch(`/api/downloads/${download.id}`, { method: 'DELETE' });
 			if (res.ok) {
 				addToast('success', 'Download deleted');
 				goto('/downloads');
@@ -156,7 +157,7 @@
 	async function handlePromote() {
 		promoting = true;
 		try {
-			const res = await fetch(`/api/downloads/${download.id}/promote`, { method: 'POST' });
+			const res = await csrfFetch(`/api/downloads/${download.id}/promote`, { method: 'POST' });
 			if (res.ok) {
 				download = { ...download, storagePool: 'library' };
 				addToast('success', 'Moved to library');
@@ -173,7 +174,7 @@
 	async function handleRefreshMetadata() {
 		refreshing = true;
 		try {
-			const res = await fetch(`/api/downloads/${download.id}/refresh`, { method: 'POST' });
+			const res = await csrfFetch(`/api/downloads/${download.id}/refresh`, { method: 'POST' });
 			if (res.ok) {
 				const updated = await res.json();
 				download = { ...download, ...updated };
@@ -365,7 +366,7 @@
 					tags={download.tags || []}
 					onUpdate={async (newTags) => {
 						try {
-							const res = await fetch(`/api/downloads/${download.id}`, {
+							const res = await csrfFetch(`/api/downloads/${download.id}`, {
 								method: 'PATCH',
 								headers: { 'Content-Type': 'application/json' },
 								body: JSON.stringify({ tags: newTags }),

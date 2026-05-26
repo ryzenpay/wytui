@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
 
@@ -46,7 +47,7 @@
 		creating = true;
 
 		try {
-			const res = await fetch('/api/playlists', {
+			const res = await csrfFetch('/api/playlists', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: formName, description: formDescription || undefined }),
@@ -89,7 +90,7 @@
 		updating = true;
 
 		try {
-			const res = await fetch(`/api/playlists/${editingPlaylist.id}`, {
+			const res = await csrfFetch(`/api/playlists/${editingPlaylist.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: editFormName, description: editFormDescription || undefined }),
@@ -119,7 +120,7 @@
 		if (!confirmed) return;
 
 		try {
-			const res = await fetch(`/api/playlists/${playlist.id}`, { method: 'DELETE' });
+			const res = await csrfFetch(`/api/playlists/${playlist.id}`, { method: 'DELETE' });
 			if (res.ok) {
 				addToast('success', 'Playlist deleted');
 				await loadPlaylists();

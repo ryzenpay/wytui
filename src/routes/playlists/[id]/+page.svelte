@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import { formatDuration, formatBytes } from '$lib/utils/format';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 
@@ -55,7 +56,7 @@
 	async function saveEdit() {
 		saving = true;
 		try {
-			const res = await fetch(`/api/playlists/${playlistId}`, {
+			const res = await csrfFetch(`/api/playlists/${playlistId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: editName, description: editDescription || null }),
@@ -86,7 +87,7 @@
 
 		deleting = true;
 		try {
-			const res = await fetch(`/api/playlists/${playlistId}`, { method: 'DELETE' });
+			const res = await csrfFetch(`/api/playlists/${playlistId}`, { method: 'DELETE' });
 			if (res.ok) {
 				addToast('success', 'Playlist deleted');
 				goto('/playlists');

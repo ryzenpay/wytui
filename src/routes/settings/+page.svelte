@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import { csrfFetch } from '$lib/utils/fetch';
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
@@ -36,6 +37,33 @@
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
 	let activeTab = $state<'general' | 'users'>('general');
+	let activeSection = $state<string>('storage');
+
+	// Settings sections for navigation
+	const settingsSections = [
+		{ id: 'storage', label: 'Storage' },
+		{ id: 'jellyfin', label: 'Jellyfin' },
+		{ id: 'plex', label: 'Plex' },
+		{ id: 'ytdlp', label: 'yt-dlp' },
+		{ id: 'version-check', label: 'Version Check' },
+		{ id: 'cookies', label: 'Cookies' },
+		{ id: 'auto-delete', label: 'Auto-Delete' },
+		{ id: 'ryd', label: 'Return YouTube Dislike' },
+		{ id: 'rescan', label: 'Rescan Library' },
+		{ id: 'notifications', label: 'Notifications' },
+		{ id: 'backup', label: 'Backup' },
+		{ id: 'ldap', label: 'LDAP' },
+		{ id: 'proxy-auth', label: 'Reverse Proxy Auth' },
+		{ id: 'auth-mode', label: 'Authentication' },
+	];
+
+	function scrollToSection(sectionId: string) {
+		const element = document.getElementById(sectionId);
+		if (element) {
+			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			activeSection = sectionId;
+		}
+	}
 
 	// Create user form
 	let showCreateUser = $state(false);
@@ -87,7 +115,7 @@
 
 		reconciling = true;
 		try {
-			const res = await fetch('/api/rescan', {
+			const res = await csrfFetch('/api/rescan', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ deleteRecords: ids }),
@@ -110,7 +138,7 @@
 	async function markRescanMissing(ids: string[]) {
 		reconciling = true;
 		try {
-			const res = await fetch('/api/rescan', {
+			const res = await csrfFetch('/api/rescan', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ markMissing: ids }),
@@ -133,6 +161,44 @@
 		loadApiKeys();
 		if (isAdmin) {
 			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
+		}
+
+		// Set up Intersection Observer to track active section
+		if (activeTab === 'general') {
+			const observer = new IntersectionObserver(
+				(entries) => {
+					// Find the section that's most visible in the viewport
+					let mostVisible = null;
+					let maxRatio = 0;
+
+					entries.forEach((entry) => {
+						if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+							maxRatio = entry.intersectionRatio;
+							mostVisible = entry.target.id;
+						}
+					});
+
+					if (mostVisible) {
+						activeSection = mostVisible;
+					}
+				},
+				{
+					threshold: [0, 0.25, 0.5, 0.75, 1],
+					rootMargin: '-20% 0px -70% 0px',
+				}
+			);
+
+			// Observe all sections
+			settingsSections.forEach(({ id }) => {
+				const element = document.getElementById(id);
+				if (element) {
+					observer.observe(element);
+				}
+			});
+
+			return () => {
+				observer.disconnect();
+			};
 		}
 	});
 
@@ -277,7 +343,7 @@
 			const formData = new FormData();
 			formData.append('file', file);
 
-			const res = await fetch('/api/settings/cookies', {
+			const res = await csrfFetch('/api/settings/cookies', {
 				method: 'POST',
 				body: formData,
 			});
@@ -299,7 +365,7 @@
 
 	async function deleteCookieFile() {
 		try {
-			const res = await fetch('/api/settings/cookies', { method: 'DELETE' });
+			const res = await csrfFetch('/api/settings/cookies', { method: 'DELETE' });
 			if (res.ok) {
 				cookieStatus = { hasCookies: false, path: null };
 				addToast('success', 'Cookie file removed');
@@ -318,7 +384,7 @@
 		testingNotification = true;
 		notificationTestResult = null;
 		try {
-			const res = await fetch('/api/notifications/test', { method: 'POST' });
+			const res = await csrfFetch('/api/notifications/test', { method: 'POST' });
 			if (res.ok) {
 				notificationTestResult = { success: true, message: 'Notification sent' };
 			} else {
@@ -350,7 +416,7 @@
 		testingJellyfin = true;
 		jellyfinTestResult = null;
 		try {
-			const res = await fetch('/api/settings/jellyfin-test', {
+			const res = await csrfFetch('/api/settings/jellyfin-test', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ url: settings.jellyfinUrl, apiKey: settings.jellyfinApiKey }),
@@ -388,7 +454,7 @@
 		testingPlex = true;
 		plexTestResult = null;
 		try {
-			const res = await fetch('/api/settings/plex/test', {
+			const res = await csrfFetch('/api/settings/plex/test', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ url: settings.plexUrl, token: settings.plexToken }),
@@ -413,7 +479,7 @@
 			for (const key of SAVEABLE_FIELDS) {
 				if (key in settings) payload[key] = settings[key];
 			}
-			const res = await fetch('/api/settings', {
+			const res = await csrfFetch('/api/settings', {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -451,7 +517,7 @@
 		if (!confirmed) return;
 
 		try {
-			const res = await fetch(`/api/users/${user.id}`, {
+			const res = await csrfFetch(`/api/users/${user.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ isAdmin: !user.isAdmin }),
@@ -478,7 +544,7 @@
 		if (!confirmed) return;
 
 		try {
-			const res = await fetch(`/api/users/${user.id}`, {
+			const res = await csrfFetch(`/api/users/${user.id}`, {
 				method: 'DELETE',
 			});
 
@@ -502,7 +568,7 @@
 		}
 
 		try {
-			const res = await fetch('/api/users', {
+			const res = await csrfFetch('/api/users', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(newUser),
@@ -551,7 +617,7 @@
 	async function createApiKey() {
 		if (!newKeyName.trim()) return;
 		try {
-			const res = await fetch('/api/keys', {
+			const res = await csrfFetch('/api/keys', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: newKeyName }),
@@ -572,7 +638,7 @@
 		const confirmed = await showConfirm('Revoke API Key', 'This key will stop working immediately.', 'Revoke');
 		if (!confirmed) return;
 		try {
-			const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' });
+			const res = await csrfFetch(`/api/keys/${id}`, { method: 'DELETE' });
 			if (res.ok) {
 				await loadApiKeys();
 				addToast('success', 'API key revoked');
@@ -599,7 +665,7 @@
 		}
 
 		try {
-			const res = await fetch(`/api/users/${passwordChangeUserId}/password`, {
+			const res = await csrfFetch(`/api/users/${passwordChangeUserId}/password`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ newPassword: passwordForm.newPassword }),
@@ -676,9 +742,29 @@
 				<button class="btn-secondary" onclick={loadSettings}>Retry</button>
 			</div>
 		{:else if activeTab === 'general' && settings}
-			<div class="general-settings">
-				<div class="settings-section">
-					<h2>Storage</h2>
+			<div class="settings-container">
+				<nav class="settings-nav">
+					<div class="settings-nav-inner">
+						<h3>Quick Navigation</h3>
+						<ul>
+							{#each settingsSections as section}
+								<li>
+									<button
+										class="nav-link"
+										class:active={activeSection === section.id}
+										onclick={() => scrollToSection(section.id)}
+									>
+										{section.label}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				</nav>
+
+				<div class="general-settings">
+					<div class="settings-section" id="storage">
+						<h2>Storage</h2>
 
 					<div class="form-row">
 						<div class="form-group">
@@ -813,7 +899,7 @@
 					</div>
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="jellyfin">
 					<h2>Jellyfin</h2>
 
 					<div class="form-group">
@@ -998,7 +1084,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="plex">
 					<h2>Plex</h2>
 
 					<div class="form-group">
@@ -1055,7 +1141,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="ytdlp">
 					<h2>yt-dlp</h2>
 					<div class="form-group">
 						<label>
@@ -1074,7 +1160,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="version-check">
 					<h2>Version Check</h2>
 					<div class="form-group">
 						<label>
@@ -1088,7 +1174,7 @@
 					</div>
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="cookies">
 					<h2>Cookies</h2>
 					<p class="help-text" style="margin-bottom: var(--spacing-lg);">
 						Upload a Netscape-format cookies.txt file to access member-only and age-restricted content.
@@ -1126,7 +1212,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="auto-delete">
 					<h2>Auto-Delete</h2>
 					<div class="form-group">
 						<label for="autoDeleteDays">Delete watched videos after (days)</label>
@@ -1141,7 +1227,7 @@
 					</div>
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="ryd">
 					<h2>Return YouTube Dislike</h2>
 					<div class="form-group">
 						<label>
@@ -1155,7 +1241,7 @@
 					</div>
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="rescan">
 					<h2>Rescan Library</h2>
 					<p class="help-text" style="margin-bottom: var(--spacing-lg);">Check that downloaded files still exist on disk. Finds completed downloads whose files are missing.</p>
 
@@ -1222,7 +1308,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="notifications">
 					<h2>Notifications</h2>
 					<div class="form-group">
 						<label for="appriseUrl">Apprise URL</label>
@@ -1267,7 +1353,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="backup">
 					<h2>Backup</h2>
 					<div class="form-group">
 						<label>
@@ -1301,7 +1387,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="ldap">
 					<h2>LDAP</h2>
 					<div class="form-group">
 						<label>
@@ -1363,7 +1449,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section">
+				<div class="settings-section" id="proxy-auth">
 					<h2>Reverse Proxy Auth</h2>
 					<div class="form-group">
 						<label>
@@ -1392,7 +1478,7 @@
 				</div>
 
 				{#if settings.oidcConfigured}
-					<div class="settings-section">
+					<div class="settings-section" id="auth-mode">
 						<h2>Authentication</h2>
 						<div class="form-group">
 							<label for="authMode">Login Method</label>
@@ -1420,14 +1506,14 @@
 					</div>
 				{/if}
 
+				<div class="api-docs-link">
+					<a href="/docs" class="btn-secondary btn-lg">
+						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+						API Documentation
+					</a>
+				</div>
 			</div>
-
-			<div class="api-docs-link">
-				<a href="/docs" class="btn-secondary btn-lg">
-					<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-					API Documentation
-				</a>
-			</div>
+		</div>
 		{/if}
 
 		{#if activeTab === 'users'}
@@ -1739,8 +1825,90 @@
 		font-weight: 600;
 	}
 
+	.settings-container {
+		display: flex;
+		gap: var(--spacing-xl);
+		max-width: 1200px;
+		align-items: flex-start;
+	}
+
+	.settings-nav {
+		position: sticky;
+		top: var(--spacing-xl);
+		flex-shrink: 0;
+		width: 220px;
+		align-self: flex-start;
+		max-height: calc(100vh - var(--spacing-xl) * 2);
+		overflow-y: auto;
+	}
+
+	.settings-nav::-webkit-scrollbar {
+		width: 4px;
+	}
+
+	.settings-nav::-webkit-scrollbar-thumb {
+		background: rgba(255, 255, 255, 0.2);
+		border-radius: 2px;
+	}
+
+	.settings-nav-inner {
+		background: var(--bg-secondary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-lg);
+	}
+
+	.settings-nav h3 {
+		font-size: 0.875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		color: var(--text-secondary);
+		margin-bottom: var(--spacing-md);
+		letter-spacing: 0.5px;
+	}
+
+	.settings-nav ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.settings-nav li {
+		margin: 0;
+	}
+
+	.settings-nav .nav-link {
+		display: block;
+		width: 100%;
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: transparent;
+		border: none;
+		border-radius: var(--radius-md);
+		color: var(--text-secondary);
+		font-size: 0.875rem;
+		text-align: left;
+		cursor: pointer;
+		transition: background 0.15s ease, color 0.15s ease;
+		position: relative;
+	}
+
+	.settings-nav .nav-link:hover:not(.active) {
+		background: rgba(255, 255, 255, 0.05);
+		color: var(--text-primary);
+	}
+
+	.settings-nav .nav-link.active {
+		background: var(--accent-primary);
+		color: #fff;
+		font-weight: 500;
+	}
+
 	.general-settings {
-		max-width: 800px;
+		flex: 1;
+		min-width: 0;
 	}
 
 	.settings-section {
@@ -1749,6 +1917,7 @@
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		margin-bottom: var(--spacing-lg);
+		scroll-margin-top: 100px;
 	}
 
 	.section-header {
@@ -1767,6 +1936,11 @@
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: var(--spacing-lg);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.form-row:last-child {
+		margin-bottom: 0;
 	}
 
 	@media (max-width: 600px) {
@@ -1840,6 +2014,10 @@
 
 	.form-group {
 		margin-bottom: var(--spacing-lg);
+	}
+
+	.form-row .form-group {
+		margin-bottom: 0;
 	}
 
 	.form-group:last-child {
@@ -2352,6 +2530,18 @@
 	@media (max-width: 768px) {
 		.page {
 			padding: 0 var(--spacing-sm);
+		}
+
+		.settings-container {
+			flex-direction: column;
+		}
+
+		.settings-nav {
+			display: none;
+		}
+
+		.general-settings {
+			width: 100%;
 		}
 
 		.tabs {
