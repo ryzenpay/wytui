@@ -761,69 +761,6 @@
 		opacity: 0.8;
 	}
 
-	.video-time {
-		position: absolute;
-		bottom: 12px;
-		left: 8px;
-		z-index: 4;
-		background: rgba(0, 0, 0, 0.55);
-		backdrop-filter: blur(4px);
-		border-radius: 4px;
-		padding: 2px 6px;
-		color: white;
-		font-size: 0.6875rem;
-		font-family: monospace;
-		line-height: 1;
-		pointer-events: none;
-	}
-
-	.mute-btn {
-		position: absolute;
-		bottom: 12px;
-		right: 8px;
-		z-index: 4;
-		background: rgba(0, 0, 0, 0.55);
-		backdrop-filter: blur(4px);
-		border: none;
-		border-radius: 50%;
-		width: 32px;
-		height: 32px;
-		padding: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		opacity: 0.8;
-		transition: opacity 0.15s, background 0.15s;
-	}
-
-	.mute-btn:hover {
-		opacity: 1;
-		background: rgba(0, 0, 0, 0.75);
-	}
-
-	.video-progress-bar {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		width: 100%;
-		height: 6px;
-		background: rgba(255, 255, 255, 0.3);
-		z-index: 3;
-		cursor: pointer;
-		transition: height 0.15s;
-	}
-
-	.video-progress-bar:hover {
-		height: 10px;
-	}
-
-	.progress-fill {
-		height: 100%;
-		background: #f00;
-		transition: width 0.1s linear;
-	}
-
 	.content {
 		padding: var(--spacing-lg);
 		flex: 1;
@@ -1059,6 +996,7 @@
 
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--spacing-sm);
 		margin-top: auto;
 	}
@@ -1076,30 +1014,10 @@
 			font-size: 0.9375rem;
 		}
 
-		.actions {
-			flex-wrap: wrap;
-		}
-
 		.actions button {
 			flex: 1;
 			min-width: 0;
 		}
 	}
 
-	.download-card:has(.deleted-info) {
-		opacity: 0.65;
-	}
-
-	.download-card:has(.deleted-info):hover {
-		opacity: 1;
-	}
-
-	.deleted-info {
-		font-size: 0.75rem;
-		color: var(--text-tertiary);
-		margin-bottom: var(--spacing-md);
-		padding: var(--spacing-sm);
-		background: rgba(255, 255, 255, 0.04);
-		border-radius: var(--radius-sm);
-	}
 </style>
