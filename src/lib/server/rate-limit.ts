@@ -90,25 +90,21 @@ export const rateLimiter = new RateLimiter();
 
 // Rate limit configurations for different endpoints
 export const RATE_LIMITS: Record<string, RateLimitConfig> = {
-	// Auth endpoints: 5 requests per minute
 	auth: {
 		windowMs: 60 * 1000,
-		maxRequests: 5,
+		maxRequests: 100,
 	},
-	// Downloads creation: 10 requests per minute
 	downloads: {
 		windowMs: 60 * 1000,
-		maxRequests: 10,
+		maxRequests: 200,
 	},
-	// Settings updates: 1 request per 10 seconds
 	settings: {
-		windowMs: 10 * 1000,
-		maxRequests: 1,
+		windowMs: 60 * 1000,
+		maxRequests: 100,
 	},
-	// General API: 60 requests per minute
 	general: {
 		windowMs: 60 * 1000,
-		maxRequests: 60,
+		maxRequests: 500,
 	},
 };
 

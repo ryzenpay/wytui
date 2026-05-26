@@ -75,8 +75,8 @@ export function verifySessionToken(token: string): SessionPayload | null {
  * Validate password strength
  */
 export function validatePassword(password: string): { valid: boolean; error?: string } {
-	if (password.length < 12) {
-		return { valid: false, error: 'Password must be at least 12 characters' };
+	if (password.length < 8) {
+		return { valid: false, error: 'Password must be at least 8 characters' };
 	}
 
 	if (password.length > 128) {

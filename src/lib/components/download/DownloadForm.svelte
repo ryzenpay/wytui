@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { addToast } from "$lib/stores/toast.svelte";
   import { onSSEEvent } from "$lib/stores/sse.svelte";
+  import { csrfFetch } from "$lib/utils/fetch";
 
   let url = $state("");
   let selectedVideoProfileId = $state<string | null>(null);
@@ -86,14 +87,14 @@
         allPrefs[otherMode] = { ...allPrefs[otherMode], saveToLibrary };
       }
       const saves = [
-        fetch("/api/preferences", {
+        csrfFetch("/api/preferences", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode, prefs }),
         }),
       ];
       if (allPrefs[otherMode]) {
-        saves.push(fetch("/api/preferences", {
+        saves.push(csrfFetch("/api/preferences", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mode: otherMode, prefs: allPrefs[otherMode] }),

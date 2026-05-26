@@ -27,6 +27,7 @@
 	let { data }: Props = $props();
 
 	let settings = $state<any>(null);
+	let settingsError = $state<string | null>(null);
 	let users = $state<any[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
@@ -137,6 +138,7 @@
 
 	async function loadSettings() {
 		loading = true;
+		settingsError = null;
 		try {
 			const res = await fetch('/api/settings');
 			if (res.ok) {
@@ -146,8 +148,13 @@
 				if (settings.cleanupEnabled && settings.jellyfinUrl && settings.jellyfinApiKey) {
 					loadJellyfinUsers();
 				}
+			} else {
+				const body = await res.json().catch(() => ({}));
+				settingsError = body.error || `Failed to load settings (${res.status})`;
+				console.error('Failed to load settings:', res.status, body);
 			}
 		} catch (e) {
+			settingsError = 'Failed to load settings';
 			console.error('Failed to load settings:', e);
 		} finally {
 			loading = false;
@@ -663,7 +670,12 @@
 			<Skeleton count={3} variant="row" />
 		</div>
 	{:else}
-		{#if activeTab === 'general' && settings}
+		{#if settingsError}
+			<div class="settings-section">
+				<p style="color: var(--error)">{settingsError}</p>
+				<button class="btn-secondary" onclick={loadSettings}>Retry</button>
+			</div>
+		{:else if activeTab === 'general' && settings}
 			<div class="general-settings">
 				<div class="settings-section">
 					<h2>Storage</h2>

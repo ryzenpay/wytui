@@ -48,4 +48,8 @@ if grep -q "POSTGRES_PASSWORD=$" "$ENV_FILE" 2>/dev/null || grep -q "AUTH_SECRET
 fi
 
 echo "🚀 Starting Docker Compose..."
-docker compose "$@"
+if [ $# -eq 0 ]; then
+    docker compose up --build
+else
+    docker compose "$@"
+fi
