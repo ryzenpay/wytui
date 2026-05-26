@@ -134,6 +134,7 @@ model Download {
   uploadDate  DateTime?
   format      String?   // resolved format string
   filesize    BigInt?   // bytes (estimated)
+  height      Int?      // video height in pixels (e.g. 1080, 2160)
 
   // Video classification & metadata
   videoType     String?   // "regular", "short", "stream"

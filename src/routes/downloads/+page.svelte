@@ -25,6 +25,10 @@
 	let channelDropdownOpen = $state(false);
 	let sortOption = $state<'newest' | 'oldest' | 'largest' | 'smallest' | 'longest' | 'shortest' | 'uploader'>('newest');
 	let sortDropdownOpen = $state(false);
+	let resolutionFilter = $state<string>('all');
+	let resolutionDropdownOpen = $state(false);
+	let dateFrom = $state('');
+	let dateTo = $state('');
 	let searchQuery = $state('');
 	let searchResults = $state<any[]>([]);
 	let searchTotal = $state(0);
@@ -75,11 +79,27 @@
 			: availableChannels
 	);
 
+	let filtersInitialized = false;
+
+	// Reload when resolution or date filters change
+	$effect(() => {
+		// Track these values to trigger reload
+		const _r = resolutionFilter;
+		const _df = dateFrom;
+		const _dt = dateTo;
+		if (filtersInitialized) {
+			loadCompletedDownloads();
+		}
+	});
+
 	$effect(() => {
 		const q = searchQuery;
 		const sp = completedFilter;
 		const uf = channelFilter;
 		const ws = watchStateFilter;
+		const rf = resolutionFilter;
+		const df = dateFrom;
+		const dt = dateTo;
 
 		if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
 
@@ -99,6 +119,11 @@
 				if (sp !== 'all') params.set('storagePool', sp);
 				if (uf !== 'all') params.set('uploader', uf);
 				if (ws !== 'all') params.set('watchState', ws);
+				const heightRange = getHeightRange(rf);
+				if (heightRange.min) params.set('minHeight', String(heightRange.min));
+				if (heightRange.max) params.set('maxHeight', String(heightRange.max));
+				if (df) params.set('dateFrom', df);
+				if (dt) params.set('dateTo', dt);
 
 				const res = await fetch(`/api/search?${params}`);
 				if (res.ok) {
@@ -169,7 +194,7 @@
 		if (uploaderParam) channelFilter = uploaderParam;
 
 		loadSettings();
-		loadCompletedDownloads();
+		loadCompletedDownloads().then(() => { filtersInitialized = true; });
 		loadCacheUsage();
 
 		const unsubComplete = onSSEEvent('download:complete', ({ download }) => {
@@ -210,6 +235,11 @@
 			if (watchStateFilter !== 'all') {
 				params.set('watchState', watchStateFilter);
 			}
+			const heightRange = getHeightRange(resolutionFilter);
+			if (heightRange.min) params.set('minHeight', String(heightRange.min));
+			if (heightRange.max) params.set('maxHeight', String(heightRange.max));
+			if (dateFrom) params.set('dateFrom', dateFrom);
+			if (dateTo) params.set('dateTo', dateTo);
 			const res = await fetch(`/api/downloads?${params}`);
 			if (res.ok) {
 				completedDownloads = await res.json();
@@ -218,6 +248,17 @@
 			console.error('Failed to load completed downloads:', e);
 		} finally {
 			completedLoading = false;
+		}
+	}
+
+	function getHeightRange(filter: string): { min?: number; max?: number } {
+		switch (filter) {
+			case '4k': return { min: 2160 };
+			case '1080p': return { min: 1080, max: 1080 };
+			case '720p': return { min: 720, max: 720 };
+			case '480p': return { min: 480, max: 480 };
+			case 'other': return { max: 479 };
+			default: return {};
 		}
 	}
 
@@ -530,6 +571,54 @@
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="channel-dropdown-backdrop" onclick={() => (sortDropdownOpen = false)}></div>
+					{/if}
+				</div>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') resolutionDropdownOpen = false; }}>
+					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); resolutionDropdownOpen = !resolutionDropdownOpen; }}>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+							<rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
+							<path d="M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+						</svg>
+						<span class="channel-dropdown-label">{
+							({ all: 'All res', '4k': '4K+', '1080p': '1080p', '720p': '720p', '480p': '480p', other: 'Other' } as Record<string, string>)[resolutionFilter]
+						}</span>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={resolutionDropdownOpen}>
+							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</button>
+					{#if resolutionDropdownOpen}
+						<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
+							<div class="channel-dropdown-options">
+								{#each [['all', 'All resolutions'], ['4k', '4K+ (2160p+)'], ['1080p', '1080p'], ['720p', '720p'], ['480p', '480p'], ['other', 'Below 480p']] as [value, label]}
+									<button class="channel-dropdown-option" class:selected={resolutionFilter === value} onclick={(e) => { e.stopPropagation(); resolutionFilter = value; resolutionDropdownOpen = false; }}>{label}</button>
+								{/each}
+							</div>
+						</div>
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div class="channel-dropdown-backdrop" onclick={() => (resolutionDropdownOpen = false)}></div>
+					{/if}
+				</div>
+				<div class="date-range-filter">
+					<input
+						type="date"
+						class="date-input"
+						bind:value={dateFrom}
+						placeholder="From"
+						title="Download date from"
+					/>
+					<span class="date-range-separator">-</span>
+					<input
+						type="date"
+						class="date-input"
+						bind:value={dateTo}
+						placeholder="To"
+						title="Download date to"
+					/>
+					{#if dateFrom || dateTo}
+						<button class="date-clear-btn" aria-label="Clear dates" title="Clear date filter" onclick={() => { dateFrom = ''; dateTo = ''; }}>
+							<svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+						</button>
 					{/if}
 				</div>
 			</div>
@@ -889,6 +978,54 @@
 		white-space: nowrap;
 	}
 
+	.date-range-filter {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.date-input {
+		padding: var(--spacing-sm) var(--spacing-sm);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: var(--radius-md);
+		color: var(--text-primary);
+		font-size: 0.8125rem;
+		width: 130px;
+		cursor: pointer;
+		transition: border-color 0.15s;
+	}
+
+	.date-input:hover { border-color: rgba(255, 255, 255, 0.2); }
+	.date-input:focus { outline: none; border-color: var(--accent-primary); }
+
+	.date-input::-webkit-calendar-picker-indicator {
+		filter: invert(0.7);
+		cursor: pointer;
+	}
+
+	.date-range-separator {
+		color: var(--text-tertiary);
+		font-size: 0.8125rem;
+		user-select: none;
+	}
+
+	.date-clear-btn {
+		display: flex;
+		align-items: center;
+		padding: 4px;
+		background: transparent;
+		border: none;
+		color: var(--text-tertiary);
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+	}
+
+	.date-clear-btn:hover {
+		color: var(--text-primary);
+		background: rgba(255, 255, 255, 0.06);
+	}
+
 	@media (max-width: 768px) {
 		.page { padding: 0 var(--spacing-sm); }
 		.storage-row { flex-direction: column; }
@@ -909,5 +1046,7 @@
 		.bulk-bar { flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-md); }
 		.bulk-actions { width: 100%; flex-wrap: wrap; }
 		.bulk-actions .btn { flex: 1; min-width: 0; }
+		.date-range-filter { width: 100%; }
+		.date-input { flex: 1; min-width: 0; width: auto; }
 	}
 </style>

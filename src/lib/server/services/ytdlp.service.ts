@@ -216,6 +216,7 @@ export class YtdlpService {
 							category: info.categories?.[0] || undefined,
 							tags: info.tags?.length ? info.tags : undefined,
 							videoId: info.id || undefined,
+							height: info.height || undefined,
 						});
 					} catch (e) {
 						reject(new Error(`Failed to parse metadata: ${e}`));
