@@ -243,7 +243,7 @@
 			<h1 class="title">{download.title || 'Untitled'}</h1>
 
 			{#if download.uploader}
-				<p class="uploader">{download.uploader}</p>
+				<a href="/channels/{encodeURIComponent(download.uploader)}" class="uploader-link">{download.uploader}</a>
 			{/if}
 
 			<div class="badges">
@@ -394,7 +394,7 @@
 
 	{#if data.similar && data.similar.length > 0}
 		<div class="similar-section">
-			<h3 class="similar-heading">More from {download.uploader}</h3>
+			<h3 class="similar-heading">More from <a href="/channels/{encodeURIComponent(download.uploader)}" class="similar-channel-link">{download.uploader}</a></h3>
 			<div class="similar-grid">
 				{#each data.similar as item}
 					<a href="/downloads/{item.id}" class="similar-card">
@@ -523,10 +523,16 @@
 		line-height: 1.3;
 	}
 
-	.uploader {
+	.uploader-link {
 		font-size: 1rem;
 		color: var(--text-secondary);
 		margin-top: calc(-1 * var(--spacing-sm));
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
+
+	.uploader-link:hover {
+		color: var(--accent-primary);
 	}
 
 	.badges {
@@ -688,6 +694,16 @@
 		font-weight: 600;
 		margin-bottom: var(--spacing-lg);
 		color: var(--text-secondary);
+	}
+
+	.similar-channel-link {
+		color: var(--text-primary);
+		text-decoration: none;
+		transition: color var(--transition-fast);
+	}
+
+	.similar-channel-link:hover {
+		color: var(--accent-primary);
 	}
 
 	.similar-grid {
