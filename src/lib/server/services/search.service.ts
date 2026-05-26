@@ -64,7 +64,8 @@ class SearchService {
 			}
 		}
 
-		const [results, total] = await Promise.all([
+		// Run download search and subtitle search in parallel
+		const [results, total, subtitleData] = await Promise.all([
 			prisma.download.findMany({
 				where,
 				take: limit,
@@ -72,6 +73,7 @@ class SearchService {
 				orderBy: { completedAt: 'desc' },
 			}),
 			prisma.download.count({ where }),
+			this.searchSubtitles(query, userId, { storagePool, uploader }),
 		]);
 
 		return {
@@ -80,6 +82,69 @@ class SearchService {
 				filesize: r.filesize?.toString() ?? null,
 				downloadedBytes: r.downloadedBytes?.toString() ?? null,
 				totalBytes: r.totalBytes?.toString() ?? null,
+			})),
+			total,
+			subtitleMatches: subtitleData.results,
+			subtitleTotal: subtitleData.total,
+		};
+	}
+
+	/**
+	 * Search within indexed subtitle text.
+	 * Returns matching lines grouped by download.
+	 */
+	private async searchSubtitles(query: string, userId: string, filters: {
+		storagePool?: string;
+		uploader?: string;
+	} = {}) {
+		const downloadWhere: any = {
+			userId,
+			status: 'COMPLETED',
+		};
+		if (filters.storagePool) {
+			downloadWhere.storagePool = filters.storagePool;
+		}
+		if (filters.uploader) {
+			downloadWhere.uploader = { contains: filters.uploader, mode: 'insensitive' };
+		}
+
+		const [results, total] = await Promise.all([
+			prisma.subtitleLine.findMany({
+				where: {
+					text: { contains: query, mode: 'insensitive' },
+					download: downloadWhere,
+				},
+				include: {
+					download: {
+						select: {
+							id: true,
+							title: true,
+							thumbnail: true,
+							uploader: true,
+							duration: true,
+						},
+					},
+				},
+				take: 30,
+				orderBy: { startTime: 'asc' },
+			}),
+			prisma.subtitleLine.count({
+				where: {
+					text: { contains: query, mode: 'insensitive' },
+					download: downloadWhere,
+				},
+			}),
+		]);
+
+		return {
+			results: results.map(m => ({
+				id: m.id,
+				downloadId: m.downloadId,
+				startTime: m.startTime,
+				endTime: m.endTime,
+				text: m.text,
+				lang: m.lang,
+				download: m.download,
 			})),
 			total,
 		};

@@ -180,6 +180,7 @@ model Download {
   // Relations
   watchProgress  WatchProgress[]
   playlistItems  PlaylistItem[]
+  subtitleLines  SubtitleLine[]
 
   // From subscription (optional)
   subscriptionId String?
@@ -199,6 +200,19 @@ model Download {
   @@index([storagePool])
   @@index([videoId])
   @@map("downloads")
+}
+
+model SubtitleLine {
+  id         String   @id @default(cuid())
+  downloadId String
+  download   Download @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+  startTime  Float    // seconds
+  endTime    Float    // seconds
+  text       String
+  lang       String   @default("en")
+
+  @@index([downloadId])
+  @@map("subtitle_lines")
 }
 
 enum DownloadStatus {

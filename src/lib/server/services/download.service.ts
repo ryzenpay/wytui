@@ -9,6 +9,7 @@ import { unlink, stat } from 'fs/promises';
 import { libraryService } from './library.service';
 import { channelOverrideService } from './channel-override.service';
 import { notificationService } from './notification.service';
+import { subtitleService } from './subtitle.service';
 
 /**
  * Serialize download object for JSON responses
@@ -424,6 +425,16 @@ class DownloadService {
 		const settings = await this.getSettings();
 		if (settings.enableArchive && download.title) {
 			await this.addToArchive(download.url, download.title);
+		}
+
+		// Index subtitles if any exist alongside the video
+		try {
+			const indexedCount = await subtitleService.indexSubtitles(downloadId);
+			if (indexedCount > 0) {
+				console.log(`[DownloadService] Indexed ${indexedCount} subtitle lines for ${downloadId}`);
+			}
+		} catch (error) {
+			console.error(`[DownloadService] Failed to index subtitles: ${error}`);
 		}
 
 		// Move to library if requested

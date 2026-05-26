@@ -9,7 +9,7 @@
 	import { getSSEState, onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
-	import { formatBytes } from '$lib/utils/format';
+	import { formatBytes, formatTimestamp } from '$lib/utils/format';
 	import CheckSquareIcon from '$lib/components/icons/CheckSquareIcon.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
 	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
@@ -29,6 +29,8 @@
 	let searchResults = $state<any[]>([]);
 	let searchTotal = $state(0);
 	let searchLoading = $state(false);
+	let subtitleMatches = $state<any[]>([]);
+	let subtitleTotal = $state(0);
 	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let selectionMode = $state(false);
@@ -84,6 +86,8 @@
 		if (!q.trim()) {
 			searchResults = [];
 			searchTotal = 0;
+			subtitleMatches = [];
+			subtitleTotal = 0;
 			searchLoading = false;
 			return;
 		}
@@ -101,14 +105,20 @@
 					const data = await res.json();
 					searchResults = data.results || data;
 					searchTotal = data.total || searchResults.length;
+					subtitleMatches = data.subtitleMatches || [];
+					subtitleTotal = data.subtitleTotal || 0;
 				} else {
 					searchResults = [];
 					searchTotal = 0;
+					subtitleMatches = [];
+					subtitleTotal = 0;
 				}
 			} catch (e) {
 				console.error('Search failed:', e);
 				searchResults = [];
 				searchTotal = 0;
+				subtitleMatches = [];
+				subtitleTotal = 0;
 			} finally {
 				searchLoading = false;
 			}
@@ -411,7 +421,7 @@
 				<input
 					type="text"
 					class="search-input-main"
-					placeholder="Search downloads by title, description, or uploader..."
+					placeholder="Search by title, description, uploader, or subtitle text..."
 					bind:value={searchQuery}
 				/>
 				{#if searchQuery}
@@ -422,6 +432,28 @@
 			</div>
 		</div>
 	</div>
+
+	{#if searchQuery.trim() && subtitleMatches.length > 0}
+		<div class="section subtitle-results-section">
+			<h3 class="subtitle-results-heading">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+				</svg>
+				Found in subtitles ({subtitleTotal})
+			</h3>
+			<div class="subtitle-matches">
+				{#each subtitleMatches as match (match.id)}
+					<a class="subtitle-match" href="/downloads/{match.downloadId}?t={Math.floor(match.startTime)}">
+						<div class="subtitle-match-time">{formatTimestamp(match.startTime)}</div>
+						<div class="subtitle-match-content">
+							<div class="subtitle-match-text">{match.text}</div>
+							<div class="subtitle-match-video">{match.download.title || 'Untitled'}{match.download.uploader ? ` - ${match.download.uploader}` : ''}</div>
+						</div>
+					</a>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<div class="section">
 		<div class="section-header">
@@ -786,6 +818,76 @@
 	}
 
 	.filter-dropdown { position: relative; }
+
+	.subtitle-results-section { margin-bottom: var(--spacing-xl); }
+
+	.subtitle-results-heading {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: var(--text-secondary);
+		margin-bottom: var(--spacing-md);
+	}
+
+	.subtitle-results-heading svg { color: var(--text-tertiary); flex-shrink: 0; }
+
+	.subtitle-matches {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+	}
+
+	.subtitle-match {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--spacing-md);
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		text-decoration: none;
+		color: inherit;
+		transition: border-color 0.15s, background 0.15s;
+	}
+
+	.subtitle-match:hover {
+		border-color: var(--accent-primary);
+		background: var(--bg-tertiary);
+	}
+
+	.subtitle-match-time {
+		flex-shrink: 0;
+		font-family: var(--font-mono, monospace);
+		font-size: 0.8125rem;
+		color: var(--accent-primary);
+		padding-top: 1px;
+		min-width: 48px;
+	}
+
+	.subtitle-match-content {
+		min-width: 0;
+		flex: 1;
+	}
+
+	.subtitle-match-text {
+		font-size: 0.875rem;
+		color: var(--text-primary);
+		line-height: 1.4;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.subtitle-match-video {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+		margin-top: 2px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 
 	@media (max-width: 768px) {
 		.page { padding: 0 var(--spacing-sm); }

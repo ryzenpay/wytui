@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
@@ -150,6 +151,12 @@
 			window.open(`${data.jellyfinUrl}/web/index.html#!/search.html?query=${encodeURIComponent(download.title || '')}`, '_blank');
 		}
 	}
+
+	// Use ?t= query param for subtitle timestamp linking, fallback to watch progress
+	let urlStartTime = $derived(() => {
+		const t = $page.url.searchParams.get('t');
+		return t ? parseFloat(t) : null;
+	});
 
 	let isVideo = $derived(
 		download.filepath?.match(/\.(mp4|webm|mkv)$/i) !== null
