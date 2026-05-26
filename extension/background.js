@@ -1,10 +1,9 @@
-// Create context menu on install
+// Create context menu on install — works on any page
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'send-to-wytui',
     title: 'Send to wytui',
     contexts: ['link', 'page'],
-    documentUrlPatterns: ['*://*.youtube.com/*'],
   });
 });
 
@@ -17,27 +16,45 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   const result = await sendToWytui(url);
 
-  // Notify the content script about the result
   if (tab?.id) {
     chrome.tabs.sendMessage(tab.id, {
       action: 'showToast',
       success: result.success,
       message: result.success ? 'Download started!' : result.error,
-    }).catch(() => {
-      // Content script may not be loaded on this page
-    });
+    }).catch(() => {});
   }
 });
 
 // Handle messages from popup and content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'quickDownload') {
-    sendToWytui(message.url).then(sendResponse);
-    return true; // keep message channel open for async response
+    sendToWytui(message.url, message.profileId, message.saveToLibrary).then(sendResponse);
+    return true;
+  }
+  if (message.action === 'fetchProfiles') {
+    fetchProfiles().then(sendResponse);
+    return true;
   }
 });
 
-async function sendToWytui(url) {
+async function fetchProfiles() {
+  try {
+    const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
+    if (!data.serverUrl || !data.apiKey) return { success: false, profiles: [] };
+
+    const res = await fetch(`${data.serverUrl.replace(/\/+$/, '')}/api/profiles`, {
+      headers: { Authorization: 'Bearer ' + data.apiKey },
+    });
+
+    if (!res.ok) return { success: false, profiles: [] };
+    const profiles = await res.json();
+    return { success: true, profiles };
+  } catch {
+    return { success: false, profiles: [] };
+  }
+}
+
+async function sendToWytui(url, profileId, saveToLibrary) {
   try {
     const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
 
@@ -47,21 +64,22 @@ async function sendToWytui(url) {
 
     const endpoint = data.serverUrl.replace(/\/+$/, '') + '/api/downloads/quick';
 
+    const body = { url };
+    if (profileId) body.profileId = profileId;
+    if (saveToLibrary) body.saveToLibrary = true;
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + data.apiKey,
       },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      return {
-        success: false,
-        error: body.message || body.error || 'Server returned ' + response.status,
-      };
+      return { success: false, error: body.message || body.error || 'Server returned ' + response.status };
     }
 
     const result = await response.json();

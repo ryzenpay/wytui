@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "wytui - Send to Download",
+  "name": "wytui",
   "version": "1.0.0",
-  "description": "Send YouTube videos to your wytui server for downloading with one click.",
+  "description": "Send any video to your wytui server for downloading.",
   "permissions": ["activeTab", "storage", "contextMenus"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -22,7 +23,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.youtube.com/*"],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["content.css"]
     }

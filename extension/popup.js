@@ -1,22 +1,85 @@
+// Elements
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const urlText = document.getElementById('urlText');
+const urlFavicon = document.getElementById('urlFavicon');
+const openWytuiBtn = document.getElementById('openWytuiBtn');
+const profileSelect = document.getElementById('profileSelect');
+const libraryToggle = document.getElementById('libraryToggle');
+const libraryToggleRow = document.getElementById('libraryToggleRow');
+const downloadBtn = document.getElementById('downloadBtn');
+const messageEl = document.getElementById('message');
+const viewLink = document.getElementById('viewLink');
 const serverUrlInput = document.getElementById('serverUrl');
 const apiKeyInput = document.getElementById('apiKey');
 const saveBtn = document.getElementById('saveBtn');
-const downloadBtn = document.getElementById('downloadBtn');
-const messageEl = document.getElementById('message');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
 
-// Load saved settings
-chrome.storage.local.get(['serverUrl', 'apiKey'], (data) => {
+let currentTabUrl = '';
+let serverUrl = '';
+let saveToLibrary = false;
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Library toggle
+libraryToggleRow.addEventListener('click', () => {
+  saveToLibrary = !saveToLibrary;
+  libraryToggle.classList.toggle('on', saveToLibrary);
+});
+
+// Init: load settings, current tab, profiles
+chrome.storage.local.get(['serverUrl', 'apiKey'], async (data) => {
   if (data.serverUrl) serverUrlInput.value = data.serverUrl;
   if (data.apiKey) apiKeyInput.value = data.apiKey;
+
+  serverUrl = data.serverUrl || '';
   updateStatus(data.serverUrl, data.apiKey);
+
+  // Get current tab
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.url) {
+    currentTabUrl = tab.url;
+    urlText.textContent = formatUrl(tab.url);
+    if (tab.favIconUrl) {
+      urlFavicon.src = tab.favIconUrl;
+      urlFavicon.style.display = '';
+    } else {
+      urlFavicon.style.display = 'none';
+    }
+  }
+
+  // Load profiles if configured
+  if (data.serverUrl && data.apiKey) {
+    loadProfiles();
+  }
 });
+
+// Open in wytui (opens server root)
+openWytuiBtn.addEventListener('click', () => {
+  if (serverUrl) chrome.tabs.create({ url: serverUrl.replace(/\/+$/, '') + '/downloads' });
+});
+
+function formatUrl(url) {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.length > 30 ? u.pathname.slice(0, 28) + '…' : u.pathname;
+    return u.hostname + path;
+  } catch {
+    return url;
+  }
+}
 
 function updateStatus(url, key) {
   if (url && key) {
     statusDot.className = 'status-dot connected';
-    statusText.textContent = 'Configured';
+    statusText.textContent = 'Connected';
     downloadBtn.disabled = false;
   } else {
     statusDot.className = 'status-dot';
@@ -25,54 +88,121 @@ function updateStatus(url, key) {
   }
 }
 
-function showMessage(text, type) {
-  messageEl.textContent = text;
-  messageEl.className = 'message ' + type;
-  setTimeout(() => {
-    messageEl.className = 'message';
-  }, 4000);
-}
+async function loadProfiles() {
+  profileSelect.disabled = true;
+  profileSelect.innerHTML = '<option value="">Loading profiles…</option>';
 
-saveBtn.addEventListener('click', () => {
-  const serverUrl = serverUrlInput.value.trim().replace(/\/+$/, '');
-  const apiKey = apiKeyInput.value.trim();
+  const result = await chrome.runtime.sendMessage({ action: 'fetchProfiles' });
 
-  if (!serverUrl) {
-    showMessage('Server URL is required.', 'error');
+  profileSelect.innerHTML = '';
+
+  if (!result?.success || !result.profiles?.length) {
+    profileSelect.innerHTML = '<option value="">Default profile</option>';
+    profileSelect.disabled = false;
     return;
   }
 
-  chrome.storage.local.set({ serverUrl, apiKey }, () => {
-    showMessage('Settings saved.', 'success');
-    updateStatus(serverUrl, apiKey);
+  // Add default option
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = 'Default profile';
+  profileSelect.appendChild(defaultOpt);
+
+  result.profiles.forEach((p) => {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    const badge = p.isDefault ? ' ★' : p.isSystem ? ' (system)' : '';
+    const detail = p.audioOnly ? ' · audio' : p.quality ? ` · ${p.quality}` : '';
+    opt.textContent = p.name + badge + detail;
+    profileSelect.appendChild(opt);
+  });
+
+  profileSelect.disabled = false;
+
+  // Select default profile
+  const defaultProfile = result.profiles.find((p) => p.isDefault);
+  if (defaultProfile) profileSelect.value = defaultProfile.id;
+}
+
+// Save settings
+saveBtn.addEventListener('click', () => {
+  const url = serverUrlInput.value.trim().replace(/\/+$/, '');
+  const key = apiKeyInput.value.trim();
+
+  if (!url) {
+    showSettingsError('Server URL is required.');
+    return;
+  }
+
+  chrome.storage.local.set({ serverUrl: url, apiKey: key }, () => {
+    serverUrl = url;
+    updateStatus(url, key);
+    saveBtn.textContent = 'Saved!';
+    setTimeout(() => { saveBtn.textContent = 'Save'; }, 2000);
+    if (url && key) loadProfiles();
   });
 });
 
+function showSettingsError(msg) {
+  saveBtn.textContent = msg;
+  saveBtn.style.background = '#ef4444';
+  setTimeout(() => {
+    saveBtn.textContent = 'Save';
+    saveBtn.style.background = '';
+  }, 2500);
+}
+
+// Download
 downloadBtn.addEventListener('click', async () => {
+  if (!currentTabUrl) {
+    showMessage('No page URL found.', 'error');
+    return;
+  }
+
   downloadBtn.disabled = true;
-  downloadBtn.textContent = 'Sending...';
+  downloadBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite">
+      <path d="M21 12a9 9 0 11-6.219-8.56"/>
+    </svg>
+    Sending…
+  `;
+  viewLink.style.display = 'none';
 
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.url) {
-      showMessage('No active tab found.', 'error');
-      return;
+  const profileId = profileSelect.value || undefined;
+
+  const response = await chrome.runtime.sendMessage({
+    action: 'quickDownload',
+    url: currentTabUrl,
+    profileId,
+    saveToLibrary,
+  });
+
+  downloadBtn.disabled = false;
+  downloadBtn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 3v10M6 9l4 4 4-4"/><path d="M4 15h12"/>
+    </svg>
+    Download
+  `;
+
+  if (response?.success) {
+    showMessage('Download started!', 'success');
+    if (response.downloadId && serverUrl) {
+      viewLink.href = serverUrl.replace(/\/+$/, '') + '/downloads/' + response.downloadId;
+      viewLink.style.display = 'inline-flex';
     }
-
-    const response = await chrome.runtime.sendMessage({
-      action: 'quickDownload',
-      url: tab.url,
-    });
-
-    if (response?.success) {
-      showMessage('Download started!', 'success');
-    } else {
-      showMessage(response?.error || 'Failed to send download.', 'error');
-    }
-  } catch (err) {
-    showMessage('Error: ' + err.message, 'error');
-  } finally {
-    downloadBtn.disabled = false;
-    downloadBtn.textContent = 'Download Current Video';
+  } else {
+    showMessage(response?.error || 'Failed to send download.', 'error');
   }
 });
+
+function showMessage(text, type) {
+  messageEl.textContent = text;
+  messageEl.className = 'message ' + type;
+  if (type === 'error') viewLink.style.display = 'none';
+}
+
+// Inject spin keyframe into popup
+const style = document.createElement('style');
+style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+document.head.appendChild(style);

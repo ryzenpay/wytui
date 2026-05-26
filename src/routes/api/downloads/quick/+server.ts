@@ -51,7 +51,7 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 	},
 }, async ({ request, locals }) => {
 	try {
-		const { url } = await request.json();
+		const { url, profileId, saveToLibrary } = await request.json();
 
 		if (!url) {
 			return json({ error: 'Missing required field: url' }, { status: 400, headers: corsHeaders });
@@ -69,22 +69,30 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 
 		const userId = locals.session?.user?.id;
 
-		// Find user's first profile, falling back to system profile
-		const profile = await prisma.downloadProfile.findFirst({
-			where: {
-				OR: [
-					{ userId: locals.session.user.id },
-					{ isSystem: true },
-				],
-			},
-			orderBy: { isSystem: 'asc' },
-		});
+		// Use specified profile if provided, otherwise fall back to user's default
+		let profile;
+		if (profileId) {
+			profile = await prisma.downloadProfile.findFirst({
+				where: {
+					id: profileId,
+					OR: [{ isSystem: true }, { userId }],
+				},
+			});
+		}
+		if (!profile) {
+			profile = await prisma.downloadProfile.findFirst({
+				where: {
+					OR: [{ userId: locals.session.user.id }, { isSystem: true }],
+				},
+				orderBy: [{ isDefault: 'desc' }, { isSystem: 'asc' }],
+			});
+		}
 
 		if (!profile) {
 			return json({ error: 'No download profile found. Create a profile first.' }, { status: 400, headers: corsHeaders });
 		}
 
-		const download = await downloadService.createDownload(url, profile.id, userId);
+		const download = await downloadService.createDownload(url, profile.id, userId, undefined, !!saveToLibrary);
 
 		return json(download, { status: 201, headers: corsHeaders });
 	} catch (e: any) {
