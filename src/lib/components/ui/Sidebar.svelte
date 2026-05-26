@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		isAdmin: boolean;
@@ -45,6 +46,25 @@
 	];
 
 	let mobileMenuOpen = $state(false);
+
+	// Version check
+	let updateAvailable = $state(false);
+	let latestVersion = $state('');
+	let releaseUrl = $state('');
+
+	onMount(async () => {
+		try {
+			const res = await fetch('/api/version');
+			if (res.ok) {
+				const data = await res.json();
+				updateAvailable = data.updateAvailable;
+				latestVersion = data.latestVersion;
+				releaseUrl = data.releaseUrl;
+			}
+		} catch {
+			// Version check is best-effort
+		}
+	});
 </script>
 
 <!-- Desktop sidebar -->
@@ -52,9 +72,24 @@
 	<div class="sidebar-header">
 		<a href="/" class="logo">
 			{#if !collapsed}
-				<h1>wytui</h1>
+				<div class="logo-row">
+					<h1>wytui</h1>
+					{#if updateAvailable}
+						<a href={releaseUrl} target="_blank" rel="noopener noreferrer" class="update-badge" title="Update available: v{latestVersion}">
+							<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M10 3v10M6 9l4 4 4-4" />
+								<path d="M4 15h12" />
+							</svg>
+						</a>
+					{/if}
+				</div>
 			{:else}
-				<h1 class="logo-collapsed">w</h1>
+				<div class="logo-row">
+					<h1 class="logo-collapsed">w</h1>
+					{#if updateAvailable}
+						<span class="update-dot" title="Update available: v{latestVersion}"></span>
+					{/if}
+				</div>
 			{/if}
 		</a>
 		<button class="collapse-btn" onclick={() => collapsed = !collapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
@@ -326,6 +361,41 @@
 
 	.logo:hover h1 {
 		opacity: 0.8;
+	}
+
+	.logo-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		position: relative;
+	}
+
+	.update-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: rgba(34, 197, 94, 0.15);
+		color: var(--success, #22c55e);
+		flex-shrink: 0;
+		transition: all var(--transition-fast);
+		text-decoration: none;
+	}
+
+	.update-badge:hover {
+		background: rgba(34, 197, 94, 0.3);
+	}
+
+	.update-dot {
+		position: absolute;
+		top: -2px;
+		right: -6px;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--success, #22c55e);
 	}
 
 	.collapse-btn {

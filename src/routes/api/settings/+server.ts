@@ -41,6 +41,7 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'ldapBindPassword',
 	'ldapSearchBase',
 	'ldapSearchFilter',
+	'versionCheckEnabled',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -153,6 +154,7 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		ldapBindPassword: { type: 'string', description: 'LDAP bind password', nullable: true },
 		ldapSearchBase: { type: 'string', description: 'LDAP search base DN', nullable: true },
 		ldapSearchFilter: { type: 'string', description: 'LDAP search filter template', nullable: true },
+		versionCheckEnabled: { type: 'boolean', description: 'Enable automatic version update checks' },
 	},
 	responses: {
 		200: {
