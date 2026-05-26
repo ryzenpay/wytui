@@ -13,6 +13,12 @@
 	let formError = $state('');
 	let creating = $state(false);
 
+	let editingPlaylist = $state<any>(null);
+	let editFormName = $state('');
+	let editFormDescription = $state('');
+	let editFormError = $state('');
+	let updating = $state(false);
+
 	onMount(() => {
 		loadPlaylists();
 	});
@@ -57,6 +63,47 @@
 			formError = 'Failed to create playlist';
 		} finally {
 			creating = false;
+		}
+	}
+
+	function startEdit(playlist: any) {
+		editingPlaylist = playlist;
+		editFormName = playlist.name;
+		editFormDescription = playlist.description || '';
+		editFormError = '';
+	}
+
+	function cancelEdit() {
+		editingPlaylist = null;
+		editFormName = '';
+		editFormDescription = '';
+		editFormError = '';
+	}
+
+	async function handleUpdate(e: Event) {
+		e.preventDefault();
+		editFormError = '';
+		updating = true;
+
+		try {
+			const res = await fetch(`/api/playlists/${editingPlaylist.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: editFormName, description: editFormDescription || undefined }),
+			});
+
+			if (res.ok) {
+				cancelEdit();
+				addToast('success', 'Playlist updated');
+				await loadPlaylists();
+			} else {
+				const data = await res.json().catch(() => null);
+				editFormError = data?.message || `Failed to update playlist (${res.status})`;
+			}
+		} catch {
+			editFormError = 'Failed to update playlist';
+		} finally {
+			updating = false;
 		}
 	}
 
@@ -115,6 +162,51 @@
 			</form>
 		{/if}
 
+		{#if editingPlaylist}
+			<div class="modal-backdrop" onclick={cancelEdit}>
+				<div class="modal" onclick={(e) => e.stopPropagation()}>
+					<div class="modal-header">
+						<h3>Edit Playlist</h3>
+						<button class="modal-close" onclick={cancelEdit} aria-label="Close">
+							<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+								<path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+							</svg>
+						</button>
+					</div>
+					<form onsubmit={handleUpdate}>
+						<div class="form-group">
+							<label for="edit-playlist-name">Name</label>
+							<input
+								type="text"
+								id="edit-playlist-name"
+								bind:value={editFormName}
+								required
+								placeholder="My Playlist"
+							/>
+						</div>
+						<div class="form-group">
+							<label for="edit-playlist-desc">Description (optional)</label>
+							<input
+								type="text"
+								id="edit-playlist-desc"
+								bind:value={editFormDescription}
+								placeholder="A collection of..."
+							/>
+						</div>
+						{#if editFormError}
+							<p class="form-error">{editFormError}</p>
+						{/if}
+						<div class="modal-actions">
+							<button type="button" class="btn btn-secondary" onclick={cancelEdit}>Cancel</button>
+							<button type="submit" class="btn btn-primary" disabled={updating}>
+								{updating ? 'Updating...' : 'Update'}
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		{/if}
+
 		{#if loading}
 			<Skeleton count={4} variant="card" />
 		{:else if playlists.length === 0}
@@ -149,7 +241,7 @@
 							</div>
 						</button>
 						<div class="card-actions">
-							<button class="action-btn" onclick={(e) => { e.stopPropagation(); /* TODO: edit */ }} title="Edit playlist">
+							<button class="action-btn" onclick={(e) => { e.stopPropagation(); startEdit(playlist); }} title="Edit playlist">
 								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
 									<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -398,6 +490,68 @@
 	.action-btn.danger:hover {
 		border-color: var(--error);
 		color: var(--error);
+	}
+
+	.modal-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.7);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+		padding: var(--spacing-lg);
+	}
+
+	.modal {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-xl);
+		max-width: 500px;
+		width: 100%;
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+	}
+
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.modal-header h3 {
+		margin: 0;
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: var(--text-primary);
+	}
+
+	.modal-close {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		background: transparent;
+		border: none;
+		border-radius: var(--radius-sm);
+		color: var(--text-secondary);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.modal-close:hover {
+		background: var(--bg-hover);
+		color: var(--text-primary);
+	}
+
+	.modal-actions {
+		display: flex;
+		gap: var(--spacing-sm);
+		justify-content: flex-end;
+		margin-top: var(--spacing-lg);
 	}
 
 	@media (max-width: 768px) {

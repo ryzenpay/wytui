@@ -5,6 +5,11 @@
 	import { formatBytes, formatDuration } from '$lib/utils/format';
 	import VideoPlayer from '$lib/components/player/VideoPlayer.svelte';
 	import TagEditor from '$lib/components/ui/TagEditor.svelte';
+	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
+	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
+	import ExternalLinkIcon from '$lib/components/icons/ExternalLinkIcon.svelte';
+	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
+	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -299,31 +304,25 @@
 
 			<div class="actions">
 				{#if download.status === 'COMPLETED'}
-					<button class="btn btn-primary" onclick={downloadFile}>
-						<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-							<path d="M8 2v8M4 7l4 4 4-4M2 12v2h12v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-						</svg>
-						Download File
+					<button class="btn btn-primary btn-icon" onclick={downloadFile} aria-label="Download file" title="Download file">
+						<DownloadIcon />
 					</button>
 					{#if download.storagePool === 'cache'}
-						<button class="btn btn-accent" onclick={handlePromote} disabled={promoting}>
-							{promoting ? 'Moving...' : 'Save to Library'}
+						<button class="btn btn-accent btn-icon" onclick={handlePromote} disabled={promoting} aria-label="Save to library" title="Save to library">
+							<FolderDownIcon />
 						</button>
 					{/if}
 					{#if data.jellyfinUrl}
-						<button class="btn btn-secondary" onclick={openInJellyfin}>
-							Open in Jellyfin
+						<button class="btn btn-secondary btn-icon" onclick={openInJellyfin} aria-label="Open in Jellyfin" title="Open in Jellyfin">
+							<ExternalLinkIcon />
 						</button>
 					{/if}
 				{/if}
-				<button class="btn btn-secondary" onclick={handleRefreshMetadata} disabled={refreshing}>
-					<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-						<path d="M13.65 2.35A7.95 7.95 0 008 0C3.58 0 .01 3.58.01 8S3.58 16 8 16c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14 6 6 0 012 8a6 6 0 016-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/>
-					</svg>
-					{refreshing ? 'Refreshing...' : 'Refresh Metadata'}
+				<button class="btn btn-secondary btn-icon" onclick={handleRefreshMetadata} disabled={refreshing} aria-label="Refresh metadata" title="Refresh metadata">
+					<RefreshIcon />
 				</button>
-				<button class="btn btn-danger" onclick={handleDelete} disabled={deleting}>
-					{deleting ? 'Deleting...' : 'Delete'}
+				<button class="btn btn-danger btn-icon" onclick={handleDelete} disabled={deleting} aria-label="Delete" title="Delete">
+					<TrashIcon />
 				</button>
 			</div>
 

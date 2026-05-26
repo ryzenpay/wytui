@@ -4,6 +4,7 @@
 	import { addToast } from '$lib/stores/toast.svelte';
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 
 	interface Props {
 		data: {
@@ -715,8 +716,8 @@
 									{#if loadingJellyfinUsers}
 										<p class="text-muted">Loading users...</p>
 									{:else if jellyfinUsers.length === 0}
-										<button class="btn-secondary btn-sm" onclick={loadJellyfinUsers}>
-											{jellyfinUsersError ? 'Retry' : 'Load Jellyfin Users'}
+										<button class="btn-secondary btn-sm btn-icon" onclick={loadJellyfinUsers} aria-label={jellyfinUsersError ? 'Retry' : 'Load Jellyfin users'} title={jellyfinUsersError ? 'Retry' : 'Load Jellyfin users'}>
+											<RefreshIcon />
 										</button>
 										{#if jellyfinUsersError}
 											<span class="test-result error">{jellyfinUsersError}</span>
@@ -734,8 +735,8 @@
 												</label>
 											{/each}
 										</div>
-										<button class="btn-secondary btn-sm" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;">
-											Refresh
+										<button class="btn-secondary btn-sm btn-icon" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;" aria-label="Refresh" title="Refresh">
+											<RefreshIcon />
 										</button>
 									{/if}
 									<p class="help-text">Item is deleted only when ALL selected users have watched it</p>

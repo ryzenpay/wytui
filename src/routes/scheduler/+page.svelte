@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
+	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 
 	interface Job {
 		name: string;
@@ -117,8 +118,8 @@
 				<h2>Scheduled Tasks</h2>
 				<p class="text-muted">Background jobs and their run history</p>
 			</div>
-			<button class="btn btn-secondary" onclick={loadScheduler} disabled={loading}>
-				Refresh
+			<button class="btn btn-secondary btn-icon" onclick={loadScheduler} disabled={loading} aria-label="Refresh" title="Refresh">
+				<RefreshIcon />
 			</button>
 		</div>
 

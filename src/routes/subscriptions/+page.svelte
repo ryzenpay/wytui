@@ -4,6 +4,8 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import CheckIcon from '$lib/components/icons/CheckIcon.svelte';
+	import XIcon from '$lib/components/icons/XIcon.svelte';
 
 	// Shared state
 	let profiles = $state<any[]>([]);
@@ -446,8 +448,12 @@
 									</div>
 								</div>
 								<div class="actions">
-									<button class="btn btn-sm btn-primary" onclick={saveEditSub}>Save</button>
-									<button class="btn btn-sm btn-secondary" onclick={cancelEditSub}>Cancel</button>
+									<button class="btn btn-sm btn-primary btn-icon" onclick={saveEditSub} aria-label="Save" title="Save">
+										<CheckIcon />
+									</button>
+									<button class="btn btn-sm btn-secondary btn-icon" onclick={cancelEditSub} aria-label="Cancel" title="Cancel">
+										<XIcon />
+									</button>
 								</div>
 							</div>
 						{:else}
