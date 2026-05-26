@@ -54,6 +54,80 @@
 	});
 	let passwordError = $state('');
 
+	// Rescan
+	let rescanning = $state(false);
+	let rescanReport = $state<{ missing: { id: string; title: string | null; filepath: string }[]; ok: number } | null>(null);
+	let reconciling = $state(false);
+
+	async function runRescan() {
+		rescanning = true;
+		rescanReport = null;
+		try {
+			const res = await fetch('/api/rescan');
+			if (res.ok) {
+				rescanReport = await res.json();
+			} else {
+				addToast('error', 'Rescan failed');
+			}
+		} catch {
+			addToast('error', 'Rescan failed');
+		} finally {
+			rescanning = false;
+		}
+	}
+
+	async function deleteRescanRecords(ids: string[]) {
+		const confirmed = await showConfirm(
+			'Delete Records',
+			`Delete ${ids.length} download record${ids.length === 1 ? '' : 's'} with missing files? This cannot be undone.`,
+			'Delete'
+		);
+		if (!confirmed) return;
+
+		reconciling = true;
+		try {
+			const res = await fetch('/api/rescan', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ deleteRecords: ids }),
+			});
+			if (res.ok) {
+				const result = await res.json();
+				addToast('success', `Deleted ${result.deleted} record${result.deleted === 1 ? '' : 's'}`);
+				// Re-run scan to refresh the list
+				await runRescan();
+			} else {
+				addToast('error', 'Reconciliation failed');
+			}
+		} catch {
+			addToast('error', 'Reconciliation failed');
+		} finally {
+			reconciling = false;
+		}
+	}
+
+	async function markRescanMissing(ids: string[]) {
+		reconciling = true;
+		try {
+			const res = await fetch('/api/rescan', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ markMissing: ids }),
+			});
+			if (res.ok) {
+				const result = await res.json();
+				addToast('success', `Marked ${result.marked} record${result.marked === 1 ? '' : 's'} as deleted`);
+				await runRescan();
+			} else {
+				addToast('error', 'Failed to mark records');
+			}
+		} catch {
+			addToast('error', 'Failed to mark records');
+		} finally {
+			reconciling = false;
+		}
+	}
+
 	onMount(async () => {
 		loadApiKeys();
 		if (isAdmin) {
@@ -971,6 +1045,73 @@
 						</label>
 						<p class="help-text">Fetch dislike counts from the Return YouTube Dislike API when downloading videos. When enabled, video IDs are sent to an external service (<a href="https://returnyoutubedislike.com" target="_blank" rel="noopener noreferrer">returnyoutubedislike.com</a>).</p>
 					</div>
+				</div>
+
+				<div class="settings-section">
+					<h2>Rescan Library</h2>
+					<p class="help-text" style="margin-bottom: var(--spacing-lg);">Check that downloaded files still exist on disk. Finds completed downloads whose files are missing.</p>
+
+					<div class="rescan-actions">
+						<button
+							class="btn-secondary btn-sm btn-with-icon"
+							onclick={runRescan}
+							disabled={rescanning}
+						>
+							<RefreshIcon width={14} height={14} />
+							{rescanning ? 'Scanning...' : 'Rescan Now'}
+						</button>
+					</div>
+
+					{#if rescanReport}
+						<div class="rescan-results">
+							<div class="rescan-summary">
+								<span class="rescan-stat ok">{rescanReport.ok} OK</span>
+								<span class="rescan-stat" class:missing={rescanReport.missing.length > 0}>{rescanReport.missing.length} missing</span>
+							</div>
+
+							{#if rescanReport.missing.length > 0}
+								<div class="rescan-missing-list">
+									<div class="rescan-bulk-actions">
+										<button
+											class="btn-secondary btn-sm btn-with-icon"
+											onclick={() => markRescanMissing(rescanReport!.missing.map(m => m.id))}
+											disabled={reconciling}
+										>
+											Mark all as deleted
+										</button>
+										<button
+											class="btn-danger btn-sm btn-with-icon"
+											onclick={() => deleteRescanRecords(rescanReport!.missing.map(m => m.id))}
+											disabled={reconciling}
+										>
+											<TrashIcon width={14} height={14} />
+											Delete all records
+										</button>
+									</div>
+
+									{#each rescanReport.missing as item}
+										<div class="rescan-missing-item">
+											<div class="rescan-missing-info">
+												<span class="rescan-missing-title">{item.title || 'Untitled'}</span>
+												<code class="rescan-missing-path">{item.filepath}</code>
+											</div>
+											<div class="rescan-missing-actions">
+												<button
+													class="btn-danger btn-sm btn-icon"
+													onclick={() => deleteRescanRecords([item.id])}
+													disabled={reconciling}
+													aria-label="Delete record"
+													title="Delete record"
+												>
+													<TrashIcon width={14} height={14} />
+												</button>
+											</div>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
 				<div class="settings-section">
@@ -1950,6 +2091,85 @@
 		background: rgba(59, 130, 246, 0.2);
 		color: var(--accent-primary);
 		border: 1px solid var(--accent-primary);
+	}
+
+	/* Rescan styles */
+	.rescan-actions {
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.rescan-results {
+		margin-top: var(--spacing-md);
+	}
+
+	.rescan-summary {
+		display: flex;
+		gap: var(--spacing-lg);
+		margin-bottom: var(--spacing-md);
+	}
+
+	.rescan-stat {
+		font-size: 0.9375rem;
+		font-weight: 600;
+	}
+
+	.rescan-stat.ok {
+		color: var(--success, #22c55e);
+	}
+
+	.rescan-stat.missing {
+		color: var(--error);
+	}
+
+	.rescan-bulk-actions {
+		display: flex;
+		gap: var(--spacing-sm);
+		margin-bottom: var(--spacing-md);
+	}
+
+	.rescan-missing-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.rescan-missing-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-md);
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--bg-tertiary);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: var(--radius-md);
+	}
+
+	.rescan-missing-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.rescan-missing-title {
+		font-weight: 500;
+		font-size: 0.875rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.rescan-missing-path {
+		font-size: 0.75rem;
+		color: var(--text-tertiary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.rescan-missing-actions {
+		flex-shrink: 0;
 	}
 
 	/* Modal styles */
