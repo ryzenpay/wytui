@@ -43,7 +43,9 @@
 	/>
 
 	<div class="main-area" class:collapsed={sidebarCollapsed}>
-		<div class="top-spacer"></div>
+		<header class="top-header">
+			<!-- Empty header bar for spacing -->
+		</header>
 
 		{#if $navigating}
 			<div class="nav-progress">
@@ -102,8 +104,15 @@
 		margin-left: 64px;
 	}
 
-	.top-spacer {
-		height: var(--spacing-md);
+	.top-header {
+		background: var(--bg-secondary);
+		border-bottom: 1px solid var(--border);
+		padding: var(--spacing-md) var(--spacing-xl);
+		position: sticky;
+		top: 0;
+		z-index: 50;
+		backdrop-filter: blur(10px);
+		background: rgba(20, 20, 20, 0.8);
 	}
 
 	.nav-progress {
@@ -174,6 +183,10 @@
 		.main-area {
 			margin-left: 0;
 			padding-bottom: 68px;
+		}
+
+		.top-header {
+			display: none;
 		}
 
 		.main-content {
