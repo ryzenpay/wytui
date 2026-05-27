@@ -773,11 +773,6 @@
 				</nav>
 
 				<div class="general-settings">
-					<div class="settings-header">
-						<h1>General Settings</h1>
-						<p class="text-muted">Configure your wytui instance</p>
-					</div>
-
 					<div class="settings-section" id="storage">
 						<h2>Storage</h2>
 
@@ -1931,20 +1926,6 @@
 		isolation: isolate;
 	}
 
-	.settings-header {
-		margin-bottom: var(--spacing-2xl);
-	}
-
-	.settings-header h1 {
-		font-size: 2rem;
-		margin-bottom: var(--spacing-sm);
-	}
-
-	.settings-header .text-muted {
-		color: var(--text-secondary);
-		font-size: 1rem;
-	}
-
 	.settings-section {
 		background: var(--bg-secondary);
 		border: 1px solid rgba(255, 255, 255, 0.1);
@@ -2598,14 +2579,6 @@
 			font-size: 0.8125rem;
 			white-space: nowrap;
 			flex-shrink: 0;
-		}
-
-		.settings-header {
-			margin-bottom: var(--spacing-xl);
-		}
-
-		.settings-header h1 {
-			font-size: 1.5rem;
 		}
 
 		.settings-section {

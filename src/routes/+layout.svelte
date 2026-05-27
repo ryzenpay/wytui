@@ -43,6 +43,25 @@
 	/>
 
 	<div class="main-area" class:collapsed={sidebarCollapsed}>
+		<header class="top-header">
+			<div class="header-content">
+				<div class="header-brand">
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 128 128">
+						<defs>
+							<linearGradient id="header-g" x1="0%" y1="0%" x2="100%" y2="100%">
+								<stop offset="0%" stop-color="#7c3aed"/>
+								<stop offset="100%" stop-color="#3b82f6"/>
+							</linearGradient>
+						</defs>
+						<rect width="128" height="128" rx="28" fill="url(#header-g)"/>
+						<path d="M64 30 L64 78 M44 62 L64 82 L84 62" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+						<path d="M38 94 L90 94" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
+					</svg>
+					<span class="header-title">wytui</span>
+				</div>
+			</div>
+		</header>
+
 		{#if $navigating}
 			<div class="nav-progress">
 				<div class="nav-progress-bar"></div>
@@ -98,6 +117,37 @@
 
 	.main-area.collapsed {
 		margin-left: 64px;
+	}
+
+	.top-header {
+		background: var(--bg-secondary);
+		border-bottom: 1px solid var(--border);
+		padding: var(--spacing-md) var(--spacing-xl);
+		position: sticky;
+		top: 0;
+		z-index: 100;
+		backdrop-filter: blur(10px);
+		background: rgba(20, 20, 20, 0.8);
+	}
+
+	.header-content {
+		max-width: 1400px;
+		margin: 0 auto;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.header-brand {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+
+	.header-title {
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: var(--text-primary);
 	}
 
 	.nav-progress {
