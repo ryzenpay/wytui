@@ -60,8 +60,11 @@
 	function scrollToSection(sectionId: string) {
 		const element = document.getElementById(sectionId);
 		if (element) {
-			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-			activeSection = sectionId;
+			// Use requestAnimationFrame to ensure smooth scroll doesn't conflict with other updates
+			requestAnimationFrame(() => {
+				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				activeSection = sectionId;
+			});
 		}
 	}
 
@@ -165,22 +168,28 @@
 
 		// Set up Intersection Observer to track active section
 		if (activeTab === 'general') {
+			let rafId: number | null = null;
 			const observer = new IntersectionObserver(
 				(entries) => {
-					// Find the section that's most visible in the viewport
-					let mostVisible = null;
-					let maxRatio = 0;
+					// Use RAF to batch DOM reads and prevent layout thrashing
+					if (rafId) cancelAnimationFrame(rafId);
+					rafId = requestAnimationFrame(() => {
+						// Find the section that's most visible in the viewport
+						let mostVisible = null;
+						let maxRatio = 0;
 
-					entries.forEach((entry) => {
-						if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-							maxRatio = entry.intersectionRatio;
-							mostVisible = entry.target.id;
+						entries.forEach((entry) => {
+							if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+								maxRatio = entry.intersectionRatio;
+								mostVisible = entry.target.id;
+							}
+						});
+
+						// Only update if changed to prevent unnecessary re-renders
+						if (mostVisible && activeSection !== mostVisible) {
+							activeSection = mostVisible;
 						}
 					});
-
-					if (mostVisible) {
-						activeSection = mostVisible;
-					}
 				},
 				{
 					threshold: [0, 0.25, 0.5, 0.75, 1],
@@ -197,6 +206,7 @@
 			});
 
 			return () => {
+				if (rafId) cancelAnimationFrame(rafId);
 				observer.disconnect();
 			};
 		}
@@ -1830,6 +1840,7 @@
 		gap: var(--spacing-xl);
 		max-width: 1200px;
 		align-items: flex-start;
+		width: 100%;
 	}
 
 	.settings-nav {
@@ -1840,6 +1851,8 @@
 		align-self: flex-start;
 		max-height: calc(100vh - var(--spacing-xl) * 2);
 		overflow-y: auto;
+		z-index: 10;
+		contain: layout style;
 	}
 
 	.settings-nav::-webkit-scrollbar {
@@ -1909,6 +1922,8 @@
 	.general-settings {
 		flex: 1;
 		min-width: 0;
+		contain: layout style;
+		isolation: isolate;
 	}
 
 	.settings-section {
@@ -1917,7 +1932,9 @@
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		margin-bottom: var(--spacing-lg);
-		scroll-margin-top: 100px;
+		scroll-margin-top: var(--spacing-2xl);
+		contain: layout;
+		position: relative;
 	}
 
 	.section-header {
