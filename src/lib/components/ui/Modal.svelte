@@ -26,11 +26,11 @@
 			</div>
 			<div class="modal-footer">
 				{#if modalState.type === 'confirm'}
-					<button class="btn-secondary" onclick={modalState.cancel}>
+					<button class="btn btn-secondary" onclick={modalState.cancel}>
 						{modalState.cancelText}
 					</button>
 				{/if}
-				<button class="btn-primary" onclick={modalState.confirm}>
+				<button class="btn btn-primary" onclick={modalState.confirm}>
 					{modalState.confirmText}
 				</button>
 			</div>

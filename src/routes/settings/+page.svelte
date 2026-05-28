@@ -735,7 +735,7 @@
 			<h2>Account</h2>
 			<p class="text-muted">Manage your account settings.</p>
 			<button
-				class="btn-primary"
+				class="btn btn-primary"
 				onclick={() => openPasswordChange(data.session?.user?.id || '')}
 			>
 				Change Password
@@ -749,7 +749,7 @@
 		{#if settingsError}
 			<div class="settings-section">
 				<p style="color: var(--error)">{settingsError}</p>
-				<button class="btn-secondary" onclick={loadSettings}>Retry</button>
+				<button class="btn btn-secondary" onclick={loadSettings}>Retry</button>
 			</div>
 		{:else if activeTab === 'general' && settings}
 			<div class="settings-container">
@@ -961,7 +961,7 @@
 						<div class="jellyfin-test nested-field">
 							<button
 								type="button"
-								class="btn-secondary btn-sm btn-with-icon"
+								class="btn btn-secondary btn-sm btn-with-icon"
 								onclick={testJellyfinConnection}
 								disabled={testingJellyfin || !settings.jellyfinUrl || !settings.jellyfinApiKey}
 							>
@@ -998,7 +998,7 @@
 									{#if loadingJellyfinUsers}
 										<p class="text-muted">Loading users...</p>
 									{:else if jellyfinUsers.length === 0}
-										<button class="btn-secondary btn-sm btn-with-icon" onclick={loadJellyfinUsers}>
+										<button class="btn btn-secondary btn-sm btn-with-icon" onclick={loadJellyfinUsers}>
 											<UsersIcon width={14} height={14} />
 											{jellyfinUsersError ? 'Retry' : 'Load Jellyfin Users'}
 										</button>
@@ -1018,7 +1018,7 @@
 												</label>
 											{/each}
 										</div>
-										<button class="btn-secondary btn-sm btn-with-icon" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;">
+										<button class="btn btn-secondary btn-sm btn-with-icon" onclick={loadJellyfinUsers} style="margin-top: var(--spacing-sm); align-self: flex-start;">
 											<RefreshIcon width={14} height={14} />
 											Refresh
 										</button>
@@ -1135,7 +1135,7 @@
 						<div class="jellyfin-test nested-field">
 							<button
 								type="button"
-								class="btn-secondary btn-sm btn-with-icon"
+								class="btn btn-secondary btn-sm btn-with-icon"
 								onclick={testPlexConnection}
 								disabled={testingPlex || !settings.plexUrl || !settings.plexToken}
 							>
@@ -1195,7 +1195,7 @@
 							Cookie file is active.
 						</div>
 						<button
-							class="btn-danger btn-sm btn-with-icon"
+							class="btn btn-danger btn-sm btn-with-icon"
 							onclick={deleteCookieFile}
 						>
 							<TrashIcon width={14} height={14} />
@@ -1257,7 +1257,7 @@
 
 					<div class="rescan-actions">
 						<button
-							class="btn-secondary btn-sm btn-with-icon"
+							class="btn btn-secondary btn-sm btn-with-icon"
 							onclick={runRescan}
 							disabled={rescanning}
 						>
@@ -1277,14 +1277,14 @@
 								<div class="rescan-missing-list">
 									<div class="rescan-bulk-actions">
 										<button
-											class="btn-secondary btn-sm btn-with-icon"
+											class="btn btn-secondary btn-sm btn-with-icon"
 											onclick={() => markRescanMissing(rescanReport!.missing.map(m => m.id))}
 											disabled={reconciling}
 										>
 											Mark all as deleted
 										</button>
 										<button
-											class="btn-danger btn-sm btn-with-icon"
+											class="btn btn-danger btn-sm btn-with-icon"
 											onclick={() => deleteRescanRecords(rescanReport!.missing.map(m => m.id))}
 											disabled={reconciling}
 										>
@@ -1301,7 +1301,7 @@
 											</div>
 											<div class="rescan-missing-actions">
 												<button
-													class="btn-danger btn-sm btn-icon"
+													class="btn btn-danger btn-sm btn-icon"
 													onclick={() => deleteRescanRecords([item.id])}
 													disabled={reconciling}
 													aria-label="Delete record"
@@ -1347,7 +1347,7 @@
 						<div class="jellyfin-test nested-field">
 							<button
 								type="button"
-								class="btn-secondary btn-sm btn-with-icon"
+								class="btn btn-secondary btn-sm btn-with-icon"
 								onclick={testNotification}
 								disabled={testingNotification}
 							>
@@ -1517,7 +1517,7 @@
 				{/if}
 
 				<div class="api-docs-link">
-					<a href="/docs" class="btn-secondary btn-lg">
+					<a href="/docs" class="btn btn-secondary btn-lg">
 						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
 						API Documentation
 					</a>
@@ -1530,7 +1530,7 @@
 			<div class="settings-section">
 				<div class="section-header">
 					<h2>User Management</h2>
-					<button class="btn-secondary" onclick={() => (showCreateUser = !showCreateUser)}>
+					<button class="btn btn-secondary" onclick={() => (showCreateUser = !showCreateUser)}>
 						{showCreateUser ? 'Cancel' : '+ Add User'}
 					</button>
 				</div>
@@ -1589,7 +1589,7 @@
 							</label>
 						</div>
 
-						<button class="btn-primary" onclick={createUser}>Create User</button>
+						<button class="btn btn-primary" onclick={createUser}>Create User</button>
 					</div>
 				{/if}
 
@@ -1614,7 +1614,7 @@
 							<div class="user-actions">
 								{#if user.id === data.session?.user?.id}
 									<button
-										class="btn-secondary btn-sm btn-with-icon"
+										class="btn btn-secondary btn-sm btn-with-icon"
 										onclick={() => openPasswordChange(user.id)}
 									>
 										<LockIcon width={14} height={14} />
@@ -1622,7 +1622,7 @@
 									</button>
 								{:else if data.session?.user?.isAdmin && !user.isAdmin}
 									<button
-										class="btn-secondary btn-sm btn-with-icon"
+										class="btn btn-secondary btn-sm btn-with-icon"
 										onclick={() => openPasswordChange(user.id)}
 									>
 										<LockIcon width={14} height={14} />
@@ -1632,7 +1632,7 @@
 
 								{#if data.session?.user?.isAdmin}
 									<button
-										class="btn-secondary btn-sm btn-with-icon"
+										class="btn btn-secondary btn-sm btn-with-icon"
 										onclick={() => toggleAdmin(user)}
 									>
 										<ShieldIcon width={14} height={14} />
@@ -1642,7 +1642,7 @@
 
 								{#if data.session?.user?.isAdmin}
 									<button
-										class="btn-danger btn-sm btn-with-icon"
+										class="btn btn-danger btn-sm btn-with-icon"
 										onclick={() => deleteUser(user)}
 									>
 										<TrashIcon width={14} height={14} />
@@ -1667,10 +1667,10 @@
 					<div class="info-box warning-box">
 						<strong>Copy your key now — it won't be shown again:</strong>
 						<code class="api-key-display">{newKeyResult}</code>
-						<button class="btn-secondary btn-sm btn-icon" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }} aria-label="Copy key" title="Copy key">
+						<button class="btn btn-secondary btn-sm btn-icon" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }} aria-label="Copy key" title="Copy key">
 							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
 						</button>
-						<button class="btn-secondary btn-sm btn-icon" onclick={() => newKeyResult = null} aria-label="Dismiss" title="Dismiss">
+						<button class="btn btn-secondary btn-sm btn-icon" onclick={() => newKeyResult = null} aria-label="Dismiss" title="Dismiss">
 							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
 						</button>
 					</div>
@@ -1678,7 +1678,7 @@
 
 				<div class="create-key-form">
 					<input type="text" bind:value={newKeyName} placeholder="Key name (e.g. CI/CD)" />
-					<button class="btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
+					<button class="btn btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
 				</div>
 
 				{#if apiKeys.length > 0}
@@ -1695,7 +1695,7 @@
 										{/if}
 									</span>
 								</div>
-								<button class="btn-danger btn-sm btn-icon" onclick={() => revokeApiKey(key.id)} aria-label="Revoke key" title="Revoke key">
+								<button class="btn btn-danger btn-sm btn-icon" onclick={() => revokeApiKey(key.id)} aria-label="Revoke key" title="Revoke key">
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 								</button>
 							</div>
@@ -1756,10 +1756,10 @@
 						</div>
 
 						<div class="modal-actions">
-							<button type="button" class="btn-secondary" onclick={closePasswordChange}>
+							<button type="button" class="btn btn-secondary" onclick={closePasswordChange}>
 								Cancel
 							</button>
-							<button type="submit" class="btn-primary">
+							<button type="submit" class="btn btn-primary">
 								Change Password
 							</button>
 						</div>

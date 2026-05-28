@@ -120,7 +120,7 @@
 				/>
 			</div>
 
-			<button type="submit" class="btn-primary" disabled={loading}>
+			<button type="submit" class="btn btn-primary" disabled={loading}>
 				{loading ? 'Creating Account...' : 'Create Admin Account'}
 			</button>
 		</form>

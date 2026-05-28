@@ -413,29 +413,29 @@
 
 			<div class="actions">
 				{#if download.status === 'COMPLETED'}
-					<button class="btn btn-primary" onclick={downloadFile}>
+					<button class="btn btn-primary" onclick={downloadFile} title="Download file" aria-label="Download file">
 						<DownloadIcon />
 						Download File
 					</button>
 					<AddToPlaylistMenu downloadId={download.id} />
 					{#if download.storagePool === 'cache'}
-						<button class="btn btn-accent" onclick={handlePromote} disabled={promoting}>
+						<button class="btn btn-accent" onclick={handlePromote} disabled={promoting} title="Save to library" aria-label="Save to library">
 							<FolderDownIcon />
 							{promoting ? 'Moving...' : 'Save to Library'}
 						</button>
 					{/if}
 					{#if data.jellyfinUrl}
-						<button class="btn btn-secondary" onclick={openInJellyfin}>
+						<button class="btn btn-secondary" onclick={openInJellyfin} title="Open in Jellyfin" aria-label="Open in Jellyfin">
 							<ExternalLinkIcon />
 							Open in Jellyfin
 						</button>
 					{/if}
 				{/if}
-				<button class="btn btn-secondary" onclick={handleRefreshMetadata} disabled={refreshing}>
+				<button class="btn btn-secondary" onclick={handleRefreshMetadata} disabled={refreshing} title="Refresh metadata" aria-label="Refresh metadata">
 					<RefreshIcon />
 					{refreshing ? 'Refreshing...' : 'Refresh Metadata'}
 				</button>
-				<button class="btn btn-danger" onclick={handleDelete} disabled={deleting}>
+				<button class="btn btn-danger" onclick={handleDelete} disabled={deleting} title="Delete download" aria-label="Delete download">
 					<TrashIcon />
 					{deleting ? 'Deleting...' : 'Delete'}
 				</button>

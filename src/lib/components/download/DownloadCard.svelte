@@ -516,20 +516,20 @@
 
 		<div class="actions">
 			{#if download.status === 'DOWNLOADING' || download.status === 'PENDING' || download.status === 'FETCHING_INFO' || download.status === 'PROCESSING'}
-				<button class="btn btn-sm btn-danger" onclick={cancelDownload}>
+				<button class="btn btn-sm btn-danger" onclick={cancelDownload} title="Cancel download" aria-label="Cancel download">
 					<XIcon width={14} height={14} />
 					Cancel
 				</button>
 			{/if}
 
 			{#if download.status === 'COMPLETED'}
-				<button class="btn btn-sm btn-primary" onclick={downloadFile}>
+				<button class="btn btn-sm btn-primary" onclick={downloadFile} title="Download file" aria-label="Download file">
 					<DownloadIcon width={14} height={14} />
 					Download
 				</button>
 				<AddToPlaylistMenu downloadId={download.id} />
 				{#if download.storagePool === 'cache' && libraryConfigured}
-					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting}>
+					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting} title="Save to library" aria-label="Save to library">
 						<FolderDownIcon width={14} height={14} />
 						{promoting ? 'Saving...' : 'Save to Library'}
 					</button>
@@ -540,6 +540,8 @@
 						href="{jellyfinUrl}/web/#/search.html?query={encodeURIComponent(jellyfinQuery)}"
 						target="_blank"
 						rel="noopener"
+						title="Open in Jellyfin"
+						aria-label="Open in Jellyfin"
 					>
 						<ExternalLinkIcon width={14} height={14} />
 						Open in Jellyfin
@@ -548,21 +550,21 @@
 			{/if}
 
 			{#if download.status === 'DELETED'}
-				<button class="btn btn-sm btn-primary" onclick={redownload} disabled={redownloading}>
+				<button class="btn btn-sm btn-primary" onclick={redownload} disabled={redownloading} title="Redownload" aria-label="Redownload">
 					<DownloadIcon width={14} height={14} />
 					{redownloading ? 'Redownloading...' : 'Redownload'}
 				</button>
 			{/if}
 
 			{#if download.status === 'FAILED' || download.status === 'CANCELLED'}
-				<button class="btn btn-sm btn-primary" onclick={retryDownload}>
+				<button class="btn btn-sm btn-primary" onclick={retryDownload} title="Retry download" aria-label="Retry download">
 					<RefreshIcon width={14} height={14} />
 					Retry
 				</button>
 			{/if}
 
 			{#if download.status === 'COMPLETED' || download.status === 'FAILED' || download.status === 'CANCELLED' || download.status === 'DELETED'}
-				<button class="btn btn-sm btn-secondary" onclick={deleteDownload}>
+				<button class="btn btn-sm btn-secondary" onclick={deleteDownload} title="Delete download" aria-label="Delete download">
 					<TrashIcon width={14} height={14} />
 					Delete
 				</button>
