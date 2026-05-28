@@ -451,7 +451,7 @@
 		</div>
 
 		{#if download.uploader}
-			<a href="/channels/{encodeURIComponent(download.uploader)}" class="uploader-link" onclick={(e) => e.stopPropagation()}>{download.uploader}</a>
+			<div class="uploader-text">{download.uploader}</div>
 		{/if}
 
 		{#if download.status === 'COMPLETED' && (formattedDuration || formattedSize)}
@@ -867,17 +867,11 @@
 		to { transform: rotate(360deg); }
 	}
 
-	.uploader-link {
+	.uploader-text {
 		color: var(--text-secondary);
 		font-size: 0.875rem;
 		margin-bottom: var(--spacing-sm);
-		text-decoration: none;
 		display: block;
-		transition: color var(--transition-fast);
-	}
-
-	.uploader-link:hover {
-		color: var(--accent-primary);
 	}
 
 	.meta-badges {

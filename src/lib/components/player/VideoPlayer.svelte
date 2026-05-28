@@ -1174,6 +1174,43 @@
 		cursor: pointer;
 		accent-color: #ef4444;
 		height: 4px;
+		-webkit-appearance: none;
+		appearance: none;
+		background: transparent;
+	}
+
+	.volume-slider::-webkit-slider-runnable-track {
+		width: 100%;
+		height: 4px;
+		background: rgba(255, 255, 255, 0.3);
+		border-radius: 2px;
+	}
+
+	.volume-slider::-webkit-slider-thumb {
+		-webkit-appearance: none;
+		appearance: none;
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #ef4444;
+		cursor: pointer;
+		margin-top: -4px;
+	}
+
+	.volume-slider::-moz-range-track {
+		width: 100%;
+		height: 4px;
+		background: rgba(255, 255, 255, 0.3);
+		border-radius: 2px;
+	}
+
+	.volume-slider::-moz-range-thumb {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #ef4444;
+		cursor: pointer;
+		border: none;
 	}
 
 	.volume-control:hover .volume-slider,
