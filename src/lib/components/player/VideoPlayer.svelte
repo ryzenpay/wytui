@@ -1164,6 +1164,10 @@
 	.volume-control {
 		display: flex;
 		align-items: center;
+		gap: 0;
+	}
+
+	.volume-control:hover {
 		gap: 4px;
 	}
 
