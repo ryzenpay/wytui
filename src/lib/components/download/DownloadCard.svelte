@@ -395,21 +395,21 @@
 				{/if}
 				<span class="status-icon" title={getDownloadStatusLabel(download.status)}>
 					{#if download.status === 'COMPLETED'}
-						<svg viewBox="0 0 20 20" fill="var(--success)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-status-success)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'FAILED'}
-						<svg viewBox="0 0 20 20" fill="var(--error)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-status-error)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'CANCELLED'}
-						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6.75 9.25a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6.75 9.25a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'DOWNLOADING'}
-						<svg viewBox="0 0 20 20" fill="var(--accent-primary)" width="18" height="18"><path d="M10 2a.75.75 0 01.75.75v5.59l1.95-2.1a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0L6.2 7.26a.75.75 0 011.1-1.02l1.95 2.1V2.75A.75.75 0 0110 2z" /><path d="M5.273 4.5a1.25 1.25 0 00-1.205.918l-1.523 5.52c-.006.02-.01.041-.015.062H6a1.25 1.25 0 011.173.82l.243.693a.25.25 0 00.235.164h4.698a.25.25 0 00.234-.164l.244-.693A1.25 1.25 0 0114 11h3.47a1.318 1.318 0 00-.015-.062l-1.523-5.52a1.25 1.25 0 00-1.205-.918h-.558a.75.75 0 010-1.5h.558a2.75 2.75 0 012.651 2.019l1.523 5.52c.066.239.099.485.099.733V15a2 2 0 01-2 2H3a2 2 0 01-2-2v-3.228c0-.248.033-.494.099-.733l1.523-5.52A2.75 2.75 0 015.273 3.5h.558a.75.75 0 010 1.5h-.558z" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-accent-primary)" width="18" height="18"><path d="M10 2a.75.75 0 01.75.75v5.59l1.95-2.1a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0L6.2 7.26a.75.75 0 011.1-1.02l1.95 2.1V2.75A.75.75 0 0110 2z" /><path d="M5.273 4.5a1.25 1.25 0 00-1.205.918l-1.523 5.52c-.006.02-.01.041-.015.062H6a1.25 1.25 0 011.173.82l.243.693a.25.25 0 00.235.164h4.698a.25.25 0 00.234-.164l.244-.693A1.25 1.25 0 0114 11h3.47a1.318 1.318 0 00-.015-.062l-1.523-5.52a1.25 1.25 0 00-1.205-.918h-.558a.75.75 0 010-1.5h.558a2.75 2.75 0 012.651 2.019l1.523 5.52c.066.239.099.485.099.733V15a2 2 0 01-2 2H3a2 2 0 01-2-2v-3.228c0-.248.033-.494.099-.733l1.523-5.52A2.75 2.75 0 015.273 3.5h.558a.75.75 0 010 1.5h-.558z" /></svg>
 					{:else if download.status === 'PROCESSING'}
-						<svg viewBox="0 0 20 20" fill="var(--warning)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-status-warning)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'FETCHING_INFO'}
-						<svg viewBox="0 0 20 20" fill="var(--info)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-status-info)" width="18" height="18" class="spin"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.28a.75.75 0 00-.75.75v3.955a.75.75 0 001.5 0v-2.173l.207.208a7 7 0 0011.675-3.143.75.75 0 00-1.6-.252zm-1.699-7.339a7 7 0 00-11.675 3.143.75.75 0 001.6.252 5.5 5.5 0 019.201-2.466l.312.311H10.62a.75.75 0 100 1.5h3.953a.75.75 0 00.75-.75V2.12a.75.75 0 00-1.5 0v2.173l-.208-.208z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'PENDING'}
-						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'DELETED'}
-						<svg viewBox="0 0 20 20" fill="var(--text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
+						<svg viewBox="0 0 20 20" fill="var(--color-text-tertiary)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
 					{/if}
 				</span>
 			</div>
@@ -540,8 +540,8 @@
 
 <style>
 	.download-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		transition: transform var(--transition-normal), box-shadow var(--transition-normal),
@@ -554,8 +554,8 @@
 
 	.download-card:hover {
 		border-color: var(--color-border-translucent-hover);
-		transform: translateY(-3px) scale(1.01);
-		box-shadow: var(--shadow-lg), 0 0 0 1px var(--color-focus-ring);
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.05);
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -642,7 +642,7 @@
 	.thumbnail {
 		width: 100%;
 		height: 180px;
-		background-color: var(--bg-tertiary);
+		background-color: var(--color-bg-tertiary);
 		position: relative;
 		overflow: hidden;
 	}
@@ -731,10 +731,10 @@
 
 	.deleted-info {
 		background: var(--color-overlay-white-05);
-		border: 1px solid var(--border);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-xs);
 		margin-bottom: var(--spacing-md);
 		text-align: center;
@@ -790,7 +790,7 @@
 		border-radius: var(--radius-sm);
 		letter-spacing: 0.05em;
 		background: var(--color-status-info-bg);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		font-family: var(--font-family-mono);
 	}
 
@@ -801,13 +801,13 @@
 		border-radius: var(--radius-sm);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		background: var(--bg-tertiary);
-		color: var(--text-tertiary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.pool-badge.library {
 		background: var(--color-status-success-bg);
-		color: var(--success);
+		color: var(--color-status-success);
 	}
 
 	.copy-url-btn {
@@ -816,7 +816,7 @@
 		justify-content: center;
 		background: none;
 		border: none;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
 		padding: 2px;
 		border-radius: var(--radius-sm);
@@ -829,12 +829,12 @@
 	}
 
 	.copy-url-btn:hover {
-		color: var(--accent-primary);
-		background: var(--bg-tertiary);
+		color: var(--color-accent-primary);
+		background: var(--color-bg-tertiary);
 	}
 
 	.copy-url-btn.copied {
-		color: var(--success);
+		color: var(--color-status-success);
 		opacity: 1;
 	}
 
@@ -849,7 +849,7 @@
 	}
 
 	.uploader-text {
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-sm);
 		margin-bottom: var(--spacing-sm);
 		display: block;
@@ -868,7 +868,7 @@
 		padding: 2px 6px;
 		border-radius: var(--radius-sm);
 		background: var(--color-overlay-white-06);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-family: var(--font-family-mono);
 		letter-spacing: 0.02em;
 	}
@@ -876,14 +876,14 @@
 	.progress {
 		margin-bottom: var(--spacing-sm);
 		height: 4px;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
 
 	.progress-bar {
 		height: 100%;
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		border-radius: var(--radius-sm);
 		transition: width 0.3s ease;
 		position: relative;
@@ -899,7 +899,7 @@
 		background: linear-gradient(
 			90deg,
 			transparent,
-			rgba(255, 255, 255, 0.3),
+			var(--color-overlay-white-30),
 			transparent
 		);
 		animation: shimmer 2s infinite;
@@ -918,10 +918,10 @@
 		width: 100%;
 		background: linear-gradient(
 			90deg,
-			var(--bg-tertiary) 0%,
-			var(--accent-primary) 25%,
-			var(--accent-primary) 75%,
-			var(--bg-tertiary) 100%
+			var(--color-bg-tertiary) 0%,
+			var(--color-accent-primary) 25%,
+			var(--color-accent-primary) 75%,
+			var(--color-bg-tertiary) 100%
 		);
 		background-size: 200% 100%;
 		animation: indeterminate 1.5s ease-in-out infinite;
@@ -934,10 +934,10 @@
 	.progress-bar.indeterminate.processing {
 		background: linear-gradient(
 			90deg,
-			var(--bg-tertiary) 0%,
-			var(--warning) 25%,
-			var(--warning) 75%,
-			var(--bg-tertiary) 100%
+			var(--color-bg-tertiary) 0%,
+			var(--color-status-warning) 25%,
+			var(--color-status-warning) 75%,
+			var(--color-bg-tertiary) 100%
 		);
 		background-size: 200% 100%;
 		animation: indeterminate 1.5s ease-in-out infinite;
@@ -956,16 +956,16 @@
 		display: flex;
 		justify-content: space-between;
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		margin-bottom: var(--spacing-md);
 	}
 
 	.error {
 		background: var(--color-status-error-bg);
-		border: 1px solid var(--error);
+		border: 1px solid var(--color-status-error);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm);
-		color: var(--error);
+		color: var(--color-status-error);
 		font-size: 0.75rem;
 		margin-bottom: var(--spacing-md);
 	}

@@ -83,12 +83,12 @@
 		align-items: center;
 		gap: var(--spacing-sm);
 		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.progress-count {
 		font-variant-numeric: tabular-nums;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.progress-track {
@@ -121,7 +121,7 @@
 		align-items: center;
 		gap: var(--spacing-sm);
 		font-size: var(--font-size-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.step-marker {
@@ -133,7 +133,7 @@
 		border-radius: var(--radius-full);
 		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border-default);
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		flex-shrink: 0;
 		transition: var(--transition-fast);
 	}
@@ -152,7 +152,7 @@
 	}
 
 	.step.status-active .step-label {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-weight: var(--font-weight-medium);
 	}
 
@@ -163,7 +163,7 @@
 	}
 
 	.step.status-completed .step-label {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.step.status-failed .step-marker {

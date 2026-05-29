@@ -34,7 +34,7 @@
 <style>
 	.docs-page {
 		min-height: 100vh;
-		background: var(--bg-primary);
+		background: var(--color-bg-primary);
 	}
 
 	.docs-header {
@@ -42,27 +42,27 @@
 		align-items: center;
 		gap: var(--spacing-lg);
 		padding: var(--spacing-lg) var(--spacing-xl);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.back-link {
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		font-size: 0.875rem;
 		transition: color 0.15s;
 	}
 
 	.back-link:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	h1 {
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		margin: 0;
 	}
 
@@ -78,7 +78,7 @@
 	:global(.swagger-ui),
 	:global(.swagger-ui .scheme-container),
 	:global(.swagger-ui .opblock .opblock-section-header) {
-		background: var(--bg-primary);
+		background: var(--color-bg-primary);
 	}
 
 	:global(.swagger-ui .topbar) {
@@ -102,68 +102,68 @@
 	:global(.swagger-ui .model-title),
 	:global(.swagger-ui .model),
 	:global(.swagger-ui section.models h4) {
-		color: var(--text-primary) !important;
+		color: var(--color-text-primary) !important;
 	}
 
 	:global(.swagger-ui .opblock-tag),
 	:global(.swagger-ui .opblock-tag a) {
-		color: var(--text-primary) !important;
-		border-bottom-color: var(--border) !important;
+		color: var(--color-text-primary) !important;
+		border-bottom-color: var(--color-border-default) !important;
 	}
 
 	:global(.swagger-ui .opblock) {
-		border-color: var(--border);
-		background: var(--bg-secondary);
+		border-color: var(--color-border-default);
+		background: var(--color-bg-secondary);
 	}
 
 	:global(.swagger-ui .opblock .opblock-summary) {
-		border-bottom-color: var(--border);
+		border-bottom-color: var(--color-border-default);
 	}
 
 	:global(.swagger-ui .opblock .opblock-section-header) {
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 	}
 
 	:global(.swagger-ui .opblock .opblock-section-header h4) {
-		color: var(--text-primary) !important;
+		color: var(--color-text-primary) !important;
 	}
 
 	:global(.swagger-ui .btn) {
-		color: var(--text-primary);
-		border-color: var(--border);
+		color: var(--color-text-primary);
+		border-color: var(--color-border-default);
 	}
 
 	:global(.swagger-ui select) {
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border-color: var(--border);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-primary);
+		border-color: var(--color-border-default);
 	}
 
 	:global(.swagger-ui input[type=text]),
 	:global(.swagger-ui textarea) {
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border-color: var(--border);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-primary);
+		border-color: var(--color-border-default);
 	}
 
 	:global(.swagger-ui .model-box) {
-		background: var(--bg-secondary);
+		background: var(--color-bg-secondary);
 	}
 
 	:global(.swagger-ui section.models) {
-		border-color: var(--border);
+		border-color: var(--color-border-default);
 	}
 
 	:global(.swagger-ui section.models.is-open h4) {
-		border-bottom-color: var(--border);
+		border-bottom-color: var(--color-border-default);
 	}
 
 	:global(.swagger-ui .response-col_description__inner div.markdown p) {
-		color: var(--text-secondary) !important;
+		color: var(--color-text-secondary) !important;
 	}
 
 	:global(.swagger-ui .scheme-container) {
 		box-shadow: none;
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 </style>

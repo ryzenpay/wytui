@@ -307,8 +307,8 @@
 		left: 0;
 		width: 240px;
 		height: 100vh;
-		background: var(--bg-secondary);
-		border-right: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border-right: 1px solid var(--color-border-default);
 		display: flex;
 		flex-direction: column;
 		z-index: 100;
@@ -376,7 +376,7 @@
 		height: 20px;
 		border-radius: 50%;
 		background: rgba(34, 197, 94, 0.15);
-		color: var(--success, #22c55e);
+		color: var(--color-status-success, #22c55e);
 		flex-shrink: 0;
 		transition: all var(--transition-fast);
 		text-decoration: none;
@@ -393,7 +393,7 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
-		background: var(--success, #22c55e);
+		background: var(--color-status-success, #22c55e);
 	}
 
 	.collapse-btn {
@@ -406,16 +406,16 @@
 		border-radius: var(--radius-md);
 		background: transparent;
 		border: 1px solid transparent;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 		flex-shrink: 0;
 	}
 
 	.collapse-btn:hover {
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.08);
-		border-color: var(--border);
+		color: var(--color-text-primary);
+		background: var(--color-overlay-white-08);
+		border-color: var(--color-border-default);
 	}
 
 	.sidebar-nav {
@@ -438,7 +438,7 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.08em;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
 		user-select: none;
 	}
@@ -449,7 +449,7 @@
 		gap: var(--spacing-sm);
 		padding: 10px 16px;
 		border-radius: 8px;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -464,12 +464,12 @@
 	}
 
 	.nav-item:hover {
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.05);
+		color: var(--color-text-primary);
+		background: var(--color-overlay-white-05);
 	}
 
 	.nav-item.active {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		background: rgba(59, 130, 246, 0.1);
 	}
 
@@ -484,7 +484,7 @@
 	/* Sidebar footer */
 	.sidebar-footer {
 		padding: var(--spacing-sm);
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-sm);
@@ -497,7 +497,7 @@
 		padding: 8px 12px;
 		border-radius: var(--radius-md);
 		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid var(--border);
+		border: 1px solid var(--color-border-default);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 		font: inherit;
@@ -511,20 +511,20 @@
 	}
 
 	.connection-status:hover {
-		border-color: var(--accent-primary);
-		background: rgba(255, 255, 255, 0.06);
+		border-color: var(--color-accent-primary);
+		background: var(--color-overlay-white-06);
 	}
 
 	.status-dot {
 		width: 7px;
 		height: 7px;
 		border-radius: 50%;
-		background: var(--error);
+		background: var(--color-status-error);
 		flex-shrink: 0;
 	}
 
 	.connection-status.connected .status-dot {
-		background: var(--success);
+		background: var(--color-status-success);
 		animation: pulse 2s infinite;
 	}
 
@@ -535,7 +535,7 @@
 
 	.status-label {
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		white-space: nowrap;
 	}
 
@@ -564,7 +564,7 @@
 		width: 28px;
 		height: 28px;
 		border-radius: 50%;
-		background: linear-gradient(135deg, var(--accent-primary), var(--accent-hover));
+		background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-hover));
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -576,7 +576,7 @@
 
 	.user-email {
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -587,7 +587,7 @@
 	.signout-btn {
 		background: transparent;
 		border: none;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		padding: 4px;
 		cursor: pointer;
 		display: flex;
@@ -599,8 +599,8 @@
 	}
 
 	.signout-btn:hover {
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.05);
+		color: var(--color-text-primary);
+		background: var(--color-overlay-white-05);
 	}
 
 	.signout-btn-collapsed {
@@ -615,8 +615,8 @@
 		left: 0;
 		right: 0;
 		height: 60px;
-		background: var(--bg-secondary);
-		border-top: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border-top: 1px solid var(--color-border-default);
 		z-index: 100;
 		align-items: center;
 		justify-content: space-around;
@@ -631,7 +631,7 @@
 		gap: 2px;
 		flex: 1;
 		padding: var(--spacing-xs) 0;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		text-decoration: none;
 		background: none;
 		border: none;
@@ -642,7 +642,7 @@
 
 	.mobile-tab:hover,
 	.mobile-tab.active {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.mobile-tab-icon {
@@ -665,8 +665,8 @@
 		position: absolute;
 		bottom: calc(100% + var(--spacing-sm));
 		right: var(--spacing-sm);
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		box-shadow: var(--shadow-lg);
 		padding: var(--spacing-xs);
@@ -680,7 +680,7 @@
 		gap: var(--spacing-sm);
 		padding: var(--spacing-sm) var(--spacing-md);
 		border-radius: var(--radius-md);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -688,12 +688,12 @@
 	}
 
 	.mobile-menu-item:hover {
-		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.05);
+		color: var(--color-text-primary);
+		background: var(--color-overlay-white-05);
 	}
 
 	.mobile-menu-item.active {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		background: rgba(59, 130, 246, 0.1);
 	}
 

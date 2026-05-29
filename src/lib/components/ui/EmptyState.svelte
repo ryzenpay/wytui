@@ -48,10 +48,10 @@
 		text-align: center;
 		gap: var(--spacing-sm);
 		padding: var(--spacing-2xl) var(--spacing-xl);
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px dashed var(--color-border-default);
 		border-radius: var(--radius-lg);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.empty-state.subtle {
@@ -77,8 +77,8 @@
 		width: 56px;
 		height: 56px;
 		border-radius: 50%;
-		background: var(--bg-tertiary, rgba(255, 255, 255, 0.04));
-		color: var(--text-tertiary);
+		background: var(--color-bg-tertiary, rgba(255, 255, 255, 0.04));
+		color: var(--color-text-tertiary);
 		margin-bottom: var(--spacing-xs);
 	}
 
@@ -96,7 +96,7 @@
 		margin: 0;
 		font-size: var(--font-size-base);
 		font-weight: var(--font-weight-semibold);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.empty-state[data-size='lg'] .empty-state-title {
@@ -106,7 +106,7 @@
 	.empty-state-description {
 		margin: 0;
 		max-width: 42ch;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-size: var(--font-size-sm);
 		line-height: var(--line-height-base);
 	}
@@ -116,7 +116,7 @@
 	}
 
 	.empty-state-action:focus-visible {
-		outline: 2px solid var(--color-accent-primary);
-		outline-offset: 2px;
+		outline: none;
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 </style>

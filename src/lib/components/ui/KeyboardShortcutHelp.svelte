@@ -103,8 +103,8 @@
 	}
 
 	.modal {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		max-width: 480px;
 		width: 90%;
@@ -128,13 +128,13 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: var(--spacing-lg);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.modal-header h3 {
 		margin: 0;
 		font-size: var(--font-size-xl);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.close-btn {
@@ -147,7 +147,7 @@
 		border: none;
 		border-radius: var(--radius-sm);
 		background: transparent;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
@@ -155,12 +155,12 @@
 	.close-btn:focus-visible {
 		outline: none;
 		box-shadow: 0 0 0 3px var(--color-focus-ring);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.close-btn:hover {
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-primary);
 	}
 
 	.modal-body {
@@ -196,22 +196,22 @@
 		font-family: inherit;
 		font-size: var(--font-size-xs);
 		font-weight: 600;
-		color: var(--text-primary);
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
+		color: var(--color-text-primary);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-sm);
 		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
 	}
 
 	.key-separator {
 		font-size: var(--font-size-2xs);
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		padding: 0 2px;
 	}
 
 	.shortcut-desc {
 		font-size: var(--font-size-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

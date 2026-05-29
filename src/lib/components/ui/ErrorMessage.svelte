@@ -113,8 +113,8 @@
 	}
 
 	.retry-btn:focus-visible {
-		outline: 2px solid var(--color-status-error);
-		outline-offset: 2px;
+		outline: none;
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 
 	.dismiss-btn {
@@ -137,8 +137,8 @@
 	}
 
 	.dismiss-btn:focus-visible {
-		outline: 2px solid var(--color-accent-primary);
-		outline-offset: 2px;
+		outline: none;
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

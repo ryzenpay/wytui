@@ -46,9 +46,9 @@
 	}
 
 	function progressColor(pct: number): string {
-		if (pct >= 90) return 'var(--error)';
-		if (pct >= 70) return 'var(--warning)';
-		return 'var(--success)';
+		if (pct >= 90) return 'var(--color-status-error)';
+		if (pct >= 70) return 'var(--color-status-warning)';
+		return 'var(--color-status-success)';
 	}
 </script>
 
@@ -258,8 +258,8 @@
 	}
 
 	.health-panel {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		width: 90%;
 		max-width: 700px;
@@ -275,7 +275,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: var(--spacing-lg) var(--spacing-xl);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.panel-header h2 {
@@ -284,11 +284,11 @@
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-sm);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.panel-header h2 .bi {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.panel-header-actions {
@@ -301,7 +301,7 @@
 	.refresh-btn {
 		background: transparent;
 		border: none;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: 1rem;
 		cursor: pointer;
 		padding: var(--spacing-xs);
@@ -318,12 +318,12 @@
 
 	.close-btn:hover,
 	.refresh-btn:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		background: var(--color-overlay-hover);
 	}
 
 	.close-btn:hover {
-		color: var(--error);
+		color: var(--color-status-error);
 	}
 
 	.refresh-btn:disabled {
@@ -347,7 +347,7 @@
 	}
 
 	.stat-card {
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-overlay-white-06);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-md);
@@ -360,7 +360,7 @@
 	.card-title {
 		font-size: 0.8rem;
 		font-weight: 600;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		margin-bottom: var(--spacing-sm);
@@ -371,7 +371,7 @@
 
 	.card-title .bi {
 		font-size: 0.85rem;
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.stat-row {
@@ -387,7 +387,7 @@
 
 	.stat-label {
 		font-size: 0.825rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-xs);
@@ -400,23 +400,23 @@
 	.stat-value {
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
-	.stat-value.accent { color: var(--accent-primary); }
-	.stat-value.success { color: var(--success); }
-	.stat-value.error { color: var(--error); }
-	.stat-value.live { color: var(--error); }
+	.stat-value.accent { color: var(--color-accent-primary); }
+	.stat-value.success { color: var(--color-status-success); }
+	.stat-value.error { color: var(--color-status-error); }
+	.stat-value.live { color: var(--color-status-error); }
 	.stat-value.mono { font-family: monospace; font-size: 0.8rem; }
 
 	.stat-dim {
 		font-weight: 400;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.stat-detail {
 		font-size: 0.8rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.progress-section {
@@ -433,7 +433,7 @@
 	.health-progress {
 		width: 100%;
 		height: 6px;
-		background: var(--bg-elevated);
+		background: var(--color-bg-elevated);
 		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
@@ -455,23 +455,23 @@
 		width: 7px;
 		height: 7px;
 		border-radius: 50%;
-		background: var(--error);
+		background: var(--color-status-error);
 		margin-right: 4px;
 	}
 
 	.status-indicator.connected {
-		background: var(--success);
+		background: var(--color-status-success);
 	}
 
 	.error-state {
 		text-align: center;
 		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.error-state .bi {
 		font-size: 2rem;
-		color: var(--warning);
+		color: var(--color-status-warning);
 		display: block;
 		margin-bottom: var(--spacing-md);
 	}
@@ -479,7 +479,7 @@
 	.retry-btn {
 		margin-top: var(--spacing-md);
 		padding: var(--spacing-sm) var(--spacing-lg);
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		color: white;
 		border: none;
 		border-radius: var(--radius-md);
@@ -488,7 +488,7 @@
 	}
 
 	.retry-btn:hover {
-		background: var(--accent-hover);
+		background: var(--color-accent-hover);
 	}
 
 	@media (max-width: 768px) {

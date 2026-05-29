@@ -110,7 +110,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--spacing-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		font-size: 0.875rem;
 		margin-bottom: var(--spacing-xl);
@@ -118,7 +118,7 @@
 	}
 
 	.back-link:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.channel-header {
@@ -145,7 +145,7 @@
 	.avatar-placeholder {
 		width: 100%;
 		height: 100%;
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -162,7 +162,7 @@
 
 	.channel-count {
 		font-size: 0.9375rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.section {
@@ -199,10 +199,10 @@
 
 	.sort-select {
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-overlay-white-10);
 		border-radius: var(--radius-md);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: 0.8125rem;
 		cursor: pointer;
 	}

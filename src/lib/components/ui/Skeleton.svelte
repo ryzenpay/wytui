@@ -97,9 +97,9 @@
 	.skeleton-item {
 		background: linear-gradient(
 			90deg,
-			var(--bg-secondary) 25%,
-			var(--bg-tertiary, rgba(255, 255, 255, 0.06)) 50%,
-			var(--bg-secondary) 75%
+			var(--color-bg-secondary) 25%,
+			var(--color-bg-tertiary, var(--color-overlay-white-06)) 50%,
+			var(--color-bg-secondary) 75%
 		);
 		background-size: 936px 100%;
 		animation: shimmer 1.5s ease-in-out infinite;
@@ -112,7 +112,7 @@
 	}
 
 	.skeleton-card {
-		border: 1px solid var(--border);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		min-height: 280px;
@@ -159,7 +159,7 @@
 
 	.skeleton-row {
 		height: 48px;
-		border: 1px solid var(--border);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 	}
 
@@ -184,7 +184,7 @@
 		align-items: center;
 		gap: var(--spacing-md);
 		padding: var(--spacing-md);
-		border: 1px solid var(--border);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 	}
 
@@ -193,7 +193,7 @@
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
-		background: rgba(255, 255, 255, 0.05);
+		background: var(--color-overlay-white-05);
 	}
 
 	.skeleton-list-body {
@@ -211,7 +211,7 @@
 
 	.skeleton-grid-cell {
 		aspect-ratio: 1 / 1;
-		border: 1px solid var(--border);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 	}
 
@@ -226,13 +226,13 @@
 		align-items: center;
 		gap: var(--spacing-md);
 		padding: var(--spacing-md);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 		border-radius: var(--radius-sm, 4px);
 	}
 
 	.skeleton-cell {
 		height: 14px;
-		background: rgba(255, 255, 255, 0.05);
+		background: var(--color-overlay-white-05);
 		border-radius: var(--radius-sm, 4px);
 	}
 

@@ -632,8 +632,8 @@
 	}
 
 	.form-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		margin-bottom: var(--spacing-xl);
@@ -653,7 +653,7 @@
 
 	label {
 		margin-bottom: var(--spacing-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: 0.875rem;
 		font-weight: 500;
 	}
@@ -695,17 +695,17 @@
 	}
 
 	.content-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-lg);
 		transition: all var(--transition-normal);
 	}
 
 	.content-card:hover {
-		border-color: var(--border-light);
-		transform: translateY(-2px);
-		box-shadow: var(--shadow-md);
+		border-color: var(--color-border-translucent-hover);
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.05);
 	}
 
 	.edit-form {
@@ -737,8 +737,8 @@
 	.backfill-menu {
 		margin-top: var(--spacing-md);
 		padding: var(--spacing-md);
-		background: var(--bg-elevated);
-		border: 1px solid var(--border);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		display: flex;
 		flex-direction: column;
@@ -749,7 +749,7 @@
 		display: block;
 		margin-bottom: var(--spacing-sm);
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-weight: 500;
 	}
 
@@ -765,7 +765,7 @@
 
 	.backfill-divider {
 		height: 1px;
-		background: var(--border);
+		background: var(--color-border-default);
 	}
 
 	.card-header {
@@ -786,18 +786,18 @@
 		border-radius: var(--radius-sm);
 		font-size: 0.75rem;
 		font-weight: 600;
-		background: var(--bg-tertiary);
-		color: var(--text-secondary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
 	}
 
 	.status.enabled {
 		background: rgba(16, 185, 129, 0.1);
-		color: var(--success);
+		color: var(--color-status-success);
 	}
 
 	.url {
 		font-size: 0.875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		margin-bottom: var(--spacing-md);
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -810,24 +810,24 @@
 		gap: var(--spacing-md);
 		margin-bottom: var(--spacing-md);
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.check-result {
 		font-size: 0.85rem;
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		margin: var(--spacing-xs) 0 0;
 	}
 
 	.form-error {
-		color: var(--error, #ef4444);
+		color: var(--color-status-error, #ef4444);
 		font-size: 0.85rem;
 		margin: var(--spacing-xs) 0;
 	}
 
 	.library-tag {
 		background: rgba(16, 185, 129, 0.15);
-		color: var(--success);
+		color: var(--color-status-success);
 		padding: 1px 6px;
 		border-radius: var(--radius-sm);
 		font-weight: 600;
@@ -835,7 +835,7 @@
 
 	.option-tag {
 		background: rgba(99, 102, 241, 0.15);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		padding: 1px 6px;
 		border-radius: var(--radius-sm);
 		font-size: 0.75rem;
@@ -851,7 +851,7 @@
 
 	.options-label {
 		font-size: 0.75rem;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		text-transform: uppercase;
 		font-weight: 600;
 		letter-spacing: 0.05em;
@@ -866,24 +866,24 @@
 
 	.option-chip {
 		padding: var(--spacing-xs) var(--spacing-sm);
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: 0.8125rem;
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
 
 	.option-chip:hover {
-		background: var(--bg-hover);
-		border-color: var(--accent-dim);
+		background: var(--color-bg-hover);
+		border-color: var(--color-accent-dim);
 	}
 
 	.option-chip.active {
 		background: rgba(99, 102, 241, 0.15);
-		border-color: var(--accent-primary);
-		color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.actions {

@@ -79,21 +79,21 @@
 		align-items: center;
 		gap: var(--spacing-md);
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
 
 	.list-row:hover {
-		border-color: var(--border-light);
-		background: var(--bg-hover);
+		border-color: var(--color-border-subtle);
+		background: var(--color-bg-hover);
 	}
 
 	.list-row:focus-visible {
 		outline: none;
-		border-color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
 		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 
@@ -103,7 +103,7 @@
 		border-radius: var(--radius-sm);
 		overflow: hidden;
 		flex-shrink: 0;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 	}
 
 	.thumbnail img {
@@ -128,7 +128,7 @@
 	.title {
 		font-size: var(--font-size-sm);
 		font-weight: 500;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -136,7 +136,7 @@
 
 	.uploader {
 		font-size: var(--font-size-xs);
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -144,7 +144,7 @@
 
 	.meta {
 		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		white-space: nowrap;
 		flex-shrink: 0;
 	}
@@ -165,7 +165,7 @@
 		min-width: 80px;
 		text-align: right;
 		font-size: var(--font-size-2xs);
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.status-badge {

@@ -171,7 +171,7 @@
 		display: flex;
 		align-items: center;
 		width: 100%;
-		background: var(--bg-secondary);
+		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		transition: var(--transition-fast);
@@ -201,7 +201,7 @@
 		background: transparent;
 		border: none;
 		border-radius: var(--radius-md);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: var(--font-size-sm);
 		font-family: inherit;
 	}
@@ -216,7 +216,7 @@
 	}
 
 	input::placeholder {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.status-icon {
@@ -270,13 +270,13 @@
 
 	.helper-text {
 		margin: 0;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-xs);
 		line-height: var(--line-height-base);
 	}
 
 	.char-count {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-size: var(--font-size-xs);
 		flex-shrink: 0;
 		font-variant-numeric: tabular-nums;

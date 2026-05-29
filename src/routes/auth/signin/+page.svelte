@@ -110,7 +110,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--bg-secondary);
+		background: var(--color-bg-secondary);
 		padding: var(--spacing-lg);
 		z-index: 200;
 	}
@@ -141,7 +141,7 @@
 
 	.subtitle {
 		text-align: center;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		margin-bottom: var(--spacing-lg);
 		font-size: 0.875rem;
 	}
@@ -166,27 +166,10 @@
 		margin-bottom: var(--spacing-md);
 	}
 
+	/* Appearance + hover come from the global .btn system (src/app.css);
+	   only the full-width form layout is page-specific. */
 	.btn-primary {
 		width: 100%;
-		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--accent-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: var(--transition-fast);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--accent-hover);
-		transform: translateY(-1px);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.btn-oidc {
@@ -206,8 +189,8 @@
 	}
 
 	.btn-oidc:hover {
-		background: var(--bg-tertiary);
-		border-color: var(--accent-primary);
+		background: var(--color-bg-tertiary);
+		border-color: var(--color-accent-primary);
 	}
 
 	.divider {
@@ -215,7 +198,7 @@
 		align-items: center;
 		gap: var(--spacing-md);
 		margin: var(--spacing-md) 0;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: 0.8125rem;
 	}
 

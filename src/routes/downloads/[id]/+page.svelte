@@ -535,7 +535,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--spacing-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		font-size: 0.875rem;
 		margin-bottom: var(--spacing-xl);
@@ -543,7 +543,7 @@
 	}
 
 	.back-link:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.playlist-nav-bar {
@@ -567,7 +567,7 @@
 
 	.playlist-position {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		white-space: nowrap;
 	}
 
@@ -581,8 +581,8 @@
 		width: 100%;
 		border-radius: var(--radius-lg);
 		overflow: hidden;
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 	}
 
 	.audio-area {
@@ -617,7 +617,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.meta-area {
@@ -634,14 +634,14 @@
 
 	.uploader-link {
 		font-size: 1rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		margin-top: calc(-1 * var(--spacing-sm));
 		text-decoration: none;
 		transition: color var(--transition-fast);
 	}
 
 	.uploader-link:hover {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.badges {
@@ -655,18 +655,18 @@
 		border-radius: var(--radius-sm);
 		font-size: 0.75rem;
 		font-weight: 600;
-		background: var(--bg-tertiary);
-		color: var(--text-secondary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
 	}
 
 	.badge-library {
 		background: rgba(16, 185, 129, 0.15);
-		color: var(--success);
+		color: var(--color-status-success);
 	}
 
 	.badge-cache {
 		background: rgba(59, 130, 246, 0.15);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.badge-type {
@@ -695,17 +695,17 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.meta-value {
 		font-size: 0.9375rem;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.description-section {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-md);
 	}
@@ -714,13 +714,13 @@
 		cursor: pointer;
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.description-text {
 		margin-top: var(--spacing-md);
 		font-size: 0.875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		line-height: 1.6;
 		white-space: pre-wrap;
 		max-height: 300px;
@@ -741,16 +741,16 @@
 
 	.tag {
 		padding: var(--spacing-xs) var(--spacing-sm);
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.music-meta {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-lg);
 	}
@@ -758,7 +758,7 @@
 	.music-meta h3 {
 		font-size: 0.875rem;
 		margin-bottom: var(--spacing-md);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.actions {
@@ -766,7 +766,7 @@
 		flex-wrap: wrap;
 		gap: var(--spacing-sm);
 		padding-top: var(--spacing-md);
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 	}
 
 	.actions .btn {
@@ -783,7 +783,7 @@
 
 	.url-link {
 		font-size: 0.8125rem;
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		text-decoration: none;
 		word-break: break-all;
 	}
@@ -795,24 +795,24 @@
 	.similar-section {
 		margin-top: var(--spacing-2xl);
 		padding-top: var(--spacing-xl);
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 	}
 
 	.similar-heading {
 		font-size: 1rem;
 		font-weight: 600;
 		margin-bottom: var(--spacing-lg);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.similar-channel-link {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		text-decoration: none;
 		transition: color var(--transition-fast);
 	}
 
 	.similar-channel-link:hover {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.similar-grid {
@@ -840,7 +840,7 @@
 		width: 100%;
 		aspect-ratio: 16/9;
 		object-fit: cover;
-		background: var(--bg-secondary);
+		background: var(--color-bg-secondary);
 		border-radius: var(--radius-md);
 	}
 
@@ -861,21 +861,21 @@
 
 	.similar-duration {
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	/* Task timeline */
 	.tasks-section {
 		margin-top: var(--spacing-xl);
 		padding-top: var(--spacing-xl);
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 	}
 
 	.tasks-heading {
 		font-size: 1rem;
 		font-weight: 600;
 		margin-bottom: var(--spacing-lg);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.task-timeline {
@@ -904,15 +904,15 @@
 		top: 24px;
 		bottom: 0;
 		width: 2px;
-		background: var(--border);
+		background: var(--color-border-default);
 	}
 
 	.task-step.task-completed:not(:last-child)::after {
-		background: var(--success);
+		background: var(--color-status-success);
 	}
 
 	.task-step.task-in-progress:not(:last-child)::after {
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 	}
 
 	.task-indicator {
@@ -923,47 +923,47 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--bg-tertiary);
-		border: 2px solid var(--border);
+		background: var(--color-bg-tertiary);
+		border: 2px solid var(--color-border-default);
 		position: relative;
 		z-index: 1;
 	}
 
 	.task-completed .task-indicator {
 		background: rgba(16, 185, 129, 0.15);
-		border-color: var(--success);
-		color: var(--success);
+		border-color: var(--color-status-success);
+		color: var(--color-status-success);
 	}
 
 	.task-failed .task-indicator {
 		background: rgba(239, 68, 68, 0.15);
-		border-color: var(--error);
-		color: var(--error);
+		border-color: var(--color-status-error);
+		color: var(--color-status-error);
 	}
 
 	.task-in-progress .task-indicator {
 		background: rgba(59, 130, 246, 0.15);
-		border-color: var(--accent-primary);
-		color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.task-skipped .task-indicator {
 		opacity: 0.5;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.task-dot {
 		width: 6px;
 		height: 6px;
 		border-radius: 50%;
-		background: var(--text-tertiary);
+		background: var(--color-text-tertiary);
 	}
 
 	.task-spinner {
 		width: 12px;
 		height: 12px;
 		border: 2px solid transparent;
-		border-top-color: var(--accent-primary);
+		border-top-color: var(--color-accent-primary);
 		border-radius: 50%;
 		animation: task-spin 0.8s linear infinite;
 	}
@@ -985,7 +985,7 @@
 	}
 
 	.task-icon {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		display: flex;
 		align-items: center;
 	}
@@ -993,7 +993,7 @@
 	.task-type {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.task-status-badge {
@@ -1007,41 +1007,41 @@
 	}
 
 	.task-status-pending {
-		background: var(--bg-tertiary);
-		color: var(--text-tertiary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.task-status-in_progress {
 		background: rgba(59, 130, 246, 0.15);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.task-status-completed {
 		background: rgba(16, 185, 129, 0.15);
-		color: var(--success);
+		color: var(--color-status-success);
 	}
 
 	.task-status-failed {
 		background: rgba(239, 68, 68, 0.15);
-		color: var(--error);
+		color: var(--color-status-error);
 	}
 
 	.task-status-skipped {
-		background: var(--bg-tertiary);
-		color: var(--text-tertiary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.task-progress-bar {
 		margin-top: var(--spacing-xs);
 		height: 4px;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border-radius: 2px;
 		overflow: hidden;
 	}
 
 	.task-progress-fill {
 		height: 100%;
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		border-radius: 2px;
 		transition: width 0.3s ease;
 	}
@@ -1049,7 +1049,7 @@
 	.task-message {
 		margin-top: 2px;
 		font-size: 0.75rem;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1058,7 +1058,7 @@
 	.task-timing {
 		margin-top: 2px;
 		font-size: 0.6875rem;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	@media (max-width: 768px) {

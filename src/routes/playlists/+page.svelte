@@ -365,8 +365,8 @@
 	}
 
 	.form-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		margin-bottom: var(--spacing-xl);
@@ -380,13 +380,13 @@
 
 	label {
 		margin-bottom: var(--spacing-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: 0.875rem;
 		font-weight: 500;
 	}
 
 	.form-error {
-		color: var(--error, #ef4444);
+		color: var(--color-status-error, #ef4444);
 		font-size: 0.85rem;
 		margin: var(--spacing-xs) 0 var(--spacing-md);
 	}
@@ -414,15 +414,16 @@
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-sm);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm) var(--spacing-md);
 		transition: border-color var(--transition-fast);
 	}
 
 	.list-row:hover {
-		border-color: var(--border-light);
+		border-color: var(--color-border-subtle);
+		background: var(--color-bg-hover);
 	}
 
 	.list-row-main {
@@ -458,7 +459,7 @@
 
 	.list-row-desc {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -467,7 +468,7 @@
 	.list-row-count,
 	.list-row-date {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		white-space: nowrap;
 		flex-shrink: 0;
 	}
@@ -480,16 +481,17 @@
 
 	.content-card {
 		position: relative;
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		transition: all var(--transition-normal);
 	}
 
 	.content-card:hover {
-		border-color: var(--accent-dim);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+		border-color: var(--color-border-translucent-hover);
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.05);
 	}
 
 	.content-card:hover .card-actions {
@@ -512,7 +514,7 @@
 	}
 
 	.card-main:hover {
-		background: var(--bg-hover);
+		background: var(--color-bg-hover);
 	}
 
 	.card-icon {
@@ -525,7 +527,7 @@
 		justify-content: center;
 		background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
 		border-radius: var(--radius-md);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.icon-count {
@@ -538,7 +540,7 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0 6px;
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		color: white;
 		font-size: 0.6875rem;
 		font-weight: 700;
@@ -557,7 +559,7 @@
 	.card-title {
 		font-size: 1.0625rem;
 		font-weight: 600;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		margin: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -566,7 +568,7 @@
 
 	.card-description {
 		font-size: 0.875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		line-height: 1.5;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
@@ -576,7 +578,7 @@
 	}
 
 	.card-description.empty {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-style: italic;
 	}
 
@@ -590,7 +592,7 @@
 
 	.card-meta {
 		font-size: 0.6875rem;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		font-weight: 500;
@@ -620,8 +622,8 @@
 	}
 
 	.modal {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		max-width: var(--modal-max-width);
@@ -641,7 +643,7 @@
 		margin: 0;
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.modal-close {
@@ -654,14 +656,14 @@
 		background: transparent;
 		border: none;
 		border-radius: var(--radius-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
 
 	.modal-close:hover {
-		background: var(--bg-hover);
-		color: var(--text-primary);
+		background: var(--color-bg-hover);
+		color: var(--color-text-primary);
 	}
 
 	.modal-actions {

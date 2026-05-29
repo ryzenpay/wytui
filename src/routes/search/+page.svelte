@@ -255,29 +255,29 @@
 	.search-icon {
 		position: absolute;
 		left: var(--spacing-lg);
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		pointer-events: none;
 	}
 
 	.search-input {
 		width: 100%;
 		padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + 28px);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: 1.0625rem;
 		transition: border-color var(--transition-fast);
 	}
 
 	.search-input:focus {
 		outline: none;
-		border-color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
 		box-shadow: 0 0 0 3px var(--color-focus-ring-search);
 	}
 
 	.search-input::placeholder {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.search-clear {
@@ -288,13 +288,13 @@
 		padding: 4px;
 		background: transparent;
 		border: none;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
 		border-radius: var(--radius-sm);
 	}
 
 	.search-clear:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		background: var(--color-overlay-hover);
 	}
 
@@ -322,16 +322,16 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.filter-select,
 	.filter-input {
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: 0.875rem;
 		transition: border-color var(--transition-fast);
 	}
@@ -339,16 +339,16 @@
 	.filter-select:focus,
 	.filter-input:focus {
 		outline: none;
-		border-color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
 	}
 
 	.filter-select option {
-		background: var(--bg-secondary);
-		color: var(--text-primary);
+		background: var(--color-bg-secondary);
+		color: var(--color-text-primary);
 	}
 
 	.filter-input::placeholder {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.status-message {
@@ -358,15 +358,15 @@
 		justify-content: center;
 		gap: var(--spacing-md);
 		padding: var(--spacing-2xl) var(--spacing-xl);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-align: center;
 	}
 
 	.spinner {
 		width: 24px;
 		height: 24px;
-		border: 2px solid var(--border);
-		border-top-color: var(--accent-primary);
+		border: 2px solid var(--color-border-default);
+		border-top-color: var(--color-accent-primary);
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}
@@ -383,7 +383,7 @@
 
 	.results-count {
 		font-size: 0.875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-weight: 500;
 	}
 
@@ -395,8 +395,8 @@
 	}
 
 	.result-card {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		cursor: pointer;
@@ -426,7 +426,7 @@
 	.result-thumbnail {
 		width: 100%;
 		height: 160px;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		position: relative;
 		overflow: hidden;
 	}
@@ -441,7 +441,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.duration-badge {
@@ -475,12 +475,12 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.result-uploader {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		margin: 0;
 	}
 
@@ -496,8 +496,8 @@
 		border-radius: var(--radius-sm);
 		font-size: 0.625rem;
 		font-weight: 600;
-		background: var(--bg-tertiary);
-		color: var(--text-secondary);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-secondary);
 	}
 
 	.badge-library {

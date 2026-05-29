@@ -194,17 +194,17 @@
 		width: 100%;
 		padding: var(--spacing-md);
 		padding-right: 2.5rem;
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-overlay-white-10);
 		border-radius: var(--radius-md);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: 1rem;
 		font-family: monospace;
 	}
 
 	.input-wrapper input:focus {
 		outline: none;
-		border-color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
 	}
 
 	.spinner {
@@ -214,8 +214,8 @@
 		transform: translateY(-50%);
 		width: 14px;
 		height: 14px;
-		border: 2px solid rgba(255, 255, 255, 0.2);
-		border-top-color: var(--accent-primary);
+		border: 2px solid var(--color-overlay-white-20);
+		border-top-color: var(--color-accent-primary);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
 	}
@@ -232,8 +232,8 @@
 		left: 0;
 		right: 0;
 		z-index: 100;
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.15);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-overlay-white-15);
 		border-top: none;
 		border-radius: 0 0 var(--radius-md) var(--radius-md);
 		max-height: 240px;
@@ -249,7 +249,7 @@
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: none;
 		border: none;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: 0.875rem;
 		cursor: pointer;
 		text-align: left;
@@ -258,11 +258,11 @@
 
 	.dropdown-item:hover,
 	.dropdown-item.selected {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-overlay-white-08);
 	}
 
 	.folder-icon {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		font-weight: 700;
 		font-family: monospace;
 		flex-shrink: 0;
@@ -274,7 +274,7 @@
 	}
 
 	.dir-path {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-size: 0.75rem;
 		margin-left: auto;
 		white-space: nowrap;

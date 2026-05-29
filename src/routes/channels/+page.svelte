@@ -154,8 +154,8 @@
 		align-items: center;
 		gap: var(--spacing-md);
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		cursor: pointer;
 		text-align: left;
@@ -166,7 +166,8 @@
 	}
 
 	.channel-list-row:hover {
-		border-color: var(--border-light);
+		border-color: var(--color-border-subtle);
+		background: var(--color-bg-hover);
 	}
 
 	.channel-list-avatar {
@@ -187,7 +188,7 @@
 
 	.channel-list-count {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		flex-shrink: 0;
 	}
 
@@ -207,8 +208,8 @@
 		align-items: center;
 		gap: var(--spacing-md);
 		padding: var(--spacing-lg);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		cursor: pointer;
 		text-align: center;
@@ -222,7 +223,7 @@
 
 	.channel-card:hover {
 		border-color: var(--color-border-translucent-hover);
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		transform: translateY(-3px);
 		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.06);
 	}
@@ -244,7 +245,7 @@
 	.avatar-placeholder {
 		width: 100%;
 		height: 100%;
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -270,7 +271,7 @@
 
 	.channel-count {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	@media (max-width: 640px) {

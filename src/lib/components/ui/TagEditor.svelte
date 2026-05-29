@@ -101,15 +101,15 @@
 		flex-wrap: wrap;
 		gap: var(--spacing-xs);
 		padding: var(--spacing-sm);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		min-height: 38px;
 		align-items: center;
 	}
 
 	.tag-chips:focus-within {
-		border-color: var(--accent-primary);
+		border-color: var(--color-accent-primary);
 	}
 
 	.tag-chip {
@@ -117,25 +117,25 @@
 		align-items: center;
 		gap: 4px;
 		padding: 2px var(--spacing-sm);
-		background: var(--bg-tertiary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		font-size: var(--font-size-control);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.tag-remove {
 		display: flex;
 		background: none;
 		border: none;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
 		padding: 0;
 		border-radius: 50%;
 	}
 
 	.tag-remove:hover {
-		color: var(--error);
+		color: var(--color-status-error);
 	}
 
 	.tag-input-wrapper {
@@ -148,14 +148,14 @@
 		width: 100%;
 		background: transparent;
 		border: none;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: var(--font-size-control);
 		outline: none;
 		padding: 2px 0;
 	}
 
 	.tag-input::placeholder {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 	}
 
 	.tag-suggestions {
@@ -163,8 +163,8 @@
 		top: 100%;
 		left: 0;
 		right: 0;
-		background: var(--bg-elevated);
-		border: 1px solid var(--border);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		margin-top: var(--spacing-xs);
 		z-index: var(--z-dropdown);
@@ -180,7 +180,7 @@
 		background: none;
 		border: none;
 		padding: var(--spacing-xs) var(--spacing-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-control);
 		cursor: pointer;
 	}
@@ -188,13 +188,13 @@
 	.tag-suggestion:hover,
 	.tag-suggestion:focus-visible {
 		background: var(--color-overlay-hover);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		outline: none;
 	}
 
 	.tag-remove:focus-visible {
 		outline: none;
-		color: var(--error);
-		box-shadow: 0 0 0 2px var(--color-focus-ring);
+		color: var(--color-status-error);
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 </style>

@@ -219,8 +219,8 @@
 		bottom: calc(100% + 6px);
 		left: 0;
 		z-index: var(--z-dropdown);
-		background: var(--bg-elevated);
-		border: 1px solid var(--border);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-dropdown);
 		min-width: 220px;
@@ -231,7 +231,7 @@
 	.popover-loading,
 	.popover-empty {
 		padding: 12px 16px;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-sm);
 	}
 
@@ -250,7 +250,7 @@
 		border: none;
 		text-align: left;
 		cursor: pointer;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: var(--font-size-sm);
 		min-height: unset;
 		min-width: unset;
@@ -272,7 +272,7 @@
 		width: 16px;
 		height: 16px;
 		border-radius: var(--radius-sm);
-		border: 1.5px solid var(--border);
+		border: 1.5px solid var(--color-border-default);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -280,8 +280,8 @@
 	}
 
 	.playlist-check.checked {
-		background: var(--accent-primary);
-		border-color: var(--accent-primary);
+		background: var(--color-accent-primary);
+		border-color: var(--color-accent-primary);
 		color: var(--color-text-on-accent);
 	}
 
@@ -295,15 +295,15 @@
 	.playlist-spinner {
 		width: 12px;
 		height: 12px;
-		border: 2px solid var(--border);
-		border-top-color: var(--accent-primary);
+		border: 2px solid var(--color-border-default);
+		border-top-color: var(--color-accent-primary);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
 		flex-shrink: 0;
 	}
 
 	.popover-footer {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 		padding: 8px;
 	}
 
@@ -315,7 +315,7 @@
 		padding: 6px 8px;
 		background: none;
 		border: none;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-control);
 		cursor: pointer;
 		border-radius: var(--radius-sm);
@@ -324,7 +324,7 @@
 	}
 
 	.new-playlist-btn:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		background: var(--color-overlay-hover);
 	}
 

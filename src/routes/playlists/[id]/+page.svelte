@@ -344,7 +344,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--spacing-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		font-size: 0.875rem;
 		margin-bottom: var(--spacing-xl);
@@ -352,14 +352,14 @@
 	}
 
 	.back-link:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.empty-state {
 		text-align: center;
 		padding: var(--spacing-2xl);
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px dashed var(--color-border-default);
 		border-radius: var(--radius-lg);
 	}
 
@@ -374,7 +374,7 @@
 		gap: var(--spacing-lg);
 		margin-bottom: var(--spacing-xl);
 		padding-bottom: var(--spacing-lg);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.header-info h2 {
@@ -387,7 +387,7 @@
 
 	.meta {
 		font-size: 0.8125rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.header-actions {
@@ -408,7 +408,7 @@
 
 	label {
 		margin-bottom: var(--spacing-sm);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: 0.875rem;
 		font-weight: 500;
 	}
@@ -428,21 +428,21 @@
 		display: flex;
 		align-items: center;
 		gap: var(--spacing-md);
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-md);
 		transition: all var(--transition-normal);
 	}
 
 	.item-card:hover {
-		border-color: var(--border-light);
+		border-color: var(--color-border-subtle);
 	}
 
 	.item-position {
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		min-width: 1.5rem;
 		text-align: center;
 		flex-shrink: 0;
@@ -464,7 +464,7 @@
 	}
 
 	.item-content:hover h4 {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.item-thumbnail {
@@ -476,7 +476,7 @@
 	}
 
 	.placeholder-thumb {
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 	}
 
 	.item-info {
@@ -497,7 +497,7 @@
 		display: flex;
 		gap: var(--spacing-md);
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	.reorder-controls {
@@ -516,7 +516,7 @@
 	.reorder-btn {
 		background: none;
 		border: none;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		padding: 2px 4px;
 		cursor: pointer;
 		border-radius: var(--radius-sm);
@@ -529,8 +529,8 @@
 	}
 
 	.reorder-btn:hover:not(:disabled) {
-		color: var(--text-primary);
-		background: var(--bg-hover, rgba(255,255,255,0.08));
+		color: var(--color-text-primary);
+		background: var(--color-bg-hover, var(--color-overlay-white-08));
 	}
 
 	.reorder-btn:disabled {

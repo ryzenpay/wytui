@@ -265,8 +265,8 @@
 	}
 
 	.settings-section {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 	}
@@ -293,14 +293,14 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: var(--text-tertiary);
-		border-bottom: 1px solid var(--border);
+		color: var(--color-text-tertiary);
+		border-bottom: 1px solid var(--color-border-default);
 		white-space: nowrap;
 	}
 
 	.data-table td {
 		padding: var(--spacing-md);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 		font-size: 0.875rem;
 		vertical-align: middle;
 	}
@@ -324,7 +324,7 @@
 		border-radius: var(--radius-sm);
 		font-size: 0.8125rem;
 		background: rgba(99, 102, 241, 0.1);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 		white-space: nowrap;
 	}
 
@@ -383,27 +383,7 @@
 	}
 
 
-	.btn-secondary {
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border: 1px solid var(--border);
-		padding: var(--spacing-sm) var(--spacing-lg);
-		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-secondary:hover {
-		background: var(--bg-secondary);
-		border-color: var(--border-light);
-	}
-
-	.btn-secondary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
+	/* Buttons use the global .btn system (src/app.css). */
 
 	@media (max-width: 768px) {
 		.page {

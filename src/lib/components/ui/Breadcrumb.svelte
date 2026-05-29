@@ -44,22 +44,22 @@
 	}
 
 	a {
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-decoration: none;
 		transition: color var(--transition-fast);
 	}
 
 	a:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.current {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-weight: 500;
 	}
 
 	.separator {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		user-select: none;
 	}
 </style>

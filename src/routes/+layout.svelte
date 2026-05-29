@@ -105,8 +105,8 @@
 	}
 
 	.top-header {
-		background: var(--bg-secondary);
-		border-bottom: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border-bottom: 1px solid var(--color-border-default);
 		padding: var(--spacing-md) var(--spacing-xl);
 		position: sticky;
 		top: 0;
@@ -117,13 +117,13 @@
 
 	.nav-progress {
 		height: 2px;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		overflow: hidden;
 	}
 
 	.nav-progress-bar {
 		height: 100%;
-		background: var(--accent-primary);
+		background: var(--color-accent-primary);
 		animation: progress 1.5s ease-in-out infinite;
 		width: 30%;
 	}
@@ -142,7 +142,7 @@
 	}
 
 	.footer {
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 		padding: var(--spacing-sm) var(--spacing-xl);
 	}
 
@@ -157,7 +157,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: var(--spacing-xs);
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-size: 0.75rem;
 		font-weight: 500;
 	}
@@ -165,18 +165,18 @@
 	.footer-divider {
 		width: 1px;
 		height: 12px;
-		background: var(--border);
+		background: var(--color-border-default);
 	}
 
 	.footer-link {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-size: 0.75rem;
 		text-decoration: none;
 		transition: color var(--transition-fast);
 	}
 
 	.footer-link:hover {
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 	}
 
 	@media (max-width: 768px) {

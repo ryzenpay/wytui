@@ -76,11 +76,11 @@
 		flex-direction: column;
 		gap: var(--spacing-sm);
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-dropdown);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-size: var(--font-size-sm);
 		pointer-events: auto;
 		animation: toast-in 0.25s ease-out;
@@ -145,7 +145,7 @@
 		background: transparent;
 		border: none;
 		padding: 0;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-size: var(--font-size-xs);
 		cursor: pointer;
 		text-align: left;
@@ -154,7 +154,7 @@
 	}
 
 	.toast-details-toggle:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.toast-details-list {
@@ -162,7 +162,7 @@
 		padding: var(--spacing-xs) 0 0 var(--spacing-md);
 		list-style: disc;
 		font-size: var(--font-size-xs);
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		max-height: 160px;
 		overflow-y: auto;
 	}
@@ -184,27 +184,27 @@
 	}
 
 	.toast-success {
-		border-left: 3px solid var(--success);
+		border-left: 3px solid var(--color-status-success);
 	}
 
 	.toast-success .toast-icon {
-		color: var(--success);
+		color: var(--color-status-success);
 	}
 
 	.toast-error {
-		border-left: 3px solid var(--error);
+		border-left: 3px solid var(--color-status-error);
 	}
 
 	.toast-error .toast-icon {
-		color: var(--error);
+		color: var(--color-status-error);
 	}
 
 	.toast-info {
-		border-left: 3px solid var(--accent-primary);
+		border-left: 3px solid var(--color-accent-primary);
 	}
 
 	.toast-info .toast-icon {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.toast-icon {
@@ -224,14 +224,14 @@
 		padding: 2px;
 		background: transparent;
 		border: none;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
 		flex-shrink: 0;
 		border-radius: var(--radius-sm);
 	}
 
 	.toast-close:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		background: var(--color-overlay-hover);
 	}
 

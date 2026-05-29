@@ -49,8 +49,8 @@
 <style>
 	.animated-dropdown {
 		position: absolute;
-		background: var(--bg-tertiary, var(--color-bg-tertiary));
-		border: 1px solid var(--color-border-translucent, var(--border));
+		background: var(--color-bg-tertiary, var(--color-bg-tertiary));
+		border: 1px solid var(--color-border-translucent, var(--color-border-default));
 		border-radius: var(--radius-md);
 		box-shadow: var(--shadow-lg);
 		z-index: 100;

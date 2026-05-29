@@ -38,7 +38,7 @@
 		align-items: baseline;
 		gap: var(--spacing-xs);
 		margin-bottom: var(--spacing-xs);
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-weight: var(--font-weight-medium);
 		font-size: var(--font-size-sm);
 	}
@@ -49,7 +49,7 @@
 	}
 
 	.hint {
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		font-weight: var(--font-weight-normal);
 		font-size: var(--font-size-xs);
 		margin-left: auto;

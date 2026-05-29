@@ -162,32 +162,6 @@
 	--grid-search-result-min-width: 280px;
 	--grid-card-min-width-sm: 300px;
 	--grid-card-min-width-xs: 250px;
-
-	/* ---------- Backwards-compatible aliases ---------- */
-	/* These mirror the older token names used across the codebase so
-	   existing references continue to work while new code can adopt
-	   the namespaced names above. */
-	--bg-primary: var(--color-bg-primary);
-	--bg-secondary: var(--color-bg-secondary);
-	--bg-tertiary: var(--color-bg-tertiary);
-	--bg-elevated: var(--color-bg-elevated);
-	--bg-hover: var(--color-bg-hover);
-
-	--text-primary: var(--color-text-primary);
-	--text-secondary: var(--color-text-secondary);
-	--text-tertiary: var(--color-text-tertiary);
-
-	--accent-primary: var(--color-accent-primary);
-	--accent-hover: var(--color-accent-hover);
-	--accent-dim: var(--color-accent-dim);
-
-	--success: var(--color-status-success);
-	--warning: var(--color-status-warning);
-	--error: var(--color-status-error);
-	--info: var(--color-status-info);
-
-	--border: var(--color-border-default);
-	--border-light: var(--color-border-subtle);
 }
 
 /* ---------- Mobile spacing overrides ---------- */

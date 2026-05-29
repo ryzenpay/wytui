@@ -171,8 +171,8 @@
 	}
 
 	.settings-section {
-		background: var(--bg-secondary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-overlay-white-10);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
 		margin-bottom: var(--spacing-lg);
@@ -194,26 +194,7 @@
 		margin-bottom: 0;
 	}
 
-	.btn-secondary {
-		padding: var(--spacing-md) var(--spacing-lg);
-		border: none;
-		border-radius: var(--radius-md);
-		font-weight: 600;
-		cursor: pointer;
-		transition: var(--transition-fast);
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border: 1px solid rgba(255, 255, 255, 0.2);
-	}
-
-	.btn-secondary:hover {
-		background: var(--bg-elevated);
-	}
-
-	.btn-sm {
-		padding: var(--spacing-sm) var(--spacing-md);
-		font-size: 0.875rem;
-	}
+	/* Buttons use the global .btn system (src/app.css). */
 
 	.btn-icon {
 		display: inline-flex;
@@ -235,8 +216,8 @@
 	}
 
 	.stat-card {
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-overlay-white-10);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-lg);
 		text-align: center;
@@ -244,7 +225,7 @@
 
 	.stat-label {
 		font-size: 0.75rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		margin-bottom: var(--spacing-sm);
@@ -253,15 +234,15 @@
 	.stat-value {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.stat-value.success {
-		color: var(--success, #22c55e);
+		color: var(--color-status-success, #22c55e);
 	}
 
 	.stat-value.error {
-		color: var(--error);
+		color: var(--color-status-error);
 	}
 
 	.storage-bars {
@@ -279,13 +260,13 @@
 
 	.storage-label {
 		font-size: 0.875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-weight: 500;
 	}
 
 	.storage-bar {
 		height: 24px;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border-radius: var(--radius-sm);
 		overflow: hidden;
 		position: relative;
@@ -310,7 +291,7 @@
 
 	.storage-value {
 		font-size: 0.875rem;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		font-weight: 500;
 		text-align: right;
 	}
@@ -332,14 +313,14 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.05);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-overlay-white-05);
 		border-radius: var(--radius-sm);
 	}
 
 	.top-name {
 		font-size: 0.875rem;
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -347,9 +328,9 @@
 
 	.top-count {
 		font-size: 0.875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-weight: 600;
-		background: var(--bg-secondary);
+		background: var(--color-bg-secondary);
 		padding: 2px 8px;
 		border-radius: 10px;
 		min-width: 30px;
@@ -362,7 +343,7 @@
 		height: 200px;
 		align-items: flex-end;
 		padding: var(--spacing-md);
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border-radius: var(--radius-md);
 		overflow-x: auto;
 	}
@@ -380,14 +361,14 @@
 	.chart-bar {
 		width: 100%;
 		min-height: 2px;
-		background: linear-gradient(180deg, var(--accent-primary), rgba(59, 130, 246, 0.6));
+		background: linear-gradient(180deg, var(--color-accent-primary), rgba(59, 130, 246, 0.6));
 		border-radius: 2px 2px 0 0;
 		transition: height 0.3s ease;
 	}
 
 	.chart-label {
 		font-size: 0.625rem;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		writing-mode: vertical-rl;
 		text-orientation: mixed;
 		white-space: nowrap;
@@ -396,7 +377,7 @@
 
 	.chart-value {
 		font-size: 0.6875rem;
-		color: var(--text-secondary);
+		color: var(--color-text-secondary);
 		font-weight: 600;
 	}
 

@@ -60,7 +60,7 @@
 		align-items: stretch;
 		height: var(--control-height);
 		box-sizing: border-box;
-		background: var(--bg-tertiary);
+		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		padding: 3px;
@@ -75,23 +75,23 @@
 		border: none;
 		border-radius: var(--radius-sm);
 		background: transparent;
-		color: var(--text-tertiary);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
 
 	.toggle-btn:hover {
-		color: var(--text-primary);
+		color: var(--color-text-primary);
 	}
 
 	.toggle-btn:focus-visible {
 		outline: none;
-		box-shadow: 0 0 0 2px var(--color-focus-ring);
-		color: var(--text-primary);
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
+		color: var(--color-text-primary);
 	}
 
 	.toggle-btn.active {
 		background: var(--color-status-info-bg);
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 </style>
