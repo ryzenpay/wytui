@@ -55,7 +55,7 @@
 	function openContextMenu(e: MouseEvent) {
 		e.preventDefault();
 		// Clamp so menu doesn't overflow viewport
-		const menuW = 190, menuH = 220;
+		const menuW = 240, menuH = 280;
 		const x = Math.min(e.clientX, window.innerWidth - menuW - 8);
 		const y = Math.min(e.clientY, window.innerHeight - menuH - 8);
 		contextMenu = { x, y };
@@ -1355,7 +1355,8 @@
 		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-xs);
-		min-width: 180px;
+		width: 232px;
+		max-width: calc(100vw - 16px);
 		box-shadow: var(--shadow-dropdown);
 		animation: fadeIn var(--transition-fast) ease-out both;
 	}
@@ -1363,6 +1364,7 @@
 	.ctx-item {
 		display: flex;
 		align-items: center;
+		justify-content: flex-start;
 		gap: var(--spacing-sm);
 		width: 100%;
 		padding: var(--spacing-sm);
@@ -1409,18 +1411,22 @@
 	}
 
 	.ctx-speeds {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: repeat(5, 1fr);
 		gap: var(--spacing-xs);
 		padding: var(--spacing-xs);
 	}
 
 	.ctx-speed {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		background: var(--color-bg-tertiary);
 		border: none;
 		color: var(--color-text-secondary);
 		border-radius: var(--radius-sm);
-		padding: var(--spacing-xs) var(--spacing-sm);
+		padding: var(--spacing-xs) 0;
+		text-align: center;
 		font: inherit;
 		font-size: var(--font-size-xs);
 		cursor: pointer;
