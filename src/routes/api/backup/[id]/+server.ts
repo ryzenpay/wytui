@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { backupService } from '$lib/server/services/backup.service';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const DELETE = apiRoute('/api/backup/[id]', 'DELETE', {
@@ -22,7 +23,7 @@ export const DELETE = apiRoute('/api/backup/[id]', 'DELETE', {
 	},
 }, async ({ params, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) throw error(403, 'Admin access required');
+		requireAdmin(locals);
 
 		await backupService.deleteBackup(params.id);
 		return json({ success: true });
@@ -30,6 +31,6 @@ export const DELETE = apiRoute('/api/backup/[id]', 'DELETE', {
 		console.error('Failed to delete backup:', e);
 		if (e.status) throw e;
 		if (e.message === 'Backup not found') throw error(404, 'Backup not found');
-		throw error(500, e.message || 'Failed to delete backup');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

@@ -3,6 +3,7 @@ import { backupService } from '$lib/server/services/backup.service';
 import { createReadStream, existsSync } from 'fs';
 import { stat } from 'fs/promises';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/backup/[id]/download', 'GET', {
@@ -16,7 +17,7 @@ export const GET = apiRoute('/api/backup/[id]/download', 'GET', {
 	},
 }, async ({ params, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) throw error(403, 'Admin access required');
+		requireAdmin(locals);
 
 		const backup = await backupService.getBackup(params.id);
 		if (!backup) throw error(404, 'Backup not found');
@@ -38,6 +39,6 @@ export const GET = apiRoute('/api/backup/[id]/download', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to download backup:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to download backup');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

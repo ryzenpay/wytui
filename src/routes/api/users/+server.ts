@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { hashPassword, validatePassword, invalidateUsersCache } from '$lib/server/auth';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/users', 'GET', {
@@ -35,9 +36,7 @@ export const GET = apiRoute('/api/users', 'GET', {
 	},
 }, async ({ locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const users = await prisma.user.findMany({
 			select: {
@@ -60,7 +59,7 @@ export const GET = apiRoute('/api/users', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to list users:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list users');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -92,9 +91,7 @@ export const POST = apiRoute('/api/users', 'POST', {
 	},
 }, async ({ request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const { email, password, name, isAdmin } = await request.json();
 
@@ -138,6 +135,6 @@ export const POST = apiRoute('/api/users', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create user:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create user');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

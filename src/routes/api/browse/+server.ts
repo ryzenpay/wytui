@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { readdir, stat } from 'fs/promises';
 import { resolve, normalize, dirname, basename, sep } from 'path';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from '@sveltejs/kit';
 
 // Whitelist of allowed base paths for directory browsing
@@ -33,9 +34,7 @@ export const GET = apiRoute('/api/browse', 'GET', {
 		},
 	},
 }, async ({ url, locals }) => {
-	if (!locals.session?.user?.isAdmin) {
-		throw error(403, 'Admin access required');
-	}
+	requireAdmin(locals);
 
 	const path = url.searchParams.get('path') || '/';
 	const normalized = normalize(resolve(path));

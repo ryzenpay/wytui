@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { backupService } from '$lib/server/services/backup.service';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/backup', 'GET', {
@@ -28,14 +29,14 @@ export const GET = apiRoute('/api/backup', 'GET', {
 	},
 }, async ({ locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) throw error(403, 'Admin access required');
+		requireAdmin(locals);
 
 		const backups = await backupService.listBackups();
 		return json(backups);
 	} catch (e: any) {
 		console.error('Failed to list backups:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list backups');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -61,13 +62,13 @@ export const POST = apiRoute('/api/backup', 'POST', {
 	},
 }, async ({ locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) throw error(403, 'Admin access required');
+		requireAdmin(locals);
 
 		const backup = await backupService.createBackup('manual');
 		return json(backup);
 	} catch (e: any) {
 		console.error('Failed to create backup:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create backup');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

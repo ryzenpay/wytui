@@ -48,7 +48,7 @@ export const GET = apiRoute('/api/monitors', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to list monitors:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list monitors');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -138,6 +138,6 @@ export const POST = apiRoute('/api/monitors', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create monitor:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create monitor');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

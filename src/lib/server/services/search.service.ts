@@ -54,63 +54,63 @@ class SearchService {
 
 		const sanitized = this.sanitizeQuery(query);
 
-		// Build WHERE conditions
-		const conditions: string[] = [
-			`d."userId" = ${Prisma.sql`${userId}`}`,
-			`d.status = 'COMPLETED'`,
-			`d.search_vector @@ to_tsquery('english', ${Prisma.sql`${sanitized}`})`,
+		// Build WHERE conditions as parameterized Prisma.Sql fragments
+		const conditions: Prisma.Sql[] = [
+			Prisma.sql`d."userId" = ${userId}`,
+			Prisma.sql`d.status = 'COMPLETED'`,
+			Prisma.sql`d.search_vector @@ to_tsquery('english', ${sanitized})`,
 		];
 
 		if (videoType) {
-			conditions.push(`d."videoType" = ${Prisma.sql`${videoType}`}`);
+			conditions.push(Prisma.sql`d."videoType" = ${videoType}`);
 		}
 		if (storagePool) {
-			conditions.push(`d."storagePool" = ${Prisma.sql`${storagePool}`}`);
+			conditions.push(Prisma.sql`d."storagePool" = ${storagePool}`);
 		}
 		if (uploader) {
-			conditions.push(`d.uploader ILIKE ${Prisma.sql`${'%' + uploader + '%'}`}`);
+			conditions.push(Prisma.sql`d.uploader ILIKE ${'%' + uploader + '%'}`);
 		}
 		if (minHeight !== undefined) {
-			conditions.push(`d.height >= ${Prisma.sql`${minHeight}`}`);
+			conditions.push(Prisma.sql`d.height >= ${minHeight}`);
 		}
 		if (maxHeight !== undefined) {
-			conditions.push(`d.height <= ${Prisma.sql`${maxHeight}`}`);
+			conditions.push(Prisma.sql`d.height <= ${maxHeight}`);
 		}
 		if (dateFrom) {
-			conditions.push(`d."createdAt" >= ${Prisma.sql`${dateFrom}`}`);
+			conditions.push(Prisma.sql`d."createdAt" >= ${dateFrom}`);
 		}
 		if (dateTo) {
 			const endOfDay = new Date(dateTo);
 			endOfDay.setHours(23, 59, 59, 999);
-			conditions.push(`d."createdAt" <= ${Prisma.sql`${endOfDay}`}`);
+			conditions.push(Prisma.sql`d."createdAt" <= ${endOfDay}`);
 		}
 
 		// Handle watchState with subquery
 		if (watchState === 'watched') {
-			conditions.push(`EXISTS (
+			conditions.push(Prisma.sql`EXISTS (
 				SELECT 1 FROM watch_progress wp
 				WHERE wp."downloadId" = d.id
-				AND wp."userId" = ${Prisma.sql`${userId}`}
+				AND wp."userId" = ${userId}
 				AND wp.watched = true
 			)`);
 		} else if (watchState === 'unwatched') {
-			conditions.push(`NOT EXISTS (
+			conditions.push(Prisma.sql`NOT EXISTS (
 				SELECT 1 FROM watch_progress wp
 				WHERE wp."downloadId" = d.id
-				AND wp."userId" = ${Prisma.sql`${userId}`}
+				AND wp."userId" = ${userId}
 				AND (wp.watched = true OR wp.position > 0)
 			)`);
 		} else if (watchState === 'in_progress') {
-			conditions.push(`EXISTS (
+			conditions.push(Prisma.sql`EXISTS (
 				SELECT 1 FROM watch_progress wp
 				WHERE wp."downloadId" = d.id
-				AND wp."userId" = ${Prisma.sql`${userId}`}
+				AND wp."userId" = ${userId}
 				AND wp.watched = false
 				AND wp.position > 0
 			)`);
 		}
 
-		const whereClause = conditions.join(' AND ');
+		const whereClause = Prisma.join(conditions, ' AND ');
 
 		// Execute FTS query with ranking
 		const results = await prisma.$queryRaw<any[]>`
@@ -159,7 +159,7 @@ class SearchService {
 				d."allWatchedAt",
 				ts_rank(d.search_vector, to_tsquery('english', ${sanitized})) as rank
 			FROM downloads d
-			WHERE ${Prisma.raw(whereClause)}
+			WHERE ${whereClause}
 			ORDER BY rank DESC, d."completedAt" DESC
 			LIMIT ${limit}
 			OFFSET ${offset}
@@ -169,7 +169,7 @@ class SearchService {
 		const countResult = await prisma.$queryRaw<[{ count: bigint }]>`
 			SELECT COUNT(*)::int as count
 			FROM downloads d
-			WHERE ${Prisma.raw(whereClause)}
+			WHERE ${whereClause}
 		`;
 		const total = Number(countResult[0]?.count ?? 0);
 
@@ -318,21 +318,21 @@ class SearchService {
 	} = {}) {
 		const sanitized = this.sanitizeQuery(query);
 
-		// Build WHERE conditions
-		const conditions: string[] = [
-			`d."userId" = ${Prisma.sql`${userId}`}`,
-			`d.status = 'COMPLETED'`,
-			`sl.search_vector @@ to_tsquery('english', ${Prisma.sql`${sanitized}`})`,
+		// Build WHERE conditions as parameterized Prisma.Sql fragments
+		const conditions: Prisma.Sql[] = [
+			Prisma.sql`d."userId" = ${userId}`,
+			Prisma.sql`d.status = 'COMPLETED'`,
+			Prisma.sql`sl.search_vector @@ to_tsquery('english', ${sanitized})`,
 		];
 
 		if (filters.storagePool) {
-			conditions.push(`d."storagePool" = ${Prisma.sql`${filters.storagePool}`}`);
+			conditions.push(Prisma.sql`d."storagePool" = ${filters.storagePool}`);
 		}
 		if (filters.uploader) {
-			conditions.push(`d.uploader ILIKE ${Prisma.sql`${'%' + filters.uploader + '%'}`}`);
+			conditions.push(Prisma.sql`d.uploader ILIKE ${'%' + filters.uploader + '%'}`);
 		}
 
-		const whereClause = conditions.join(' AND ');
+		const whereClause = Prisma.join(conditions, ' AND ');
 
 		// Execute FTS query with ranking
 		const results = await prisma.$queryRaw<any[]>`
@@ -351,7 +351,7 @@ class SearchService {
 				ts_rank(sl.search_vector, to_tsquery('english', ${sanitized})) as rank
 			FROM subtitle_lines sl
 			INNER JOIN downloads d ON sl."downloadId" = d.id
-			WHERE ${Prisma.raw(whereClause)}
+			WHERE ${whereClause}
 			ORDER BY rank DESC, sl."startTime" ASC
 			LIMIT 30
 		`;
@@ -361,7 +361,7 @@ class SearchService {
 			SELECT COUNT(*)::int as count
 			FROM subtitle_lines sl
 			INNER JOIN downloads d ON sl."downloadId" = d.id
-			WHERE ${Prisma.raw(whereClause)}
+			WHERE ${whereClause}
 		`;
 		const total = Number(countResult[0]?.count ?? 0);
 

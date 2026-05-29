@@ -101,6 +101,14 @@ class MonitorService {
 			// Restart if still enabled
 			this.restartMonitorIfEnabled(monitor.id);
 		});
+
+		proc.on('error', (err) => {
+			this.activeMonitors.delete(monitor.id);
+			console.error(`[Monitor ${monitor.name}] Process error:`, err);
+
+			// Restart if still enabled (same cleanup path as 'close')
+			this.restartMonitorIfEnabled(monitor.id);
+		});
 	}
 
 	/**
@@ -246,6 +254,10 @@ class MonitorService {
 						data: { isLive: false },
 					});
 				}
+			});
+
+			proc.on('error', (err) => {
+				console.error(`[Monitor ${monitor.name}] Check process error:`, err);
 			});
 		} catch (error) {
 			console.error(`[Monitor ${monitor.name}] Check failed:`, error);

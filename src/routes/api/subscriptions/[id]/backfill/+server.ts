@@ -63,6 +63,6 @@ export const POST = apiRoute('/api/subscriptions/[id]/backfill', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to backfill subscription:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to backfill subscription');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

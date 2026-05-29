@@ -39,7 +39,8 @@ export const GET = apiRoute('/api/playlists/[id]', 'GET', {
 		return json(playlist);
 	} catch (e: any) {
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get playlist');
+		console.error('Failed to get playlist:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -84,7 +85,8 @@ export const PATCH = apiRoute('/api/playlists/[id]', 'PATCH', {
 		if (e.message === 'Playlist not found') throw error(404, e.message);
 		if (e.message === 'Access denied') throw error(403, e.message);
 		if (e.code === 'P2002') throw error(409, 'A playlist with that name already exists');
-		throw error(500, e.message || 'Failed to update playlist');
+		console.error('Failed to update playlist:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -117,6 +119,7 @@ export const DELETE = apiRoute('/api/playlists/[id]', 'DELETE', {
 		if (e.status) throw e;
 		if (e.message === 'Playlist not found') throw error(404, e.message);
 		if (e.message === 'Access denied') throw error(403, e.message);
-		throw error(500, e.message || 'Failed to delete playlist');
+		console.error('Failed to delete playlist:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

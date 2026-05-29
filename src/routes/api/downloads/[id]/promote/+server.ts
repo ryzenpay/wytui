@@ -66,6 +66,6 @@ export const POST = apiRoute('/api/downloads/[id]/promote', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to promote download:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to promote download');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

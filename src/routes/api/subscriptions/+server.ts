@@ -52,7 +52,7 @@ export const GET = apiRoute('/api/subscriptions', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to list subscriptions:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list subscriptions');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -181,6 +181,6 @@ export const POST = apiRoute('/api/subscriptions', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create subscription:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create subscription');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

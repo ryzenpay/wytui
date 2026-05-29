@@ -44,7 +44,8 @@ export const POST = apiRoute('/api/playlists/[id]/items', 'POST', {
 		if (e.message === 'Playlist not found') throw error(404, e.message);
 		if (e.message === 'Access denied') throw error(403, e.message);
 		if (e.code === 'P2002') throw error(409, 'Item already in playlist');
-		throw error(500, e.message || 'Failed to add item');
+		console.error('Failed to add playlist item:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -85,7 +86,8 @@ export const DELETE = apiRoute('/api/playlists/[id]/items', 'DELETE', {
 		if (e.status) throw e;
 		if (e.message === 'Playlist not found') throw error(404, e.message);
 		if (e.message === 'Access denied') throw error(403, e.message);
-		throw error(500, e.message || 'Failed to remove item');
+		console.error('Failed to remove playlist item:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -126,6 +128,7 @@ export const PATCH = apiRoute('/api/playlists/[id]/items', 'PATCH', {
 		if (e.status) throw e;
 		if (e.message === 'Playlist not found') throw error(404, e.message);
 		if (e.message === 'Access denied') throw error(403, e.message);
-		throw error(500, e.message || 'Failed to reorder items');
+		console.error('Failed to reorder playlist items:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

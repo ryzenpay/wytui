@@ -54,7 +54,7 @@ export const POST = apiRoute('/api/setup', 'POST', {
 	} catch (e: any) {
 		console.error('Setup failed:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create admin account');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 

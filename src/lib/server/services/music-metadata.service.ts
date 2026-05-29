@@ -1,5 +1,5 @@
 import { spawn } from 'child_process';
-import { copyFile, unlink, writeFile, access } from 'fs/promises';
+import { unlink, writeFile, access, rename } from 'fs/promises';
 import { join, extname } from 'path';
 import type { Download } from '@prisma/client';
 
@@ -147,9 +147,10 @@ class MusicMetadataService {
 
 		await this.runFfmpeg(args);
 
-		await unlink(filepath);
-		await copyFile(tempPath, filepath);
-		await unlink(tempPath);
+		// Atomically replace the original with the tagged temp file.
+		// tempPath is in the same directory (same filesystem) as filepath,
+		// so rename is atomic and never leaves the original missing.
+		await rename(tempPath, filepath);
 	}
 
 	async resolveAndTag(download: Download): Promise<MusicFileInfo> {

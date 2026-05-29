@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { invalidateUsersCache } from '$lib/server/auth';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const PATCH = apiRoute('/api/users/[id]', 'PATCH', {
@@ -31,9 +32,7 @@ export const PATCH = apiRoute('/api/users/[id]', 'PATCH', {
 	},
 }, async ({ params, request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const updates = await request.json();
 
@@ -66,7 +65,7 @@ export const PATCH = apiRoute('/api/users/[id]', 'PATCH', {
 	} catch (e: any) {
 		console.error('Failed to update user:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to update user');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -89,9 +88,7 @@ export const DELETE = apiRoute('/api/users/[id]', 'DELETE', {
 	},
 }, async ({ params, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		if (params.id === locals.session.user.id) {
 			throw error(400, 'Cannot delete yourself');
@@ -120,6 +117,6 @@ export const DELETE = apiRoute('/api/users/[id]', 'DELETE', {
 	} catch (e: any) {
 		console.error('Failed to delete user:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to delete user');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

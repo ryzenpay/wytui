@@ -44,6 +44,6 @@ export const POST = apiRoute('/api/subscriptions/[id]/check', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to check subscription:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to check subscription');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

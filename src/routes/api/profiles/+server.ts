@@ -51,7 +51,8 @@ export const GET = apiRoute('/api/profiles', 'GET', {
 		return json(profiles);
 	} catch (e: any) {
 		console.error('Failed to list profiles:', e);
-		throw error(500, e.message || 'Failed to list profiles');
+		if (e.status) throw e;
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -169,6 +170,6 @@ export const POST = apiRoute('/api/profiles', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create profile:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create profile');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

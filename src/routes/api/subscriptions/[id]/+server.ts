@@ -56,7 +56,7 @@ export const GET = apiRoute('/api/subscriptions/[id]', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get subscription:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get subscription');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -180,7 +180,7 @@ export const PATCH = apiRoute('/api/subscriptions/[id]', 'PATCH', {
 	} catch (e: any) {
 		console.error('Failed to update subscription:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to update subscription');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -229,6 +229,6 @@ export const DELETE = apiRoute('/api/subscriptions/[id]', 'DELETE', {
 	} catch (e: any) {
 		console.error('Failed to delete subscription:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to delete subscription');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

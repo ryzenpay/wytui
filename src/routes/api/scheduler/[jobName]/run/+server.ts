@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { jobScheduler } from '$lib/server/jobs/scheduler';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const POST = apiRoute('/api/scheduler/[jobName]/run', 'POST', {
@@ -24,9 +25,7 @@ export const POST = apiRoute('/api/scheduler/[jobName]/run', 'POST', {
 	},
 }, async ({ params, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		await jobScheduler.runJob(params.jobName);
 		return json({ success: true });
@@ -36,6 +35,6 @@ export const POST = apiRoute('/api/scheduler/[jobName]/run', 'POST', {
 		if (e.message?.startsWith('Unknown job:')) {
 			throw error(400, e.message);
 		}
-		throw error(500, e.message || 'Failed to run job');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

@@ -36,7 +36,8 @@ export const GET = apiRoute('/api/playlists', 'GET', {
 		return json(playlists);
 	} catch (e: any) {
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list playlists');
+		console.error('Failed to list playlists:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -81,6 +82,7 @@ export const POST = apiRoute('/api/playlists', 'POST', {
 		if (e.code === 'P2002') {
 			throw error(409, 'A playlist with that name already exists');
 		}
-		throw error(500, e.message || 'Failed to create playlist');
+		console.error('Failed to create playlist:', e);
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

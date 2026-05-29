@@ -133,7 +133,7 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to download file:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to download file');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 

@@ -86,6 +86,6 @@ export const PATCH = apiRoute('/api/users/[id]/password', 'PATCH', {
 	} catch (e: any) {
 		console.error('Failed to change password:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to change password');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

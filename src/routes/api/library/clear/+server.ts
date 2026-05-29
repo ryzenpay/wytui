@@ -32,6 +32,6 @@ export const POST = apiRoute('/api/library/clear', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to clear cache:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to clear cache');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
