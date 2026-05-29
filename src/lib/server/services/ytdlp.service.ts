@@ -403,6 +403,33 @@ export class YtdlpService {
 	}
 
 	/**
+	 * Check for incompatible flag combinations and return error message if found
+	 */
+	validateFlagCompatibility(flags: string[]): string | null {
+		const hasEmbedSubs = flags.includes('--embed-subs');
+		const hasExtractAudio = flags.includes('--extract-audio') || flags.includes('-x');
+
+		let audioFormat: string | null = null;
+		const audioFormatIdx = flags.indexOf('--audio-format');
+		if (audioFormatIdx !== -1 && audioFormatIdx + 1 < flags.length) {
+			audioFormat = flags[audioFormatIdx + 1];
+		}
+
+		// Embedding subtitles in audio-only formats is not supported
+		if (hasEmbedSubs && hasExtractAudio) {
+			return 'Cannot embed subtitles in audio-only downloads. Subtitles will be saved as separate files.';
+		}
+
+		// Check specific audio formats that can't embed subtitles
+		const audioOnlyFormats = ['m4a', 'mp3', 'aac', 'flac', 'opus', 'wav', 'ogg', 'vorbis'];
+		if (hasEmbedSubs && audioFormat && audioOnlyFormats.includes(audioFormat.toLowerCase())) {
+			return `Cannot embed subtitles in ${audioFormat} format. Subtitles will be saved as separate files.`;
+		}
+
+		return null;
+	}
+
+	/**
 	 * Filter flags to only allow whitelisted ones
 	 */
 	private filterDangerousFlags(flags: string[]): string[] {
@@ -513,6 +540,15 @@ export class YtdlpService {
 			let safeFlags = this.filterDangerousFlags(customFlags);
 			if (!this.isYouTubeUrl(url)) {
 				safeFlags = this.stripSponsorBlockFlags(safeFlags);
+			}
+			// Strip --embed-subs if audio-only to prevent ffmpeg errors
+			const hasExtractAudio = safeFlags.includes('--extract-audio') || safeFlags.includes('-x');
+			if (hasExtractAudio) {
+				const embedSubsIdx = safeFlags.indexOf('--embed-subs');
+				if (embedSubsIdx !== -1) {
+					console.log('[YtdlpService] Removing --embed-subs for audio-only download');
+					safeFlags.splice(embedSubsIdx, 1);
+				}
 			}
 			args.push(...safeFlags);
 		}

@@ -856,11 +856,20 @@
 
   function buildBasicFlags(): string[] {
     const result: string[] = [];
+    const profile = profiles.find((p: any) => p.id === activeProfileId);
+    const isAudioOnly = profile?.audioOnly;
+
     if (basicOptions.sponsorblock) {
       result.push("--sponsorblock-remove", "sponsor,selfpromo");
     }
     if (basicOptions.subtitles) {
-      result.push("--write-subs", "--write-auto-subs", "--embed-subs", "--sub-langs", "en");
+      // Audio-only formats (m4a, mp3, etc.) cannot embed subtitles
+      // Only write subtitle files, don't embed
+      if (isAudioOnly) {
+        result.push("--write-subs", "--write-auto-subs", "--sub-langs", "en");
+      } else {
+        result.push("--write-subs", "--write-auto-subs", "--embed-subs", "--sub-langs", "en");
+      }
     }
     if (basicOptions.metadata) {
       result.push("--embed-metadata", "--embed-chapters");
@@ -868,8 +877,7 @@
     if (selectedVideoProfileId) {
       result.push("--audio-quality", audioQuality);
     }
-    const profile = profiles.find((p: any) => p.id === activeProfileId);
-    if (saveToLibrary && !(profile?.audioOnly)) {
+    if (saveToLibrary && !isAudioOnly) {
       result.push("--write-thumbnail");
     }
     return result;
@@ -1383,8 +1391,9 @@
               class:active={basicOptions.subtitles}
               onclick={() => basicOptions.subtitles = !basicOptions.subtitles}
               disabled={loading}
+              title={selectedAudioProfileId ? "Subtitle files will be saved separately (audio formats cannot embed subtitles)" : "Subtitles will be embedded in video"}
             >
-              Subtitles
+              Subtitles{selectedAudioProfileId ? " (.vtt)" : ""}
             </button>
             <button
               type="button"
