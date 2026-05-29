@@ -1441,6 +1441,9 @@
 		.completed-filter {
 			grid-column: 1 / -1;
 			width: 100%;
+			/* Override the fixed desktop control height so the container grows to
+			   contain the 44px touch-target tabs instead of letting them overflow. */
+			height: auto;
 		}
 		.completed-filter .tab { flex: 1; text-align: center; min-height: 44px; }
 		.channel-dropdown, .sort-dropdown { min-width: 0; }
