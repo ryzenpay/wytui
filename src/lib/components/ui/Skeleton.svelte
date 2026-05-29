@@ -1,10 +1,23 @@
 <script lang="ts">
 	interface Props {
 		count?: number;
-		variant?: 'card' | 'row';
+		variant?: 'card' | 'row' | 'text' | 'list' | 'grid' | 'table-row';
+		columns?: number;
+		lineWidths?: string[];
 	}
 
-	let { count = 6, variant = 'card' }: Props = $props();
+	let {
+		count = 6,
+		variant = 'card',
+		columns = 4,
+		lineWidths,
+	}: Props = $props();
+
+	function widthFor(i: number): string {
+		if (lineWidths && lineWidths[i]) return lineWidths[i];
+		const presets = ['100%', '92%', '78%', '85%', '60%'];
+		return presets[i % presets.length];
+	}
 </script>
 
 {#if variant === 'card'}
@@ -20,10 +33,53 @@
 			</div>
 		{/each}
 	</div>
-{:else}
+{:else if variant === 'row'}
 	<div class="skeleton-rows">
 		{#each Array(count) as _, i}
 			<div class="skeleton-row skeleton-item"></div>
+		{/each}
+	</div>
+{:else if variant === 'text'}
+	<div class="skeleton-text">
+		{#each Array(count) as _, i}
+			<div
+				class="skeleton-line skeleton-item skeleton-text-line"
+				style="width: {widthFor(i)}"
+			></div>
+		{/each}
+	</div>
+{:else if variant === 'list'}
+	<div class="skeleton-list">
+		{#each Array(count) as _, i}
+			<div class="skeleton-list-item skeleton-item">
+				<div class="skeleton-avatar"></div>
+				<div class="skeleton-list-body">
+					<div class="skeleton-line skeleton-title"></div>
+					<div class="skeleton-line skeleton-subtitle"></div>
+				</div>
+			</div>
+		{/each}
+	</div>
+{:else if variant === 'grid'}
+	<div
+		class="skeleton-grid-layout"
+		style="grid-template-columns: repeat({columns}, minmax(0, 1fr));"
+	>
+		{#each Array(count) as _, i}
+			<div class="skeleton-grid-cell skeleton-item"></div>
+		{/each}
+	</div>
+{:else if variant === 'table-row'}
+	<div class="skeleton-table">
+		{#each Array(count) as _, i}
+			<div class="skeleton-table-row skeleton-item">
+				{#each Array(columns) as _, c}
+					<div
+						class="skeleton-cell"
+						style="flex: {c === 0 ? '2' : '1'}"
+					></div>
+				{/each}
+			</div>
 		{/each}
 	</div>
 {/if}
@@ -105,5 +161,78 @@
 		height: 48px;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
+	}
+
+	.skeleton-text {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.skeleton-text-line {
+		height: 14px;
+	}
+
+	.skeleton-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.skeleton-list-item {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		padding: var(--spacing-md);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+	}
+
+	.skeleton-avatar {
+		flex-shrink: 0;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.skeleton-list-body {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs, 6px);
+		min-width: 0;
+	}
+
+	.skeleton-grid-layout {
+		display: grid;
+		gap: var(--spacing-md);
+	}
+
+	.skeleton-grid-cell {
+		aspect-ratio: 1 / 1;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+	}
+
+	.skeleton-table {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs, 6px);
+	}
+
+	.skeleton-table-row {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		padding: var(--spacing-md);
+		border-bottom: 1px solid var(--border);
+		border-radius: var(--radius-sm, 4px);
+	}
+
+	.skeleton-cell {
+		height: 14px;
+		background: rgba(255, 255, 255, 0.05);
+		border-radius: var(--radius-sm, 4px);
 	}
 </style>

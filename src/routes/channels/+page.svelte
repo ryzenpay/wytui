@@ -211,7 +211,8 @@
 		border-radius: var(--radius-lg);
 		cursor: pointer;
 		text-align: center;
-		transition: border-color var(--transition-fast), background var(--transition-fast);
+		transition: transform var(--transition-normal), box-shadow var(--transition-normal),
+			border-color var(--transition-normal), background var(--transition-normal);
 		min-height: unset;
 		min-width: unset;
 		color: inherit;
@@ -219,8 +220,10 @@
 	}
 
 	.channel-card:hover {
-		border-color: var(--border-light);
+		border-color: var(--color-border-translucent-hover);
 		background: var(--bg-tertiary);
+		transform: translateY(-3px);
+		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.06);
 	}
 
 	.channel-avatar {

@@ -1,15 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { csrfFetch } from '$lib/utils/fetch';
+	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
 	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
 	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
 	import DownloadListRow from '$lib/components/download/DownloadListRow.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
 	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
 	import { getSSEState, onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
-	import { addToast } from '$lib/stores/toast.svelte';
+	import { addToast, addStickyToast, updateToast, resolveToast } from '$lib/stores/toast.svelte';
 	import { formatBytes, formatTimestamp } from '$lib/utils/format';
 	import CheckSquareIcon from '$lib/components/icons/CheckSquareIcon.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
@@ -36,6 +38,7 @@
 	let searchResults = $state<any[]>([]);
 	let searchTotal = $state(0);
 	let searchLoading = $state(false);
+	let searchError = $state<FetchError | null>(null);
 	let subtitleMatches = $state<any[]>([]);
 	let subtitleTotal = $state(0);
 	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -43,6 +46,14 @@
 	let selectionMode = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
 	let bulkActing = $state(false);
+	let bulkSuccess = $state(false);
+	let bulkSuccessTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function flashBulkSuccess() {
+		bulkSuccess = true;
+		if (bulkSuccessTimer) clearTimeout(bulkSuccessTimer);
+		bulkSuccessTimer = setTimeout(() => { bulkSuccess = false; }, 900);
+	}
 
 	let jellyfinUrl = $state('');
 	let libraryConfigured = $state(false);
@@ -95,6 +106,43 @@
 		}
 	});
 
+	async function runSearch(q: string, sp: string, uf: string, ws: string, rf: string, df: string, dt: string) {
+		searchLoading = true;
+		searchError = null;
+		try {
+			const params = new URLSearchParams({ q, limit: '50' });
+			if (sp !== 'all') params.set('storagePool', sp);
+			if (uf !== 'all') params.set('uploader', uf);
+			if (ws !== 'all') params.set('watchState', ws);
+			const heightRange = getHeightRange(rf);
+			if (heightRange.min) params.set('minHeight', String(heightRange.min));
+			if (heightRange.max) params.set('maxHeight', String(heightRange.max));
+			if (df) params.set('dateFrom', df);
+			if (dt) params.set('dateTo', dt);
+
+			const data = await safeFetchJson<any>(`/api/search?${params}`);
+			searchResults = data.results || data;
+			searchTotal = data.total || searchResults.length;
+			subtitleMatches = data.subtitleMatches || [];
+			subtitleTotal = data.subtitleTotal || 0;
+		} catch (e) {
+			searchResults = [];
+			searchTotal = 0;
+			subtitleMatches = [];
+			subtitleTotal = 0;
+			searchError = isFetchError(e)
+				? e
+				: { type: 'unknown', message: 'Search failed. Please try again.', canRetry: true };
+		} finally {
+			searchLoading = false;
+		}
+	}
+
+	function retrySearch() {
+		if (!searchQuery.trim()) return;
+		runSearch(searchQuery, completedFilter, channelFilter, watchStateFilter, resolutionFilter, dateFrom, dateTo);
+	}
+
 	$effect(() => {
 		const q = searchQuery;
 		const sp = completedFilter;
@@ -112,45 +160,12 @@
 			subtitleMatches = [];
 			subtitleTotal = 0;
 			searchLoading = false;
+			searchError = null;
 			return;
 		}
 
 		searchLoading = true;
-		searchDebounceTimer = setTimeout(async () => {
-			try {
-				const params = new URLSearchParams({ q, limit: '50' });
-				if (sp !== 'all') params.set('storagePool', sp);
-				if (uf !== 'all') params.set('uploader', uf);
-				if (ws !== 'all') params.set('watchState', ws);
-				const heightRange = getHeightRange(rf);
-				if (heightRange.min) params.set('minHeight', String(heightRange.min));
-				if (heightRange.max) params.set('maxHeight', String(heightRange.max));
-				if (df) params.set('dateFrom', df);
-				if (dt) params.set('dateTo', dt);
-
-				const res = await fetch(`/api/search?${params}`);
-				if (res.ok) {
-					const data = await res.json();
-					searchResults = data.results || data;
-					searchTotal = data.total || searchResults.length;
-					subtitleMatches = data.subtitleMatches || [];
-					subtitleTotal = data.subtitleTotal || 0;
-				} else {
-					searchResults = [];
-					searchTotal = 0;
-					subtitleMatches = [];
-					subtitleTotal = 0;
-				}
-			} catch (e) {
-				console.error('Search failed:', e);
-				searchResults = [];
-				searchTotal = 0;
-				subtitleMatches = [];
-				subtitleTotal = 0;
-			} finally {
-				searchLoading = false;
-			}
-		}, 300);
+		searchDebounceTimer = setTimeout(() => runSearch(q, sp, uf, ws, rf, df, dt), 300);
 	});
 
 	let filteredCompletedDownloads = $derived.by(() => {
@@ -316,8 +331,84 @@
 		selectedIds = new Set();
 	}
 
+	function getDownloadLabel(id: string): string {
+		const d = completedDownloads.find((dl) => dl.id === id);
+		return d?.title || id;
+	}
+
+	type BulkItemResult = { id: string; ok: boolean; reason?: string };
+
+	async function runBulkOperation(
+		ids: string[],
+		verbPresent: string,
+		verbPast: string,
+		runOne: (id: string) => Promise<void>,
+		concurrency = 4,
+	): Promise<BulkItemResult[]> {
+		const total = ids.length;
+		const results: BulkItemResult[] = [];
+		const toastId = addStickyToast('info', `${verbPresent} 0 of ${total}…`, 0);
+
+		let completed = 0;
+		let cursor = 0;
+
+		async function worker() {
+			while (cursor < ids.length) {
+				const i = cursor++;
+				const id = ids[i];
+				try {
+					await runOne(id);
+					results.push({ id, ok: true });
+				} catch (err) {
+					const reason = err instanceof Error ? err.message : 'Unknown error';
+					results.push({ id, ok: false, reason });
+				}
+				completed += 1;
+				const percent = Math.round((completed / total) * 100);
+				updateToast(toastId, {
+					message: `${verbPresent} ${completed} of ${total}…`,
+					progress: percent,
+				});
+			}
+		}
+
+		await Promise.all(
+			Array.from({ length: Math.min(concurrency, ids.length) }, worker),
+		);
+
+		const failures = results.filter((r) => !r.ok);
+		const successes = total - failures.length;
+
+		if (failures.length === 0) {
+			resolveToast(toastId, 'success', `${verbPast} ${successes} item${successes !== 1 ? 's' : ''}`);
+		} else if (successes === 0) {
+			resolveToast(
+				toastId,
+				'error',
+				`Failed to ${verbPresent.toLowerCase()} all ${total} item${total !== 1 ? 's' : ''}`,
+				{
+					details: failures.map((f) => `${getDownloadLabel(f.id)}: ${f.reason ?? 'failed'}`),
+					duration: 10000,
+				},
+			);
+		} else {
+			resolveToast(
+				toastId,
+				'info',
+				`${verbPast} ${successes} item${successes !== 1 ? 's' : ''} (${failures.length} failed)`,
+				{
+					details: failures.map((f) => `${getDownloadLabel(f.id)}: ${f.reason ?? 'failed'}`),
+					duration: 10000,
+				},
+			);
+		}
+
+		return results;
+	}
+
 	async function bulkDelete() {
-		const count = selectedIds.size;
+		const ids = [...selectedIds];
+		const count = ids.length;
 		const confirmed = await showConfirm(
 			'Delete Selected',
 			`Delete ${count} download${count !== 1 ? 's' : ''}? This cannot be undone.`,
@@ -327,14 +418,15 @@
 
 		bulkActing = true;
 		try {
-			await Promise.all(
-				[...selectedIds].map((id) => csrfFetch(`/api/downloads/${id}`, { method: 'DELETE' }))
-			);
-			addToast('success', `Deleted ${count} download${count !== 1 ? 's' : ''}`);
-			exitSelectionMode();
-			await loadCompletedDownloads();
-		} catch (e) {
-			addToast('error', 'Failed to delete some downloads');
+			const results = await runBulkOperation(ids, 'Deleting', 'Deleted', async (id) => {
+				const res = await csrfFetch(`/api/downloads/${id}`, { method: 'DELETE' });
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			});
+			if (results.some((r) => r.ok)) {
+				flashBulkSuccess();
+				exitSelectionMode();
+				await loadCompletedDownloads();
+			}
 		} finally {
 			bulkActing = false;
 		}
@@ -360,21 +452,26 @@
 	}
 
 	async function bulkAddToPlaylist(playlistId: string, playlistName: string) {
+		const ids = [...selectedIds];
 		bulkPlaylistAdding = true;
+		bulkPlaylistOpen = false;
 		try {
-			await Promise.all(
-				[...selectedIds].map((id) =>
-					csrfFetch(`/api/playlists/${playlistId}/items`, {
+			const results = await runBulkOperation(
+				ids,
+				`Adding to "${playlistName}"`,
+				`Added to "${playlistName}"`,
+				async (id) => {
+					const res = await csrfFetch(`/api/playlists/${playlistId}/items`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ downloadId: id }),
-					})
-				)
+					});
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				},
 			);
-			addToast('success', `Added ${selectedIds.size} video${selectedIds.size !== 1 ? 's' : ''} to "${playlistName}"`);
-			bulkPlaylistOpen = false;
-		} catch {
-			addToast('error', 'Failed to add some videos to playlist');
+			if (results.some((r) => r.ok)) {
+				flashBulkSuccess();
+			}
 		} finally {
 			bulkPlaylistAdding = false;
 		}
@@ -391,17 +488,34 @@
 		}
 		bulkActing = true;
 		try {
-			await Promise.all(
-				ids.map((id) => csrfFetch(`/api/downloads/${id}/promote`, { method: 'POST' }))
-			);
-			addToast('success', `Moved ${ids.length} download${ids.length !== 1 ? 's' : ''} to library`);
-			exitSelectionMode();
-			await loadCompletedDownloads();
-		} catch (e) {
-			addToast('error', 'Failed to move some downloads');
+			const results = await runBulkOperation(ids, 'Moving', 'Moved to library', async (id) => {
+				const res = await csrfFetch(`/api/downloads/${id}/promote`, { method: 'POST' });
+				if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			});
+			if (results.some((r) => r.ok)) {
+				flashBulkSuccess();
+				exitSelectionMode();
+				await loadCompletedDownloads();
+			}
 		} finally {
 			bulkActing = false;
 		}
+	}
+
+	function focusUrlInput() {
+		const el = document.getElementById('url') as HTMLInputElement | null;
+		if (!el) return;
+		el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		el.focus();
+	}
+
+	function clearFilters() {
+		completedFilter = 'all';
+		watchStateFilter = 'all';
+		channelFilter = 'all';
+		dateFrom = '';
+		dateTo = '';
+		searchQuery = '';
 	}
 </script>
 
@@ -416,13 +530,23 @@
 			<DownloadForm />
 		</div>
 
-		<div class="active-section">
+		<div class="active-section" aria-live="polite" aria-atomic="false">
 			<h2>Active ({sseState.downloads.length})</h2>
 			{#if sseState.downloads.length === 0}
-				<div class="empty-state">
-					<p>No active downloads</p>
-					<p class="text-muted">Paste a URL to get started</p>
-				</div>
+				<EmptyState
+					title="No active downloads"
+					description="Paste a video URL above and your download progress will appear here in real time."
+					size="sm"
+					variant="subtle"
+				>
+					{#snippet icon()}
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+							<polyline points="7 10 12 15 17 10" />
+							<line x1="12" y1="15" x2="12" y2="3" />
+						</svg>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="downloads-list">
 					{#each [...sseState.downloads].sort((a, b) => {
@@ -514,6 +638,15 @@
 					</button>
 				{/if}
 			</div>
+			{#if searchError}
+				<div class="search-error-wrapper">
+					<ErrorMessage
+						error={searchError}
+						onRetry={retrySearch}
+						onDismiss={() => (searchError = null)}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 
@@ -561,19 +694,36 @@
 				{#if availableChannels.length > 1}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div class="channel-dropdown" onkeydown={(e) => { if (e.key === 'Escape') channelDropdownOpen = false; }}>
-						<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); channelDropdownOpen = !channelDropdownOpen; channelSearch = ''; }}>
+						<button
+							id="dl-channel-trigger"
+							type="button"
+							class="channel-dropdown-trigger"
+							aria-label="Filter by channel"
+							aria-haspopup="listbox"
+							aria-expanded={channelDropdownOpen}
+							aria-controls="dl-channel-menu"
+							onclick={(e) => { e.stopPropagation(); channelDropdownOpen = !channelDropdownOpen; channelSearch = ''; }}
+						>
 							<span class="channel-dropdown-label">{channelFilter === 'all' ? 'All channels' : channelFilter}</span>
-							<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={channelDropdownOpen}>
+							<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={channelDropdownOpen} aria-hidden="true">
 								<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 							</svg>
 						</button>
 						{#if channelDropdownOpen}
-							<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
-								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." bind:value={channelSearch} autofocus />
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
+							<div
+								id="dl-channel-menu"
+								role="listbox"
+								aria-labelledby="dl-channel-trigger"
+								class="channel-dropdown-menu"
+								tabindex="-1"
+								onclick={(e) => e.stopPropagation()}
+							>
+								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." aria-label="Search channels" bind:value={channelSearch} autofocus />
 								<div class="channel-dropdown-options">
-									<button class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={(e) => { e.stopPropagation(); channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
+									<button type="button" role="option" aria-selected={channelFilter === 'all'} class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={(e) => { e.stopPropagation(); channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
 									{#each filteredChannelOptions as channel}
-										<button class="channel-dropdown-option" class:selected={channelFilter === channel} onclick={(e) => { e.stopPropagation(); channelFilter = channel; channelDropdownOpen = false; }}>{channel}</button>
+										<button type="button" role="option" aria-selected={channelFilter === channel} class="channel-dropdown-option" class:selected={channelFilter === channel} onclick={(e) => { e.stopPropagation(); channelFilter = channel; channelDropdownOpen = false; }}>{channel}</button>
 									{/each}
 									{#if filteredChannelOptions.length === 0}
 										<div class="channel-dropdown-empty">No channels found</div>
@@ -581,32 +731,51 @@
 								</div>
 							</div>
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<div class="channel-dropdown-backdrop" onclick={() => (channelDropdownOpen = false)}></div>
 						{/if}
 					</div>
 				{/if}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') sortDropdownOpen = false; }}>
-					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); sortDropdownOpen = !sortDropdownOpen; }}>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+					<button
+						id="dl-sort-trigger"
+						type="button"
+						class="channel-dropdown-trigger"
+						aria-label="Sort downloads"
+						aria-haspopup="listbox"
+						aria-expanded={sortDropdownOpen}
+						aria-controls="dl-sort-menu"
+						onclick={(e) => { e.stopPropagation(); sortDropdownOpen = !sortDropdownOpen; }}
+					>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
 							<path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
 						</svg>
 						<span class="channel-dropdown-label">{
 							({ newest: 'Newest', oldest: 'Oldest', largest: 'Largest', smallest: 'Smallest', longest: 'Longest', shortest: 'Shortest', uploader: 'Uploader' } as Record<string, string>)[sortOption]
 						}</span>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={sortDropdownOpen}>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={sortDropdownOpen} aria-hidden="true">
 							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</button>
 					{#if sortDropdownOpen}
-						<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<div
+							id="dl-sort-menu"
+							role="listbox"
+							aria-labelledby="dl-sort-trigger"
+							class="channel-dropdown-menu"
+							tabindex="-1"
+							onclick={(e) => e.stopPropagation()}
+						>
 							<div class="channel-dropdown-options">
 								{#each [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['largest', 'Largest first'], ['smallest', 'Smallest first'], ['longest', 'Longest first'], ['shortest', 'Shortest first'], ['uploader', 'Uploader A–Z']] as [value, label]}
-									<button class="channel-dropdown-option" class:selected={sortOption === value} onclick={(e) => { e.stopPropagation(); sortOption = value as typeof sortOption; sortDropdownOpen = false; }}>{label}</button>
+									<button type="button" role="option" aria-selected={sortOption === value} class="channel-dropdown-option" class:selected={sortOption === value} onclick={(e) => { e.stopPropagation(); sortOption = value as typeof sortOption; sortDropdownOpen = false; }}>{label}</button>
 								{/each}
 							</div>
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div class="channel-dropdown-backdrop" onclick={() => (sortDropdownOpen = false)}></div>
 					{/if}
 				</div>
@@ -614,53 +783,89 @@
 			<div class="section-header-filters">
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') watchStateDropdownOpen = false; }}>
-					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); watchStateDropdownOpen = !watchStateDropdownOpen; }}>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+					<button
+						id="dl-watchstate-trigger"
+						type="button"
+						class="channel-dropdown-trigger"
+						aria-label="Filter by watch state"
+						aria-haspopup="listbox"
+						aria-expanded={watchStateDropdownOpen}
+						aria-controls="dl-watchstate-menu"
+						onclick={(e) => { e.stopPropagation(); watchStateDropdownOpen = !watchStateDropdownOpen; }}
+					>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
 							<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3" fill="none"/>
 							<path d="M5.5 5.5L9 7L5.5 8.5z" fill="currentColor"/>
 						</svg>
 						<span class="channel-dropdown-label">{
 							({ all: 'All states', unwatched: 'Unwatched', in_progress: 'In progress', watched: 'Watched' } as Record<string, string>)[watchStateFilter]
 						}</span>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={watchStateDropdownOpen}>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={watchStateDropdownOpen} aria-hidden="true">
 							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</button>
 					{#if watchStateDropdownOpen}
-						<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<div
+							id="dl-watchstate-menu"
+							role="listbox"
+							aria-labelledby="dl-watchstate-trigger"
+							class="channel-dropdown-menu"
+							tabindex="-1"
+							onclick={(e) => e.stopPropagation()}
+						>
 							<div class="channel-dropdown-options">
 								{#each [['all', 'All states'], ['unwatched', 'Unwatched'], ['in_progress', 'In progress'], ['watched', 'Watched']] as [value, label]}
-									<button class="channel-dropdown-option" class:selected={watchStateFilter === value} onclick={(e) => { e.stopPropagation(); watchStateFilter = value as typeof watchStateFilter; watchStateDropdownOpen = false; }}>{label}</button>
+									<button type="button" role="option" aria-selected={watchStateFilter === value} class="channel-dropdown-option" class:selected={watchStateFilter === value} onclick={(e) => { e.stopPropagation(); watchStateFilter = value as typeof watchStateFilter; watchStateDropdownOpen = false; }}>{label}</button>
 								{/each}
 							</div>
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div class="channel-dropdown-backdrop" onclick={() => (watchStateDropdownOpen = false)}></div>
 					{/if}
 				</div>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') resolutionDropdownOpen = false; }}>
-					<button class="channel-dropdown-trigger" onclick={(e) => { e.stopPropagation(); resolutionDropdownOpen = !resolutionDropdownOpen; }}>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+					<button
+						id="dl-resolution-trigger"
+						type="button"
+						class="channel-dropdown-trigger"
+						aria-label="Filter by resolution"
+						aria-haspopup="listbox"
+						aria-expanded={resolutionDropdownOpen}
+						aria-controls="dl-resolution-menu"
+						onclick={(e) => { e.stopPropagation(); resolutionDropdownOpen = !resolutionDropdownOpen; }}
+					>
+						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
 							<rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
 							<path d="M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
 						</svg>
 						<span class="channel-dropdown-label">{
 							({ all: 'All res', '4k': '4K+', '1080p': '1080p', '720p': '720p', '480p': '480p', other: 'Other' } as Record<string, string>)[resolutionFilter]
 						}</span>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={resolutionDropdownOpen}>
+						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={resolutionDropdownOpen} aria-hidden="true">
 							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 						</svg>
 					</button>
 					{#if resolutionDropdownOpen}
-						<div class="channel-dropdown-menu" onclick={(e) => e.stopPropagation()}>
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
+						<div
+							id="dl-resolution-menu"
+							role="listbox"
+							aria-labelledby="dl-resolution-trigger"
+							class="channel-dropdown-menu"
+							tabindex="-1"
+							onclick={(e) => e.stopPropagation()}
+						>
 							<div class="channel-dropdown-options">
 								{#each [['all', 'All resolutions'], ['4k', '4K+ (2160p+)'], ['1080p', '1080p'], ['720p', '720p'], ['480p', '480p'], ['other', 'Below 480p']] as [value, label]}
-									<button class="channel-dropdown-option" class:selected={resolutionFilter === value} onclick={(e) => { e.stopPropagation(); resolutionFilter = value; resolutionDropdownOpen = false; }}>{label}</button>
+									<button type="button" role="option" aria-selected={resolutionFilter === value} class="channel-dropdown-option" class:selected={resolutionFilter === value} onclick={(e) => { e.stopPropagation(); resolutionFilter = value; resolutionDropdownOpen = false; }}>{label}</button>
 								{/each}
 							</div>
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<!-- svelte-ignore a11y_click_events_have_key_events -->
 						<div class="channel-dropdown-backdrop" onclick={() => (resolutionDropdownOpen = false)}></div>
 					{/if}
 				</div>
@@ -689,12 +894,43 @@
 			</div>
 		</div>
 		{#if completedLoading}
-			<Skeleton count={6} variant="card" />
+			{#if viewMode === 'grid'}
+				<Skeleton count={6} variant="card" />
+			{:else}
+				<Skeleton count={8} variant="table-row" columns={4} />
+			{/if}
 		{:else if filteredCompletedDownloads.length === 0}
-			<div class="empty-state">
-				<p>{completedFilter === 'all' && watchStateFilter === 'all' ? 'No completed downloads yet' : watchStateFilter !== 'all' ? `No ${watchStateFilter.replace('_', ' ')} downloads` : `No ${completedFilter} downloads`}</p>
-				<p class="text-muted">{completedFilter === 'all' && watchStateFilter === 'all' ? 'Downloads will appear here once they finish' : 'Try changing your filters'}</p>
-			</div>
+			{@const noFilters = completedFilter === 'all' && watchStateFilter === 'all' && channelFilter === 'all' && !dateFrom && !dateTo && !searchQuery}
+			{#if noFilters}
+				<EmptyState
+					title="No completed downloads yet"
+					description="Paste a video URL above to download your first video. It will appear here once it finishes processing."
+					actionLabel="Download a video"
+					onAction={focusUrlInput}
+				>
+					{#snippet icon()}
+						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<rect x="2" y="3" width="20" height="14" rx="2" />
+							<path d="M10 8l5 3-5 3V8z" fill="currentColor" stroke="none" />
+							<line x1="8" y1="21" x2="16" y2="21" />
+							<line x1="12" y1="17" x2="12" y2="21" />
+						</svg>
+					{/snippet}
+				</EmptyState>
+			{:else}
+				<EmptyState
+					title={watchStateFilter !== 'all' ? `No ${watchStateFilter.replace('_', ' ')} downloads` : completedFilter !== 'all' ? `No ${completedFilter} downloads` : 'No downloads match your filters'}
+					description="Try adjusting or clearing your filters to see more results."
+					actionLabel="Clear filters"
+					onAction={clearFilters}
+				>
+					{#snippet icon()}
+						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+						</svg>
+					{/snippet}
+				</EmptyState>
+			{/if}
 		{:else if viewMode === 'grid'}
 			<div class="downloads-grid">
 				{#each filteredCompletedDownloads as download (download.id)}
@@ -720,7 +956,7 @@
 		{/if}
 
 		{#if selectionMode && selectedIds.size > 0}
-			<div class="bulk-bar">
+			<div class="bulk-bar" class:bulk-bar-success={bulkSuccess}>
 				<span class="bulk-count">{selectedIds.size} selected</span>
 				<div class="bulk-actions">
 					<button class="btn btn-sm btn-secondary" onclick={() => { selectedIds.size === filteredCompletedDownloads.length ? deselectAll() : selectAll(); }}>
@@ -734,6 +970,7 @@
 						</button>
 						{#if bulkPlaylistOpen}
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<!-- svelte-ignore a11y_click_events_have_key_events -->
 							<div class="bulk-playlist-backdrop" onclick={() => (bulkPlaylistOpen = false)}></div>
 							<div class="bulk-playlist-menu">
 								{#if bulkPlaylistLoading}
@@ -812,7 +1049,7 @@
 	.select-btn {
 		padding: var(--spacing-sm) var(--spacing-md);
 		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		color: var(--text-secondary);
 		font-size: 0.8125rem;
@@ -821,36 +1058,45 @@
 		transition: all 0.15s;
 	}
 
-	.select-btn:hover { color: var(--text-primary); border-color: rgba(255, 255, 255, 0.2); }
-	.select-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: #fff; }
+	.select-btn:hover { color: var(--text-primary); border-color: var(--color-border-translucent-hover); }
+	.select-btn.active { background: var(--accent-primary); border-color: var(--accent-primary); color: var(--color-text-on-accent); }
 
 	.tabs { display: flex; gap: 4px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 4px; }
 	.tab { padding: var(--spacing-sm) var(--spacing-xl); background: transparent; border: none; border-radius: var(--radius-md); color: var(--text-secondary); font-weight: 500; font-size: 0.875rem; cursor: pointer; transition: all var(--transition-fast); }
-	.tab:hover:not(.active) { color: var(--text-primary); background: rgba(255, 255, 255, 0.05); }
-	.tab.active { background: var(--accent-primary); color: #fff; font-weight: 600; }
+	.tab:hover:not(.active) { color: var(--text-primary); background: var(--color-overlay-hover-subtle); }
+	.tab.active { background: var(--accent-primary); color: var(--color-text-on-accent); font-weight: 600; }
 
-	.completed-filter { margin-bottom: 0; background: var(--bg-tertiary); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-md); }
+	.completed-filter { margin-bottom: 0; background: var(--bg-tertiary); border: 1px solid var(--color-border-translucent); border-radius: var(--radius-md); }
 	.completed-filter .tab { padding: var(--spacing-sm) var(--spacing-md); font-size: 0.8125rem; }
 
 	.channel-dropdown { position: relative; }
 	.channel-dropdown-trigger {
 		display: flex; align-items: center; gap: var(--spacing-sm);
 		padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-md);
+		border: 1px solid var(--color-border-translucent); border-radius: var(--radius-md);
 		color: var(--text-primary); font-size: 0.8125rem; cursor: pointer; white-space: nowrap;
 		transition: border-color 0.15s;
 	}
-	.channel-dropdown-trigger:hover { border-color: rgba(255, 255, 255, 0.2); }
+	.channel-dropdown-trigger:hover { border-color: var(--color-border-translucent-hover); }
 	.channel-dropdown-chevron { transition: transform 0.15s; }
 	.channel-dropdown-chevron.open { transform: rotate(180deg); }
 	.channel-dropdown-menu {
 		position: absolute; top: calc(100% + 4px); right: 0; min-width: 220px;
-		background: var(--bg-tertiary); border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); z-index: 100; overflow: hidden;
+		background: var(--bg-tertiary); border: 1px solid var(--color-border-translucent);
+		border-radius: var(--radius-md); box-shadow: var(--shadow-dropdown); z-index: 100; overflow: hidden;
+		transform-origin: top right;
+		animation: dropdown-in 160ms cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+	}
+	@keyframes dropdown-in {
+		from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+		to { opacity: 1; transform: translateY(0) scale(1); }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.channel-dropdown-menu { animation: none; }
 	}
 	.channel-dropdown-search {
 		width: 100%; padding: var(--spacing-sm) var(--spacing-md); background: transparent;
-		border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		border: none; border-bottom: 1px solid var(--color-border-translucent);
 		color: var(--text-primary); font-size: 0.85rem; outline: none;
 	}
 	.channel-dropdown-search::placeholder { color: var(--text-secondary); }
@@ -860,21 +1106,36 @@
 		background: transparent; border: none; color: var(--text-primary); font-size: 0.85rem;
 		text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 	}
-	.channel-dropdown-option:hover { background: rgba(255, 255, 255, 0.06); }
+	.channel-dropdown-option:hover { background: var(--color-overlay-hover); }
 	.channel-dropdown-option.selected { color: var(--accent-primary); }
 	.channel-dropdown-empty { padding: var(--spacing-sm) var(--spacing-md); color: var(--text-secondary); font-size: 0.85rem; }
 	.channel-dropdown-backdrop { position: fixed; inset: 0; z-index: 99; }
 	.sort-dropdown { position: relative; }
 
-	.downloads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: var(--spacing-lg); width: 100%; }
+	.downloads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-card-min-width), 1fr)); gap: var(--spacing-lg); width: 100%; }
 
 	.downloads-list { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; }
 
 	.bulk-bar {
 		position: sticky; bottom: var(--spacing-lg); display: flex; align-items: center; justify-content: space-between;
 		padding: var(--spacing-sm) var(--spacing-lg); background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--radius-md);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); margin-top: var(--spacing-lg); z-index: 50;
+		border: 1px solid var(--color-border-translucent); border-radius: var(--radius-md);
+		box-shadow: var(--shadow-dropdown); margin-top: var(--spacing-lg); z-index: 50;
+		transition: border-color 0.3s ease, box-shadow 0.3s ease;
+	}
+	.bulk-bar-success {
+		border-color: var(--color-status-success, var(--success));
+		box-shadow: 0 0 0 1px var(--color-status-success, var(--success)),
+			0 8px 24px -8px var(--color-status-success, var(--success));
+		animation: bulk-bar-flash 0.9s ease-out;
+	}
+	@keyframes bulk-bar-flash {
+		0% { background: var(--bg-tertiary); }
+		25% { background: color-mix(in srgb, var(--color-status-success, var(--success)) 18%, var(--bg-tertiary)); }
+		100% { background: var(--bg-tertiary); }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.bulk-bar-success { animation: none; }
 	}
 	.bulk-count { font-size: 0.875rem; font-weight: 500; color: var(--text-primary); }
 	.bulk-actions { display: flex; gap: var(--spacing-sm); align-items: center; flex-wrap: wrap; }
@@ -887,6 +1148,11 @@
 		border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
 		min-width: 180px; max-height: 240px; overflow-y: auto; z-index: 50;
 		padding: var(--spacing-xs);
+		transform-origin: bottom left;
+		animation: dropdown-in 160ms cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.bulk-playlist-menu { animation: none; }
 	}
 	.bulk-playlist-option {
 		display: block; width: 100%; text-align: left; padding: 7px var(--spacing-sm);
@@ -894,7 +1160,7 @@
 		font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);
 		transition: background var(--transition-fast); min-height: unset;
 	}
-	.bulk-playlist-option:hover { background: rgba(255, 255, 255, 0.06); }
+	.bulk-playlist-option:hover { background: var(--color-overlay-hover); }
 	.bulk-playlist-option:disabled { opacity: 0.5; cursor: not-allowed; }
 	.bulk-playlist-empty { padding: var(--spacing-sm) var(--spacing-sm); font-size: 0.875rem; color: var(--text-secondary); margin: 0; }
 
@@ -950,9 +1216,6 @@
 	.cache-usage-fill.warning { background: var(--warning); }
 	.cache-usage-fill.critical { background: var(--error); }
 
-	.empty-state { text-align: center; padding: var(--spacing-2xl); background: var(--bg-secondary); border: 1px dashed var(--border); border-radius: var(--radius-lg); }
-	.empty-state p { margin-bottom: var(--spacing-sm); }
-
 	.search-bar-section {
 		margin-bottom: var(--spacing-xl);
 		display: flex;
@@ -967,6 +1230,11 @@
 		align-items: center;
 		flex: 1;
 		min-width: 300px;
+	}
+
+	.search-error-wrapper {
+		flex-basis: 100%;
+		margin-top: var(--spacing-sm);
 	}
 
 	.search-icon {
@@ -991,7 +1259,7 @@
 	.search-input-main:focus {
 		outline: none;
 		border-color: var(--accent-primary);
-		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+		box-shadow: 0 0 0 3px var(--color-focus-ring-search);
 	}
 
 	.search-input-main::placeholder {
@@ -1014,7 +1282,7 @@
 
 	.search-clear-btn:hover {
 		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-overlay-hover);
 	}
 
 	.filter-dropdown { position: relative; }
@@ -1098,7 +1366,7 @@
 	.date-input {
 		padding: var(--spacing-sm) var(--spacing-sm);
 		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		color: var(--text-primary);
 		font-size: 0.8125rem;
@@ -1107,7 +1375,7 @@
 		transition: border-color 0.15s;
 	}
 
-	.date-input:hover { border-color: rgba(255, 255, 255, 0.2); }
+	.date-input:hover { border-color: var(--color-border-translucent-hover); }
 	.date-input:focus { outline: none; border-color: var(--accent-primary); }
 
 	.date-input::-webkit-calendar-picker-indicator {
@@ -1134,7 +1402,7 @@
 
 	.date-clear-btn:hover {
 		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-overlay-hover);
 	}
 
 	@media (max-width: 768px) {
@@ -1144,21 +1412,73 @@
 		.downloads-grid { grid-template-columns: 1fr; }
 		.search-bar-section { flex-direction: column; }
 		.search-bar-wrapper { min-width: unset; }
-		.search-input-main { font-size: 1rem; }
-		.section-header { flex-direction: column; align-items: stretch; }
-		.section-header-left { justify-content: space-between; }
-		.section-header-right { flex-wrap: wrap; }
-		.section-header-filters { flex-wrap: wrap; }
-		.completed-filter { width: 100%; }
-		.completed-filter .tab { flex: 1; text-align: center; }
-		.channel-dropdown, .sort-dropdown { flex: 1; min-width: 0; }
-		.channel-dropdown-trigger { width: 100%; justify-content: center; }
-		.channel-dropdown-label { overflow: hidden; text-overflow: ellipsis; }
-		.channel-dropdown-menu { left: 0; right: 0; min-width: unset; }
+		.search-input-main { font-size: 1rem; min-height: 44px; }
+		.search-clear-btn { min-width: 44px; min-height: 44px; }
+		.section-header { flex-direction: column; align-items: stretch; gap: var(--spacing-sm); }
+		.section-header-left { justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-sm); }
+		.section-header-right {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: var(--spacing-sm);
+			align-items: stretch;
+		}
+		.section-header-filters {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: var(--spacing-sm);
+		}
+		.select-btn { min-height: 44px; padding: var(--spacing-sm) var(--spacing-md); }
+		.completed-filter {
+			grid-column: 1 / -1;
+			width: 100%;
+		}
+		.completed-filter .tab { flex: 1; text-align: center; min-height: 44px; }
+		.channel-dropdown, .sort-dropdown { min-width: 0; }
+		.channel-dropdown-trigger {
+			width: 100%;
+			justify-content: space-between;
+			min-height: 44px;
+			padding: var(--spacing-sm) var(--spacing-md);
+			font-size: var(--font-size-sm);
+		}
+		.channel-dropdown-label {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			flex: 1;
+			text-align: left;
+		}
+		.channel-dropdown-menu {
+			left: 0;
+			right: 0;
+			min-width: unset;
+			max-width: calc(100vw - var(--spacing-md) * 2);
+		}
+		.channel-dropdown-search { min-height: 44px; font-size: 1rem; }
+		.channel-dropdown-option { padding: var(--spacing-sm) var(--spacing-md); min-height: 44px; display: flex; align-items: center; }
 		.bulk-bar { flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-md); }
 		.bulk-actions { width: 100%; flex-wrap: wrap; }
-		.bulk-actions .btn { flex: 1; min-width: 0; }
-		.date-range-filter { width: 100%; }
-		.date-input { flex: 1; min-width: 0; width: auto; }
+		.bulk-actions .btn { flex: 1; min-width: 0; min-height: 44px; }
+		.date-range-filter {
+			grid-column: 1 / -1;
+			width: 100%;
+			gap: var(--spacing-sm);
+		}
+		.date-input {
+			flex: 1;
+			min-width: 0;
+			width: auto;
+			min-height: 44px;
+			font-size: 1rem;
+			padding: var(--spacing-sm) var(--spacing-md);
+		}
+		.date-clear-btn { min-width: 44px; min-height: 44px; padding: var(--spacing-sm); }
+	}
+
+	@media (max-width: 480px) {
+		.section-header-right { grid-template-columns: 1fr; }
+		.section-header-filters { grid-template-columns: 1fr; }
+		.tabs { flex-wrap: wrap; }
+		.tab { padding: var(--spacing-sm) var(--spacing-md); }
 	}
 </style>

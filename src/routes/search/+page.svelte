@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { formatBytes, formatDuration } from '$lib/utils/format';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 
 	let query = $state('');
 	let videoType = $state('all');
@@ -65,6 +66,21 @@
 	function navigateToDownload(id: string) {
 		goto(`/downloads/${id}`);
 	}
+
+	let searchInputEl: HTMLInputElement | undefined = $state();
+
+	function focusSearch() {
+		searchInputEl?.focus();
+		searchInputEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
+
+	function clearSearchFilters() {
+		query = '';
+		videoType = 'all';
+		storagePool = 'all';
+		uploaderFilter = '';
+		searchInputEl?.focus();
+	}
 </script>
 
 <svelte:head>
@@ -85,6 +101,7 @@
 				class="search-input"
 				placeholder="Search downloads by title, description, or uploader..."
 				bind:value={query}
+				bind:this={searchInputEl}
 				autofocus
 			/>
 			{#if query}
@@ -131,38 +148,48 @@
 			<span>Searching...</span>
 		</div>
 	{:else if searched && results.length === 0}
-		<div class="status-message empty">
-			<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-				<circle cx="11" cy="11" r="8"/>
-				<path d="M21 21l-4.35-4.35" stroke-linecap="round"/>
-			</svg>
-			<p>No results found</p>
-			<p class="text-muted">Try different keywords or adjust your filters</p>
-		</div>
+		<EmptyState
+			title={query ? `No results found for "${query}"` : 'No results found'}
+			description="Try different keywords, check your spelling, or adjust the filters above."
+			actionLabel="Clear search and filters"
+			onAction={clearSearchFilters}
+		>
+			{#snippet icon()}
+				<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<circle cx="11" cy="11" r="8" />
+					<line x1="21" y1="21" x2="16.65" y2="16.65" />
+					<line x1="8" y1="8" x2="14" y2="14" />
+					<line x1="14" y1="8" x2="8" y2="14" />
+				</svg>
+			{/snippet}
+		</EmptyState>
 	{:else if searched}
 		<div class="results-header">
 			<span class="results-count">{total} result{total !== 1 ? 's' : ''}</span>
 		</div>
 		<div class="results-grid">
 			{#each results as result (result.id)}
-				<!-- svelte-ignore a11y_click_events_have_key_events -->
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="result-card" onclick={() => navigateToDownload(result.id)}>
+				<button
+					type="button"
+					class="result-card"
+					aria-label="Open {result.title || 'Untitled'}{result.uploader ? ` by ${result.uploader}` : ''}"
+					onclick={() => navigateToDownload(result.id)}
+				>
 					{#if result.thumbnail}
 						<div class="result-thumbnail">
 							<img src={result.thumbnail} alt="" />
 							{#if result.duration}
-								<span class="duration-badge">{formatDuration(result.duration)}</span>
+								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}">{formatDuration(result.duration)}</span>
 							{/if}
 						</div>
 					{:else}
-						<div class="result-thumbnail no-thumb">
+						<div class="result-thumbnail no-thumb" aria-hidden="true">
 							<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 								<rect x="2" y="2" width="20" height="20" rx="2"/>
 								<path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/>
 							</svg>
 							{#if result.duration}
-								<span class="duration-badge">{formatDuration(result.duration)}</span>
+								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}">{formatDuration(result.duration)}</span>
 							{/if}
 						</div>
 					{/if}
@@ -183,24 +210,30 @@
 							{/if}
 						</div>
 					</div>
-				</div>
+				</button>
 			{/each}
 		</div>
 	{:else}
-		<div class="status-message empty">
-			<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-				<circle cx="11" cy="11" r="8"/>
-				<path d="M21 21l-4.35-4.35" stroke-linecap="round"/>
-			</svg>
-			<p>Search your downloads</p>
-			<p class="text-muted">Find videos by title, description, or uploader</p>
-		</div>
+		<EmptyState
+			title="Search your downloads"
+			description="Find videos by title, description, or uploader across your cache and library."
+			actionLabel="Start typing"
+			onAction={focusSearch}
+			size="lg"
+		>
+			{#snippet icon()}
+				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<circle cx="11" cy="11" r="8" />
+					<line x1="21" y1="21" x2="16.65" y2="16.65" />
+				</svg>
+			{/snippet}
+		</EmptyState>
 	{/if}
 </div>
 
 <style>
 	.page {
-		max-width: 1400px;
+		max-width: var(--container-max-width);
 		margin: 0 auto;
 		width: 100%;
 	}
@@ -240,7 +273,7 @@
 	.search-input:focus {
 		outline: none;
 		border-color: var(--accent-primary);
-		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+		box-shadow: 0 0 0 3px var(--color-focus-ring-search);
 	}
 
 	.search-input::placeholder {
@@ -262,7 +295,7 @@
 
 	.search-clear:hover {
 		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-overlay-hover);
 	}
 
 	.filter-bar {
@@ -329,21 +362,6 @@
 		text-align: center;
 	}
 
-	.status-message.empty {
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-lg);
-	}
-
-	.status-message p {
-		margin: 0;
-	}
-
-	.status-message .text-muted {
-		color: var(--text-tertiary);
-		font-size: 0.875rem;
-	}
-
 	.spinner {
 		width: 24px;
 		height: 24px;
@@ -371,7 +389,7 @@
 
 	.results-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--grid-search-result-min-width), 1fr));
 		gap: var(--spacing-lg);
 		width: 100%;
 	}
@@ -382,15 +400,27 @@
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		cursor: pointer;
-		transition: all var(--transition-normal);
+		transition: transform var(--transition-normal), box-shadow var(--transition-normal),
+			border-color var(--transition-normal);
 		display: flex;
 		flex-direction: column;
+		padding: 0;
+		text-align: left;
+		font: inherit;
+		color: inherit;
+		width: 100%;
 	}
 
 	.result-card:hover {
-		border-color: var(--border-light);
-		transform: translateY(-2px);
-		box-shadow: var(--shadow-md);
+		border-color: var(--color-border-translucent-hover);
+		transform: translateY(-3px) scale(1.01);
+		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.06);
+	}
+
+	.result-card:focus-visible {
+		outline: none;
+		border-color: var(--color-accent-primary);
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 
 	.result-thumbnail {
@@ -419,12 +449,12 @@
 		bottom: var(--spacing-sm);
 		right: var(--spacing-sm);
 		padding: 2px 6px;
-		background: rgba(0, 0, 0, 0.8);
+		background: var(--color-overlay-heavy);
 		border-radius: var(--radius-sm);
 		font-size: 0.6875rem;
-		font-weight: 600;
-		color: #fff;
-		font-family: monospace;
+		font-weight: var(--font-weight-semibold);
+		color: var(--color-text-on-accent);
+		font-family: var(--font-family-mono);
 	}
 
 	.result-content {
@@ -471,13 +501,13 @@
 	}
 
 	.badge-library {
-		background: rgba(16, 185, 129, 0.15);
-		color: var(--success);
+		background: var(--color-status-success-bg);
+		color: var(--color-status-success);
 	}
 
 	.badge-cache {
-		background: rgba(59, 130, 246, 0.15);
-		color: var(--accent-primary);
+		background: var(--color-status-info-bg);
+		color: var(--color-accent-primary);
 	}
 
 	.badge-type {

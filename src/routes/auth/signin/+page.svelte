@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import Input from '$lib/components/ui/Input.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	let loading = $state(false);
+	let email = $state<string>(form?.email || '');
+	let password = $state<string>('');
 
 	let showOidc = $derived(data.oidcConfigured && (data.authMode === 'oidc' || data.authMode === 'both'));
 	let showPassword = $derived(data.authMode !== 'oidc' || data.fallback);
@@ -60,30 +64,32 @@
 					loading = false;
 				};
 			}}>
-				<div class="form-group">
-					<label for="email">Email</label>
-					<input
+				<FormField label="Email" for="email" required>
+					<Input
 						type="email"
 						id="email"
 						name="email"
-						value={form?.email || ''}
+						bind:value={email}
 						placeholder="you@example.com"
 						required
 						disabled={loading}
+						autocomplete="email"
 					/>
-				</div>
+				</FormField>
 
-				<div class="form-group">
-					<label for="password">Password</label>
-					<input
+				<FormField label="Password" for="password" required>
+					<Input
 						type="password"
 						id="password"
 						name="password"
+						bind:value={password}
 						placeholder="••••••••"
 						required
 						disabled={loading}
+						autocomplete="current-password"
+						showSuccess={false}
 					/>
-				</div>
+				</FormField>
 
 				<button type="submit" class="btn btn-primary" disabled={loading}>
 					{#if loading}
@@ -111,12 +117,12 @@
 
 	.signin-card {
 		width: 100%;
-		max-width: 360px;
-		background: var(--bg-elevated);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		max-width: var(--signin-card-max-width);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-lg);
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-card);
 	}
 
 	.logo {
@@ -125,9 +131,9 @@
 	}
 
 	.logo-gradient {
-		font-size: 2rem;
-		font-weight: 700;
-		background: linear-gradient(135deg, var(--accent-primary) 0%, #8b5cf6 100%);
+		font-size: var(--font-size-3xl);
+		font-weight: var(--font-weight-bold);
+		background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -140,56 +146,22 @@
 		font-size: 0.875rem;
 	}
 
-	.form-group {
-		margin-bottom: var(--spacing-md);
-	}
-
-	label {
-		display: block;
-		margin-bottom: var(--spacing-xs);
-		color: var(--text-primary);
-		font-weight: 500;
-		font-size: 0.8125rem;
-	}
-
-	input {
-		width: 100%;
-		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-secondary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: var(--radius-md);
-		color: var(--text-primary);
-		font-size: 0.875rem;
-		transition: var(--transition-fast);
-	}
-
-	input:focus {
-		outline: none;
-		border-color: var(--accent-primary);
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-	}
-
-	input:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
 	.success-message {
-		background: rgba(16, 185, 129, 0.1);
-		border: 1px solid var(--success);
+		background: var(--color-status-success-subtle);
+		border: 1px solid var(--color-status-success);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm) var(--spacing-md);
-		color: var(--success);
+		color: var(--color-status-success);
 		font-size: 0.8125rem;
 		margin-bottom: var(--spacing-md);
 	}
 
 	.error-message {
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid var(--error);
+		background: var(--color-status-error-bg);
+		border: 1px solid var(--color-status-error);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm) var(--spacing-md);
-		color: var(--error);
+		color: var(--color-status-error);
 		font-size: 0.8125rem;
 		margin-bottom: var(--spacing-md);
 	}
@@ -221,12 +193,12 @@
 		display: block;
 		width: 100%;
 		padding: var(--spacing-sm) var(--spacing-md);
-		background: var(--bg-secondary);
-		color: var(--text-primary);
-		border: 1px solid rgba(255, 255, 255, 0.2);
+		background: var(--color-bg-secondary);
+		color: var(--color-text-primary);
+		border: 1px solid var(--color-border-translucent-hover);
 		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 600;
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
 		text-align: center;
 		text-decoration: none;
 		cursor: pointer;
@@ -252,6 +224,6 @@
 		content: '';
 		flex: 1;
 		height: 1px;
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-border-translucent);
 	}
 </style>

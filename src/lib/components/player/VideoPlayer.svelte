@@ -437,6 +437,9 @@
 		seek(pct * duration);
 	}
 
+	// Track hover state on the larger interaction zone so the visible bar can expand
+	let progressHovered = $state(false);
+
 	// Touch support for progress bar
 	function handleProgressTouchStart(e: TouchEvent) {
 		progressDragging = true;
@@ -641,36 +644,41 @@
 
 	<!-- Custom controls overlay -->
 	<div class="player-controls" class:visible={controlsVisible || paused}>
-		<!-- Progress bar -->
+		<!-- Progress bar (large hit area wraps a thin visible bar) -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
-			class="progress-bar-track"
+			class="progress-bar-hitarea"
+			class:hovered={progressHovered || progressDragging}
 			onmousedown={handleProgressMouseDown}
 			ontouchstart={handleProgressTouchStart}
 			ontouchmove={handleProgressTouchMove}
 			ontouchend={handleProgressTouchEnd}
+			onmouseenter={() => (progressHovered = true)}
+			onmouseleave={() => (progressHovered = false)}
 			role="slider"
 			aria-label="Seek"
 			aria-valuenow={Math.floor(currentTime)}
 			aria-valuemin={0}
 			aria-valuemax={Math.floor(duration)}
 		>
-			<div class="progress-bar-buffered" style="width: {bufferedPct}%"></div>
-			<div class="progress-bar-played" style="width: {playedPct}%">
-				<div class="progress-bar-thumb"></div>
+			<div class="progress-bar-track">
+				<div class="progress-bar-buffered" style="width: {bufferedPct}%"></div>
+				<div class="progress-bar-played" style="width: {playedPct}%">
+					<div class="progress-bar-thumb"></div>
+				</div>
+				<!-- SponsorBlock segments -->
+				{#each segments as seg}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<div
+						class="sb-segment"
+						style="left: {(seg.segment[0] / duration) * 100}%; width: {((seg.segment[1] - seg.segment[0]) / duration) * 100}%;"
+						style:background-color={SEGMENT_COLORS[seg.category] || '#888'}
+						title="{CATEGORY_LABELS[seg.category] || seg.category} ({formatTime(seg.segment[0])} - {formatTime(seg.segment[1])})"
+						onmousedown={(e: MouseEvent) => e.stopPropagation()}
+						onclick={(e: MouseEvent) => { e.stopPropagation(); handleSegmentClick(seg); }}
+					></div>
+				{/each}
 			</div>
-			<!-- SponsorBlock segments -->
-			{#each segments as seg}
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div
-					class="sb-segment"
-					style="left: {(seg.segment[0] / duration) * 100}%; width: {((seg.segment[1] - seg.segment[0]) / duration) * 100}%;"
-					style:background-color={SEGMENT_COLORS[seg.category] || '#888'}
-					title="{CATEGORY_LABELS[seg.category] || seg.category} ({formatTime(seg.segment[0])} - {formatTime(seg.segment[1])})"
-					onmousedown={(e: MouseEvent) => e.stopPropagation()}
-					onclick={(e: MouseEvent) => { e.stopPropagation(); handleSegmentClick(seg); }}
-				></div>
-			{/each}
 		</div>
 
 		<div class="controls-row">
@@ -979,19 +987,28 @@
 		cursor: none;
 	}
 
-	/* Progress bar */
+	/* Progress bar — large invisible hit area wraps a thin visible track */
+	.progress-bar-hitarea {
+		position: relative;
+		width: 100%;
+		/* 4px visual bar + 10px padding top/bottom = 24px interaction zone */
+		padding: 10px 0;
+		cursor: pointer;
+		touch-action: none;
+	}
+
 	.progress-bar-track {
 		position: relative;
 		width: 100%;
 		height: 4px;
 		background: rgba(255, 255, 255, 0.2);
 		border-radius: 2px;
-		cursor: pointer;
+		pointer-events: none;
 		transition: height var(--transition-fast);
 	}
 
-	.progress-bar-track:hover {
-		height: 8px;
+	.progress-bar-hitarea.hovered .progress-bar-track {
+		height: 6px;
 	}
 
 	.progress-bar-buffered {
@@ -1028,7 +1045,7 @@
 		transition: opacity var(--transition-fast);
 	}
 
-	.progress-bar-track:hover .progress-bar-thumb {
+	.progress-bar-hitarea.hovered .progress-bar-thumb {
 		opacity: 1;
 	}
 
@@ -1041,6 +1058,7 @@
 		opacity: 0.7;
 		z-index: 2;
 		cursor: pointer;
+		pointer-events: auto;
 		transition: opacity var(--transition-fast);
 		min-width: 2px;
 	}
@@ -1402,6 +1420,23 @@
 		.ctrl-btn {
 			width: 44px;
 			height: 44px;
+		}
+
+		/* Expand the progress bar hit area to 44px tall for comfortable thumb dragging */
+		.progress-bar-hitarea {
+			padding: 20px 0;
+		}
+
+		/* Always show a slightly thicker bar on touch devices since there's no hover */
+		.progress-bar-track {
+			height: 5px;
+		}
+
+		.progress-bar-thumb {
+			opacity: 1;
+			width: 14px;
+			height: 14px;
+			right: -7px;
 		}
 
 		.time-display {

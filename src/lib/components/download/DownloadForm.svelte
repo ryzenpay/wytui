@@ -3,6 +3,7 @@
   import { addToast } from "$lib/stores/toast.svelte";
   import { onSSEEvent } from "$lib/stores/sse.svelte";
   import { csrfFetch } from "$lib/utils/fetch";
+  import Skeleton from "$lib/components/ui/Skeleton.svelte";
 
   let url = $state("");
   let selectedVideoProfileId = $state<string | null>(null);
@@ -1266,6 +1267,14 @@
       {/if}
     </div>
 
+    {#if !initialized}
+      <div class="prefs-skeleton" aria-label="Loading preferences">
+        <Skeleton count={2} variant="text" lineWidths={['30%', '60%']} />
+        <Skeleton count={1} variant="row" />
+        <Skeleton count={6} variant="grid" columns={3} />
+      </div>
+    {/if}
+
     {#if libraryConfigured}
       <label class="checkbox-label library-toggle">
         <input
@@ -2280,6 +2289,13 @@
     font-size: 0.75rem;
     color: var(--accent-primary);
     font-weight: 500;
+  }
+
+  .prefs-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin: var(--spacing-md) 0;
   }
 
   button[type="submit"] {

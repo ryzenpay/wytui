@@ -3,8 +3,11 @@
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
-	import { csrfFetch } from '$lib/utils/fetch';
+	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
 	import CheckIcon from '$lib/components/icons/CheckIcon.svelte';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
 
@@ -15,6 +18,8 @@
 	// Subscriptions state
 	let subscriptions = $state<any[]>([]);
 	let subsLoading = $state(false);
+	let subsError = $state<FetchError | null>(null);
+	let profilesError = $state<FetchError | null>(null);
 	let checkingNow = $state<Set<string>>(new Set());
 	let checkResult = $state<{ id: string; message: string } | null>(null);
 	let showSubsForm = $state(false);
@@ -106,39 +111,37 @@
 	});
 
 	async function loadProfiles() {
+		profilesError = null;
 		try {
-			const [profilesRes, settingsRes] = await Promise.all([
-				fetch('/api/profiles'),
-				fetch('/api/settings'),
+			const [profilesData, settings] = await Promise.all([
+				safeFetchJson<any[]>('/api/profiles'),
+				safeFetchJson<any>('/api/settings'),
 			]);
-			if (profilesRes.ok) {
-				profiles = await profilesRes.json();
-				const defaultProfile = profiles.find((p) => p.isDefault);
-				if (defaultProfile) {
-					subFormProfileId = defaultProfile.id;
-				}
+			profiles = profilesData;
+			const defaultProfile = profiles.find((p) => p.isDefault);
+			if (defaultProfile) {
+				subFormProfileId = defaultProfile.id;
 			}
-			if (settingsRes.ok) {
-				const settings = await settingsRes.json();
-				libraryConfigured = !!settings.libraryPath;
-				if (libraryConfigured) {
-					subFormSaveToLibrary = true;
-				}
+			libraryConfigured = !!settings.libraryPath;
+			if (libraryConfigured) {
+				subFormSaveToLibrary = true;
 			}
 		} catch (e) {
-			console.error('Failed to load profiles:', e);
+			profilesError = isFetchError(e)
+				? e
+				: { type: 'unknown', message: 'Failed to load profiles.', canRetry: true };
 		}
 	}
 
 	async function loadSubscriptions() {
 		subsLoading = true;
+		subsError = null;
 		try {
-			const res = await fetch('/api/subscriptions');
-			if (res.ok) {
-				subscriptions = await res.json();
-			}
+			subscriptions = await safeFetchJson<any[]>('/api/subscriptions');
 		} catch (e) {
-			console.error('Failed to load subscriptions:', e);
+			subsError = isFetchError(e)
+				? e
+				: { type: 'unknown', message: 'Failed to load subscriptions.', canRetry: true };
 		} finally {
 			subsLoading = false;
 		}
@@ -313,12 +316,17 @@
 		{#if showSubsForm}
 			<form class="form-card" onsubmit={handleSubsSubmit}>
 				<div class="form-row">
+					<FormField label="Channel/Playlist URL" for="sub-url" required>
+						<Input
+							type="url"
+							id="sub-url"
+							bind:value={subFormUrl}
+							required
+							placeholder="https://www.youtube.com/@channel"
+						/>
+					</FormField>
 					<div class="form-group">
-						<label for="sub-url">Channel/Playlist URL</label>
-						<input type="url" id="sub-url" bind:value={subFormUrl} required placeholder="https://www.youtube.com/@channel" />
-					</div>
-					<div class="form-group">
-						<label for="sub-profile">Download Profile</label>
+						<label for="sub-profile">Download Profile <span class="required-asterisk" aria-label="required">*</span></label>
 						<select id="sub-profile" bind:value={subFormProfileId} required>
 							{#each profiles as profile}
 								<option value={profile.id}>{profile.name}</option>
@@ -376,8 +384,26 @@
 			</form>
 		{/if}
 
+		{#if profilesError}
+			<div class="error-wrapper">
+				<ErrorMessage
+					error={profilesError}
+					onRetry={loadProfiles}
+					onDismiss={() => (profilesError = null)}
+				/>
+			</div>
+		{/if}
+
 		{#if subsLoading}
-			<Skeleton count={4} variant="card" />
+			<Skeleton count={5} variant="list" />
+		{:else if subsError}
+			<div class="error-wrapper">
+				<ErrorMessage
+					error={subsError}
+					onRetry={loadSubscriptions}
+					onDismiss={() => (subsError = null)}
+				/>
+			</div>
 		{:else if subscriptions.length === 0}
 			<div class="empty-state">
 				<p>No subscriptions yet</p>
@@ -629,6 +655,12 @@
 		font-weight: 500;
 	}
 
+	.required-asterisk {
+		color: var(--color-status-error);
+		font-weight: var(--font-weight-bold);
+		margin-left: var(--spacing-xs);
+	}
+
 	.checkbox-label {
 		display: flex;
 		align-items: center;
@@ -652,6 +684,10 @@
 		background: var(--bg-secondary);
 		border: 1px dashed var(--border);
 		border-radius: var(--radius-lg);
+	}
+
+	.error-wrapper {
+		margin-bottom: var(--spacing-md);
 	}
 
 	.empty-state p {

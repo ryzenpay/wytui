@@ -742,8 +742,22 @@
 			</button>
 		</div>
 	{:else if loading}
-		<div class="general-settings">
-			<Skeleton count={3} variant="row" />
+		<div class="settings-container">
+			<nav class="settings-nav" aria-hidden="true">
+				<div class="settings-nav-inner">
+					<Skeleton count={6} variant="text" lineWidths={['70%', '60%', '80%', '55%', '65%', '50%']} />
+				</div>
+			</nav>
+			<div class="general-settings">
+				<div class="settings-section">
+					<Skeleton count={1} variant="text" lineWidths={['40%']} />
+					<Skeleton count={4} variant="row" />
+				</div>
+				<div class="settings-section">
+					<Skeleton count={1} variant="text" lineWidths={['35%']} />
+					<Skeleton count={3} variant="row" />
+				</div>
+			</div>
 		</div>
 	{:else}
 		{#if settingsError}
@@ -2637,14 +2651,28 @@
 		.user-actions button {
 			flex: 1;
 			min-width: 0;
+			min-height: 44px;
 		}
 
 		.btn-lg {
 			width: 100%;
 		}
 
+		.tab {
+			min-height: 44px;
+		}
+
+		.form-group input[type='text'],
+		.form-group input[type='number'],
+		.form-group input[type='email'],
+		.form-group input[type='password'],
+		.form-group select {
+			min-height: 44px;
+		}
+
 		.modal-content {
 			margin: var(--spacing-sm);
+			max-width: calc(100vw - var(--spacing-md));
 		}
 
 		.modal-header,
@@ -2658,6 +2686,17 @@
 
 		.modal-actions button {
 			width: 100%;
+			min-height: 44px;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.settings-section {
+			padding: var(--spacing-sm);
+		}
+
+		.create-user-form {
+			padding: var(--spacing-sm);
 		}
 	}
 </style>

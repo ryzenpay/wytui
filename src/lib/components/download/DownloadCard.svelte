@@ -579,7 +579,8 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
-		transition: all var(--transition-normal);
+		transition: transform var(--transition-normal), box-shadow var(--transition-normal),
+			border-color var(--transition-normal);
 		flex-shrink: 0;
 		position: relative;
 		display: flex;
@@ -587,9 +588,17 @@
 	}
 
 	.download-card:hover {
-		border-color: var(--border-light);
-		transform: translateY(-2px);
-		box-shadow: var(--shadow-md);
+		border-color: var(--color-border-translucent-hover);
+		transform: translateY(-3px) scale(1.01);
+		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.06);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.download-card,
+		.download-card:hover {
+			transform: none;
+			transition: border-color var(--transition-fast);
+		}
 	}
 
 	.download-card.clickable,

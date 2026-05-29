@@ -1,27 +1,54 @@
 <script lang="ts">
 	import { getModalState } from '$lib/stores/modal.svelte';
+	import { trapFocus, uniqueId } from '$lib/utils/a11y';
 
 	let modalState = getModalState();
 
-	function handleOverlayKeydown(e: KeyboardEvent) {
-		if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-			e.preventDefault();
+	const titleId = uniqueId('modal-title');
+	const bodyId = uniqueId('modal-body');
+
+	let dialogEl: HTMLDivElement | null = $state(null);
+
+	$effect(() => {
+		if (modalState.isOpen && dialogEl) {
+			const release = trapFocus(dialogEl);
+			return release;
+		}
+	});
+
+	function handleOverlayClick(e: MouseEvent) {
+		if (e.target === e.currentTarget) {
 			modalState.cancel();
 		}
 	}
 
-	function handleModalKeydown(e: KeyboardEvent) {
-		e.stopPropagation();
+	function handleDialogKeydown(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			e.stopPropagation();
+			modalState.cancel();
+		}
 	}
 </script>
 
 {#if modalState.isOpen}
-	<div class="modal-overlay" onclick={modalState.cancel} onkeydown={handleOverlayKeydown} role="button" tabindex="0">
-		<div class="modal" onclick={(e) => e.stopPropagation()} onkeydown={handleModalKeydown} role="dialog" aria-modal="true" tabindex="-1">
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={handleOverlayClick}>
+		<div
+			bind:this={dialogEl}
+			class="modal"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby={titleId}
+			aria-describedby={bodyId}
+			tabindex="-1"
+			onkeydown={handleDialogKeydown}
+		>
 			<div class="modal-header">
-				<h3>{modalState.title}</h3>
+				<h3 id={titleId}>{modalState.title}</h3>
 			</div>
-			<div class="modal-body">
+			<div class="modal-body" id={bodyId}>
 				<p>{modalState.message}</p>
 			</div>
 			<div class="modal-footer">
@@ -45,13 +72,13 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--color-overlay-medium);
 		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
-		animation: fadeIn 150ms ease;
+		z-index: var(--z-modal);
+		animation: fadeIn var(--transition-fast);
 	}
 
 	@keyframes fadeIn {
@@ -64,13 +91,18 @@
 	}
 
 	.modal {
-		background: var(--bg-secondary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
-		max-width: 500px;
+		max-width: var(--modal-max-width);
 		width: 90%;
 		box-shadow: var(--shadow-xl);
 		animation: slideUp 200ms ease;
+		outline: none;
+	}
+
+	.modal:focus-visible {
+		box-shadow: var(--shadow-xl), 0 0 0 3px var(--color-focus-ring);
 	}
 
 	@keyframes slideUp {
@@ -86,13 +118,13 @@
 
 	.modal-header {
 		padding: var(--spacing-lg);
-		border-bottom: 1px solid var(--border);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.modal-header h3 {
 		margin: 0;
-		font-size: 1.25rem;
-		color: var(--text-primary);
+		font-size: var(--font-size-xl);
+		color: var(--color-text-primary);
 	}
 
 	.modal-body {
@@ -101,13 +133,13 @@
 
 	.modal-body p {
 		margin: 0;
-		color: var(--text-secondary);
-		line-height: 1.6;
+		color: var(--color-text-secondary);
+		line-height: var(--line-height-relaxed);
 	}
 
 	.modal-footer {
 		padding: var(--spacing-lg);
-		border-top: 1px solid var(--border);
+		border-top: 1px solid var(--color-border-default);
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--spacing-md);
@@ -118,28 +150,28 @@
 		padding: var(--spacing-sm) var(--spacing-lg);
 		border: none;
 		border-radius: var(--radius-md);
-		font-weight: 600;
+		font-weight: var(--font-weight-semibold);
 		cursor: pointer;
 		transition: var(--transition-fast);
 	}
 
 	.btn-primary {
-		background: var(--accent-primary);
-		color: white;
+		background: var(--color-accent-primary);
+		color: var(--color-text-on-accent);
 	}
 
 	.btn-primary:hover {
-		background: var(--accent-hover);
+		background: var(--color-accent-hover);
 	}
 
 	.btn-secondary {
-		background: var(--bg-tertiary);
-		color: var(--text-primary);
-		border: 1px solid var(--border);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-primary);
+		border: 1px solid var(--color-border-default);
 	}
 
 	.btn-secondary:hover {
-		background: var(--bg-hover);
+		background: var(--color-bg-hover);
 	}
 
 	@media (max-width: 768px) {
