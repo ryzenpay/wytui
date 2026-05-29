@@ -3,24 +3,32 @@
 	import { goto } from '$app/navigation';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
 
 	type Channel = { name: string; count: number; thumbnail: string | null };
 
 	let channels = $state<Channel[]>([]);
 	let loading = $state(true);
+	let error = $state<string | null>(null);
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let search = $state('');
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	onMount(() => loadChannels());
 
-	async function loadChannels(q = '') {
+	async function loadChannels(q = search) {
 		loading = true;
+		error = null;
 		try {
 			const res = await fetch(`/api/channels${q ? `?q=${encodeURIComponent(q)}` : ''}`);
-			if (res.ok) channels = await res.json();
-		} catch {
-			// ignore
+			if (res.ok) {
+				channels = await res.json();
+			} else {
+				error = `Failed to load channels (${res.status})`;
+			}
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to load channels';
 		} finally {
 			loading = false;
 		}
@@ -57,10 +65,12 @@
 
 	{#if loading}
 		<Skeleton count={12} variant="card" />
+	{:else if error}
+		<ErrorMessage {error} onRetry={() => loadChannels()} />
 	{:else if channels.length === 0}
-		<div class="empty-state">
-			<p>{search ? 'No channels match your search' : 'No completed downloads yet'}</p>
-		</div>
+		<EmptyState
+			title={search ? 'No channels match your search' : 'No completed downloads yet'}
+		/>
 	{:else if viewMode === 'list'}
 		<div class="channels-list">
 			{#each channels as channel}
@@ -183,15 +193,6 @@
 
 	.avatar-placeholder.small {
 		font-size: 0.875rem;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-lg);
-		color: var(--text-secondary);
 	}
 
 	.channels-grid {

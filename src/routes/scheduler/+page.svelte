@@ -4,6 +4,8 @@
 	import { csrfFetch } from '$lib/utils/fetch';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 	import PlayIcon from '$lib/components/icons/PlayIcon.svelte';
+	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 
 	interface Job {
 		name: string;
@@ -127,7 +129,9 @@
 		</div>
 
 		{#if loading}
-			<div class="loading">Loading scheduler data...</div>
+			<div class="settings-section">
+				<Skeleton variant="table-row" count={5} columns={5} />
+			</div>
 		{:else}
 			<div class="settings-section">
 				<h3>Registered Jobs</h3>
@@ -177,10 +181,11 @@
 			<div class="settings-section">
 				<h3>Recent Runs</h3>
 				{#if history.length === 0}
-					<div class="empty-state">
-						<p>No job runs recorded yet</p>
-						<p class="text-muted">Run a job manually or wait for scheduled execution</p>
-					</div>
+					<EmptyState
+						title="No job runs recorded yet"
+						description="Run a job manually or wait for scheduled execution"
+						variant="subtle"
+					/>
 				{:else}
 					<div class="table-wrapper">
 						<table class="data-table">
@@ -310,7 +315,7 @@
 
 	.job-name {
 		font-weight: 500;
-		font-family: var(--font-mono, monospace);
+		font-family: var(--font-family-mono);
 		font-size: 0.8125rem;
 	}
 
@@ -398,21 +403,6 @@
 	.btn-secondary:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.loading {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-xl);
-	}
-
-	.empty-state p {
-		margin-bottom: var(--spacing-sm);
 	}
 
 	@media (max-width: 768px) {

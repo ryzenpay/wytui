@@ -6,6 +6,7 @@
 	import { trapFocus } from '$lib/utils/a11y';
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 	import ZapIcon from '$lib/components/icons/ZapIcon.svelte';
 	import BellIcon from '$lib/components/icons/BellIcon.svelte';
@@ -1677,7 +1678,7 @@
 					{/each}
 
 					{#if users.length === 0}
-						<div class="empty-state">No users found</div>
+						<EmptyState title="No users found" variant="subtle" size="sm" />
 					{/if}
 				</div>
 			</div>
@@ -2415,12 +2416,6 @@
 	.btn-secondary:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
 	}
 
 	.badge-you {

@@ -1328,7 +1328,7 @@
 
 	.subtitle-match-time {
 		flex-shrink: 0;
-		font-family: var(--font-mono, monospace);
+		font-family: var(--font-family-mono);
 		font-size: 0.8125rem;
 		color: var(--accent-primary);
 		padding-top: 1px;

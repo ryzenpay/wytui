@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
 
 	let analytics = $state<any>(null);
 	let analyticsLoading = $state(true);
+	let error = $state<string | null>(null);
 
 	onMount(() => {
 		loadAnalytics();
@@ -11,13 +14,17 @@
 
 	async function loadAnalytics() {
 		analyticsLoading = true;
+		error = null;
 		try {
 			const res = await fetch('/api/analytics');
 			if (res.ok) {
 				analytics = await res.json();
+			} else {
+				error = `Failed to load analytics (${res.status})`;
 			}
 		} catch (e) {
 			console.error('Failed to load analytics:', e);
+			error = e instanceof Error ? e.message : 'Failed to load analytics';
 		} finally {
 			analyticsLoading = false;
 		}
@@ -39,6 +46,8 @@
 <div class="page">
 	{#if analyticsLoading}
 		<Skeleton count={6} variant="row" />
+	{:else if error}
+		<ErrorMessage {error} onRetry={loadAnalytics} />
 	{:else if analytics}
 		<div class="settings-section">
 			<div class="section-header">
@@ -114,7 +123,7 @@
 						</div>
 					{/each}
 					{#if analytics.topUploaders.length === 0}
-						<div class="empty-state">No data yet</div>
+						<EmptyState title="No data yet" variant="subtle" size="sm" />
 					{/if}
 				</div>
 			</div>
@@ -129,7 +138,7 @@
 						</div>
 					{/each}
 					{#if analytics.activeSubscriptions.length === 0}
-						<div class="empty-state">No subscriptions yet</div>
+						<EmptyState title="No subscriptions yet" variant="subtle" size="sm" />
 					{/if}
 				</div>
 			</div>
@@ -139,14 +148,15 @@
 			<h2>Downloads Per Day (Last 30 Days)</h2>
 			<div class="chart">
 				{#each analytics.downloadsPerDay as day}
+					{@const maxDailyDownloads = Math.max(1, ...analytics.downloadsPerDay.map((d: any) => d.count))}
 					<div class="chart-bar-container">
-						<div class="chart-bar" style="height: {Math.min(100, (day.count / Math.max(...analytics.downloadsPerDay.map((d: any) => d.count))) * 100)}%"></div>
+						<div class="chart-bar" style="height: {Math.min(100, (day.count / maxDailyDownloads) * 100)}%"></div>
 						<div class="chart-label">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
 						<div class="chart-value">{day.count}</div>
 					</div>
 				{/each}
 				{#if analytics.downloadsPerDay.length === 0}
-					<div class="empty-state">No downloads in the last 30 days</div>
+					<EmptyState title="No downloads in the last 30 days" variant="subtle" size="sm" />
 				{/if}
 			</div>
 		</div>
@@ -215,12 +225,6 @@
 
 	.btn-icon svg {
 		display: block;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
 	}
 
 	.analytics-grid {

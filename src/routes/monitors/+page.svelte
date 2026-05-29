@@ -5,6 +5,7 @@
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import CheckIcon from '$lib/components/icons/CheckIcon.svelte';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
 
@@ -273,10 +274,10 @@
 		{#if monitorsLoading}
 			<Skeleton count={3} variant="card" />
 		{:else if monitors.length === 0}
-			<div class="empty-state">
-				<p>No monitors yet</p>
-				<p class="text-muted">Add a livestream URL to start monitoring</p>
-			</div>
+			<EmptyState
+				title="No monitors yet"
+				description="Add a livestream URL to start monitoring"
+			/>
 		{:else}
 			<div class="content-grid">
 				{#each monitors as monitor}
@@ -285,20 +286,20 @@
 							<div class="edit-form">
 								<div class="form-row">
 									<div class="form-group">
-										<label>URL</label>
-										<input type="url" bind:value={editMonUrl} />
+										<label for="edit-monitor-url">URL</label>
+										<input type="url" id="edit-monitor-url" bind:value={editMonUrl} />
 									</div>
 									<div class="form-group">
-										<label>Platform</label>
-										<select bind:value={editMonType}>
+										<label for="edit-monitor-type">Platform</label>
+										<select id="edit-monitor-type" bind:value={editMonType}>
 											<option value="YOUTUBE_LIVE">YouTube Live</option>
 											<option value="TWITCH">Twitch</option>
 										</select>
 									</div>
 								</div>
 								<div class="form-group">
-									<label>Profile</label>
-									<select bind:value={editMonProfileId}>
+									<label for="edit-monitor-profile">Profile</label>
+									<select id="edit-monitor-profile" bind:value={editMonProfileId}>
 										{#each profiles as profile}
 											<option value={profile.id}>{profile.name}</option>
 										{/each}
@@ -455,18 +456,6 @@
 
 	.checkbox-label input {
 		width: auto;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-lg);
-	}
-
-	.empty-state p {
-		margin-bottom: var(--spacing-sm);
 	}
 
 

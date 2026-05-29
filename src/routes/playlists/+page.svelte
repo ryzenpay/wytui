@@ -6,6 +6,7 @@
 	import { csrfFetch } from '$lib/utils/fetch';
 	import { trapFocus } from '$lib/utils/a11y';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
 
 	let playlists = $state<any[]>([]);
@@ -257,10 +258,10 @@
 		{#if loading}
 			<Skeleton count={4} variant="card" />
 		{:else if playlists.length === 0}
-			<div class="empty-state">
-				<p>No playlists yet</p>
-				<p class="text-muted">Create a playlist to organize your downloads</p>
-			</div>
+			<EmptyState
+				title="No playlists yet"
+				description="Create a playlist to organize your downloads"
+			/>
 		{:else if viewMode === 'list'}
 			<div class="content-list">
 				{#each playlists as playlist}
@@ -388,19 +389,6 @@
 		color: var(--error, #ef4444);
 		font-size: 0.85rem;
 		margin: var(--spacing-xs) 0 var(--spacing-md);
-	}
-
-
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-lg);
-	}
-
-	.empty-state p {
-		margin-bottom: var(--spacing-sm);
 	}
 
 	.header-right {
