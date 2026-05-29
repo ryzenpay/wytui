@@ -430,7 +430,7 @@
 	}
 
 	function seekToMousePosition(e: MouseEvent) {
-		const bar = wrapperEl?.querySelector('.progress-bar-track') as HTMLElement;
+		const bar = wrapperEl?.querySelector('.progress-bar-hitarea') as HTMLElement;
 		if (!bar || !duration) return;
 		const rect = bar.getBoundingClientRect();
 		const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -458,7 +458,7 @@
 	}
 
 	function seekToTouchPosition(e: TouchEvent) {
-		const bar = wrapperEl?.querySelector('.progress-bar-track') as HTMLElement;
+		const bar = wrapperEl?.querySelector('.progress-bar-hitarea') as HTMLElement;
 		if (!bar || !duration || !e.touches[0]) return;
 		const rect = bar.getBoundingClientRect();
 		const pct = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
