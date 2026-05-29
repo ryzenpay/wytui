@@ -57,6 +57,9 @@
 <style>
 	.view-toggle {
 		display: inline-flex;
+		align-items: stretch;
+		height: var(--control-height);
+		box-sizing: border-box;
 		background: var(--bg-tertiary);
 		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
@@ -67,8 +70,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 28px;
-		height: 28px;
+		width: 32px;
 		padding: 0;
 		border: none;
 		border-radius: var(--radius-sm);

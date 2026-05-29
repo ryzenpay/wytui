@@ -129,6 +129,9 @@
 	--transition-normal: 250ms ease;
 	--transition-slow: 350ms ease;
 
+	/* ---------- Control height (buttons, dropdowns, toggles, inputs in toolbars) ---------- */
+	--control-height: 38px;
+
 	/* ---------- Icon sizes ---------- */
 	--icon-xs: 14px;
 	--icon-sm: 16px;
