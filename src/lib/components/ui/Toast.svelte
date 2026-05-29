@@ -31,13 +31,13 @@
 					<div class="toast-content">
 						<span class="toast-message">{toast.message}</span>
 						{#if toast.details && toast.details.length > 0}
-							<button class="toast-details-toggle" onclick={() => toggleDetails(toast.id)}>
+							<button type="button" class="toast-details-toggle" aria-expanded={expanded.has(toast.id)} onclick={() => toggleDetails(toast.id)}>
 								{expanded.has(toast.id) ? 'Hide' : 'Show'} details ({toast.details.length})
 							</button>
 						{/if}
 					</div>
 					{#if !toast.sticky}
-						<button class="toast-close" aria-label="Dismiss" onclick={() => removeToast(toast.id)}>
+						<button type="button" class="toast-close" aria-label="Dismiss" onclick={() => removeToast(toast.id)}>
 							<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
 						</button>
 					{/if}
@@ -244,6 +244,22 @@
 
 		.toast {
 			max-width: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toast {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+
+		.toast-spinner {
+			animation: none;
+		}
+
+		.toast-progress-fill {
+			transition: none;
 		}
 	}
 </style>

@@ -509,4 +509,25 @@
 			padding: var(--spacing-md);
 		}
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.health-overlay {
+			animation: none;
+			opacity: 1;
+		}
+
+		.health-panel {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+
+		.spinning {
+			animation: none;
+		}
+
+		.health-progress-bar {
+			transition: none;
+		}
+	}
 </style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+
 	let {
 		tags = [],
 		onUpdate,
@@ -8,11 +10,11 @@
 	} = $props();
 
 	let input = $state('');
-	let suggestions = $state<string[]>([]);
 	let allTags = $state<string[]>([]);
 	let showSuggestions = $state(false);
+	let blurTimer: ReturnType<typeof setTimeout>;
 
-	$effect(() => {
+	onMount(() => {
 		fetch('/api/tags')
 			.then((r) => (r.ok ? r.json() : []))
 			.then((data) => {
@@ -20,6 +22,8 @@
 			})
 			.catch(() => {});
 	});
+
+	onDestroy(() => clearTimeout(blurTimer));
 
 	let filtered = $derived(
 		input.trim()
@@ -56,10 +60,10 @@
 
 <div class="tag-editor">
 	<div class="tag-chips">
-		{#each tags as tag}
+		{#each tags as tag (tag)}
 			<span class="tag-chip">
 				{tag}
-				<button class="tag-remove" onclick={() => removeTag(tag)}>
+				<button type="button" class="tag-remove" onclick={() => removeTag(tag)} aria-label="Remove tag {tag}">
 					<svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
 				</button>
 			</span>
@@ -72,12 +76,12 @@
 				bind:value={input}
 				onkeydown={handleKeydown}
 				onfocus={() => showSuggestions = true}
-				onblur={() => setTimeout(() => showSuggestions = false, 150)}
+				onblur={() => { clearTimeout(blurTimer); blurTimer = setTimeout(() => showSuggestions = false, 150); }}
 			/>
 			{#if showSuggestions && filtered.length > 0}
 				<div class="tag-suggestions">
-					{#each filtered.slice(0, 8) as suggestion}
-						<button class="tag-suggestion" onmousedown={() => addTag(suggestion)}>
+					{#each filtered.slice(0, 8) as suggestion (suggestion)}
+						<button type="button" class="tag-suggestion" onmousedown={() => addTag(suggestion)}>
 							{suggestion}
 						</button>
 					{/each}
@@ -163,7 +167,7 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 		margin-top: var(--spacing-xs);
-		z-index: 10;
+		z-index: var(--z-dropdown);
 		max-height: 200px;
 		overflow-y: auto;
 		box-shadow: var(--shadow-lg);
@@ -181,8 +185,16 @@
 		cursor: pointer;
 	}
 
-	.tag-suggestion:hover {
-		background: rgba(255, 255, 255, 0.06);
+	.tag-suggestion:hover,
+	.tag-suggestion:focus-visible {
+		background: var(--color-overlay-hover);
 		color: var(--text-primary);
+		outline: none;
+	}
+
+	.tag-remove:focus-visible {
+		outline: none;
+		color: var(--error);
+		box-shadow: 0 0 0 2px var(--color-focus-ring);
 	}
 </style>

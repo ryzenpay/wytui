@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
+	import { focusOnMount } from '$lib/utils/a11y';
 	import ListPlusIcon from '$lib/components/icons/ListPlusIcon.svelte';
 
 	let { downloadId }: { downloadId: string } = $props();
@@ -182,7 +183,7 @@
 								type="text"
 								placeholder="Playlist name"
 								bind:value={newName}
-								autofocus
+								use:focusOnMount
 								maxlength={100}
 							/>
 							<button class="btn btn-sm btn-primary" type="submit" disabled={creating || !newName.trim()}>

@@ -285,4 +285,12 @@
 	.char-count.over-limit {
 		color: var(--color-status-error);
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.success-icon {
+			animation: none;
+			transform: none;
+			opacity: 1;
+		}
+	}
 </style>

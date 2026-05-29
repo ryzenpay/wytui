@@ -14,6 +14,7 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast, addStickyToast, updateToast, resolveToast } from '$lib/stores/toast.svelte';
 	import { formatBytes, formatTimestamp } from '$lib/utils/format';
+	import { focusOnMount } from '$lib/utils/a11y';
 	import CheckSquareIcon from '$lib/components/icons/CheckSquareIcon.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
 	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
@@ -720,7 +721,7 @@
 								tabindex="-1"
 								onclick={(e) => e.stopPropagation()}
 							>
-								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." aria-label="Search channels" bind:value={channelSearch} autofocus />
+								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." aria-label="Search channels" bind:value={channelSearch} use:focusOnMount />
 								<div class="channel-dropdown-options">
 									<button type="button" role="option" aria-selected={channelFilter === 'all'} class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={(e) => { e.stopPropagation(); channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
 									{#each filteredChannelOptions as channel}
