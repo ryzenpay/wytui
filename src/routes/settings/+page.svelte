@@ -170,10 +170,12 @@
 		}
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		loadApiKeys();
 		if (isAdmin) {
-			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
+			// Fire-and-forget: onMount must stay synchronous so the cleanup
+			// it returns below is treated as a teardown, not a Promise.
+			void Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
 		}
 
 		// Set up Intersection Observer to track active section
