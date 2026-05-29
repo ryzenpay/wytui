@@ -2,7 +2,7 @@ import { prisma } from '../db';
 import { sseEmitter } from '../sse/emitter';
 import { DownloadStatus } from '@prisma/client';
 import { copyFile, unlink, mkdir, access, writeFile } from 'fs/promises';
-import { join, basename, resolve, extname } from 'path';
+import { join, basename, resolve, extname, sep } from 'path';
 import { musicMetadataService } from './music-metadata.service';
 import { ytdlpService } from './ytdlp.service';
 import { plexService } from './plex.service';
@@ -30,7 +30,7 @@ class LibraryService {
 
 		const resolvedLibrary = resolve(targetLibrary);
 		const resolvedFile = resolve(download.filepath);
-		if (resolvedFile.startsWith(resolvedLibrary + '/')) {
+		if (resolvedFile.startsWith(resolvedLibrary + sep)) {
 			throw new Error('Already in library');
 		}
 
@@ -69,7 +69,7 @@ class LibraryService {
 		}
 
 		const albumPath = resolve(targetLibrary, artistDir, albumDir);
-		if (!albumPath.startsWith(resolvedLibrary)) {
+		if (albumPath !== resolvedLibrary && !albumPath.startsWith(resolvedLibrary + sep)) {
 			throw new Error('Invalid path');
 		}
 
@@ -127,7 +127,7 @@ class LibraryService {
 			: basename(download.filepath, ext);
 
 		let videoDir = resolve(targetLibrary, uploaderDir, baseFilename);
-		if (!videoDir.startsWith(resolvedLibrary)) {
+		if (!videoDir.startsWith(resolvedLibrary + sep)) {
 			throw new Error('Invalid uploader name');
 		}
 
@@ -339,7 +339,44 @@ class LibraryService {
 		return candidates.length;
 	}
 
+	/**
+	 * If more than this fraction of considered files appear missing in a single pass,
+	 * assume a storage outage rather than genuine deletions and abort to avoid wiping records.
+	 */
+	private static readonly RECONCILE_ABORT_FRACTION = 0.5;
+	private static readonly RECONCILE_MIN_FOR_FRACTION = 4;
+
 	async reconcileFiles(): Promise<number> {
+		const settings = await this.getSettings();
+
+		// Determine which configured storage roots are currently reachable. If a root is
+		// unreachable (e.g. an NFS/SMB mount or Docker volume dropped), every file under it
+		// looks "missing" — skip those files instead of deleting the whole library.
+		const configuredRoots = [
+			settings.downloadPath,
+			settings.libraryPath,
+			settings.musicLibraryPath,
+		].filter((p): p is string => !!p);
+
+		const unavailableRoots: string[] = [];
+		for (const root of configuredRoots) {
+			try {
+				await access(resolve(root));
+			} catch {
+				unavailableRoots.push(resolve(root));
+			}
+		}
+		if (unavailableRoots.length > 0) {
+			console.warn(
+				`[LibraryService] Reconciliation: storage root(s) unreachable, skipping files under them: ${unavailableRoots.join(', ')}`
+			);
+		}
+
+		const isUnderUnavailableRoot = (filepath: string): boolean => {
+			const resolved = resolve(filepath);
+			return unavailableRoots.some((root) => resolved === root || resolved.startsWith(root + sep));
+		};
+
 		const downloads = await prisma.download.findMany({
 			where: {
 				status: DownloadStatus.COMPLETED,
@@ -348,13 +385,40 @@ class LibraryService {
 			select: { id: true, filepath: true, userId: true, storagePool: true },
 		});
 
-		let removed = 0;
+		// First pass: determine which files are actually missing (no deletions yet) so we can
+		// apply a circuit-breaker before destroying any records.
+		const missing: typeof downloads = [];
+		let checked = 0;
 		for (const download of downloads) {
 			if (!download.filepath) continue;
+			if (isUnderUnavailableRoot(download.filepath)) continue;
 
+			checked++;
 			try {
 				await access(download.filepath);
 			} catch {
+				missing.push(download);
+			}
+		}
+
+		// Circuit-breaker: a sudden disappearance of most files almost always means an outage,
+		// not that the user deleted everything. Abort loudly instead of mass-deleting records.
+		if (
+			missing.length >= LibraryService.RECONCILE_MIN_FOR_FRACTION &&
+			missing.length / checked >= LibraryService.RECONCILE_ABORT_FRACTION
+		) {
+			console.error(
+				`[LibraryService] Reconciliation ABORTED: ${missing.length}/${checked} files appear missing ` +
+				`(>= ${LibraryService.RECONCILE_ABORT_FRACTION * 100}%). Assuming a storage outage; no records were removed.`
+			);
+			return 0;
+		}
+
+		let removed = 0;
+		for (const download of missing) {
+			if (!download.filepath) continue;
+
+			{
 				if (download.storagePool === 'library') {
 					await prisma.download.update({
 						where: { id: download.id },

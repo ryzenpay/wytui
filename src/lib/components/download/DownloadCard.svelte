@@ -328,7 +328,7 @@
 				<img
 					class="thumbnail-img"
 					src={download.thumbnail}
-					alt=""
+					alt={download.title || 'Thumbnail'}
 					onerror={() => thumbnailFailed = true}
 				/>
 			{/if}

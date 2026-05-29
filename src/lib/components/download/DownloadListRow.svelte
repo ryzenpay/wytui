@@ -41,7 +41,7 @@
 		{#if download.thumbnail && !thumbnailFailed}
 			<img
 				src={download.thumbnail}
-				alt=""
+				alt={download.title || 'Thumbnail'}
 				onerror={() => (thumbnailFailed = true)}
 			/>
 		{:else}

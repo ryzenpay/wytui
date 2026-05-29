@@ -177,7 +177,7 @@
 				>
 					{#if result.thumbnail}
 						<div class="result-thumbnail">
-							<img src={result.thumbnail} alt="" />
+							<img src={result.thumbnail} alt={result.title || 'Thumbnail'} />
 							{#if result.duration}
 								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}">{formatDuration(result.duration)}</span>
 							{/if}

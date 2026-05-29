@@ -45,6 +45,9 @@ class DownloadService {
 	// Track active download processes
 	private activeProcesses = new Map<string, ChildProcess>();
 
+	// Last time we saw progress/output from a download's process (for stall detection)
+	private lastActivity = new Map<string, number>();
+
 	// Track download ownership for SSE filtering
 	private downloadOwners = new Map<string, string>();
 
@@ -70,11 +73,24 @@ class DownloadService {
 
 	/** Drop all per-download bookkeeping for a finished/cancelled download. */
 	private clearDownloadState(downloadId: string): void {
+		// Cancel any pending debounced progress write so it can't overwrite a
+		// completed/failed/cancelled record's fields a second later.
+		this.clearProgressDebounce(downloadId);
 		this.processingSteps.delete(downloadId);
 		this.downloadDurations.delete(downloadId);
 		this.downloadTaskIds.delete(downloadId);
 		this.lastPostProcessModule.delete(downloadId);
 		this.lastErrorLine.delete(downloadId);
+		this.lastActivity.delete(downloadId);
+	}
+
+	/** Cancel and forget any pending debounced progress write for a download. */
+	private clearProgressDebounce(downloadId: string): void {
+		const debounceTimeout = this.updateDebounce.get(downloadId);
+		if (debounceTimeout) {
+			clearTimeout(debounceTimeout);
+			this.updateDebounce.delete(downloadId);
+		}
 	}
 
 	private emitToOwner(event: string, data: any, downloadId: string): void {
@@ -419,11 +435,41 @@ class DownloadService {
 
 		// Store process reference
 		this.activeProcesses.set(downloadId, proc);
+		this.lastActivity.set(downloadId, Date.now());
 
-		// Wait for completion
+		// Wait for completion, with a stall watchdog so a hung yt-dlp can't hold a
+		// concurrency slot forever.
+		const stallTimeoutMs = (settings.downloadStallTimeoutSeconds ?? 600) * 1000;
 		await new Promise<void>((resolve, reject) => {
-			proc.on('close', async (code) => {
+			let settled = false;
+
+			const cleanup = () => {
+				if (watchdog) clearInterval(watchdog);
 				this.activeProcesses.delete(downloadId);
+				this.lastActivity.delete(downloadId);
+			};
+
+			const watchdog = stallTimeoutMs > 0
+				? setInterval(() => {
+					const last = this.lastActivity.get(downloadId) ?? Date.now();
+					if (Date.now() - last > stallTimeoutMs) {
+						if (settled) return;
+						settled = true;
+						console.error(
+							`[DownloadService] Download ${downloadId} stalled (no progress for ` +
+							`${Math.round(stallTimeoutMs / 1000)}s) — killing process`
+						);
+						ytdlpService.killProcess(proc).catch(() => {});
+						cleanup();
+						reject(new Error(`Download stalled (no progress for ${Math.round(stallTimeoutMs / 1000)}s)`));
+					}
+				}, 15000)
+				: null;
+
+			proc.on('close', async (code) => {
+				if (settled) return;
+				settled = true;
+				cleanup();
 
 				if (code === 0) {
 					await this.completeDownload(downloadId);
@@ -435,7 +481,9 @@ class DownloadService {
 			});
 
 			proc.on('error', (error) => {
-				this.activeProcesses.delete(downloadId);
+				if (settled) return;
+				settled = true;
+				cleanup();
 				reject(error);
 			});
 		});
@@ -453,6 +501,9 @@ class DownloadService {
 	]);
 
 	private handleProgress(downloadId: string, data: any): void {
+		// Record activity for the stall watchdog (any output counts as progress).
+		this.lastActivity.set(downloadId, Date.now());
+
 		// Handle file destination info (only for media files, not subtitles/thumbnails)
 		if (data.type === 'destination' && data.filepath) {
 			const filepath = data.filepath;
@@ -981,23 +1032,29 @@ class DownloadService {
 	 * Get active downloads
 	 */
 	async getActiveDownloads(userId?: string): Promise<any[]> {
-		const downloads = await prisma.download.findMany({
-			where: {
-				userId,
-				status: {
-					in: [
-						DownloadStatus.PENDING,
-						DownloadStatus.FETCHING_INFO,
-						DownloadStatus.DOWNLOADING,
-						DownloadStatus.PROCESSING,
-					],
-				},
+		// Guard against Prisma treating `{ userId: undefined }` as "no filter", which would
+		// leak every user's active downloads to an anonymous SSE connection.
+		const where: any = {
+			status: {
+				in: [
+					DownloadStatus.PENDING,
+					DownloadStatus.FETCHING_INFO,
+					DownloadStatus.DOWNLOADING,
+					DownloadStatus.PROCESSING,
+				],
 			},
+		};
+		if (userId != null) {
+			where.userId = userId;
+		}
+
+		const downloads = await prisma.download.findMany({
+			where,
 			include: { profile: true },
 			orderBy: { createdAt: 'desc' },
 		});
 
-		return downloads.map((d) => {
+		return downloads.map((d: any) => {
 			const serialized = serializeDownload(d);
 			const step = this.processingSteps.get(d.id);
 			if (step) serialized.processingStep = step;

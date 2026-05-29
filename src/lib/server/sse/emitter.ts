@@ -28,7 +28,9 @@ class SSEEmitter {
 					try {
 						controller.enqueue('event: ping\ndata: {}\n\n');
 					} catch {
-						clearInterval(heartbeat);
+						// Connection is dead — drop the client entirely so broadcasts stop
+						// iterating over it (clearing the interval alone leaves a ghost entry).
+						this.dropClient(clientId);
 					}
 				}, 30000);
 
@@ -61,6 +63,17 @@ class SSEEmitter {
 	}
 
 	/**
+	 * Remove a client from the registry and stop its heartbeat.
+	 */
+	private dropClient(clientId: string): void {
+		const client = this.clients.get(clientId);
+		if (client) {
+			clearInterval(client.heartbeat);
+			this.clients.delete(clientId);
+		}
+	}
+
+	/**
 	 * Send event to specific client
 	 */
 	sendToClient(clientId: string, event: string, data: any): void {
@@ -72,7 +85,7 @@ class SSEEmitter {
 			client.controller.enqueue(message);
 		} catch (e) {
 			console.error(`Failed to send to client ${clientId}:`, e);
-			this.clients.delete(clientId);
+			this.dropClient(clientId);
 		}
 	}
 
@@ -90,7 +103,7 @@ class SSEEmitter {
 				client.controller.enqueue(message);
 			} catch (e) {
 				console.error(`Failed to send to client ${clientId}:`, e);
-				this.clients.delete(clientId);
+				this.dropClient(clientId);
 			}
 		}
 	}
@@ -107,7 +120,7 @@ class SSEEmitter {
 				client.controller.enqueue(message);
 			} catch (e) {
 				console.error(`Failed to send to client ${clientId}:`, e);
-				this.clients.delete(clientId);
+				this.dropClient(clientId);
 			}
 		}
 	}
@@ -116,11 +129,7 @@ class SSEEmitter {
 	 * Remove a client
 	 */
 	removeClient(clientId: string): void {
-		const client = this.clients.get(clientId);
-		if (client) {
-			clearInterval(client.heartbeat);
-			this.clients.delete(clientId);
-		}
+		this.dropClient(clientId);
 	}
 
 	/**

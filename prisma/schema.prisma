@@ -332,6 +332,8 @@ model Settings {
   // Download settings
   maxConcurrentDownloads Int @default(3)
   downloadPath String   @default("/downloads")
+  // Kill a download if it makes no progress for this many seconds (0 = disabled)
+  downloadStallTimeoutSeconds Int @default(600)
 
   // yt-dlp settings
   ytdlpPath   String    @default("/usr/local/bin/yt-dlp")

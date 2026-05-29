@@ -167,6 +167,15 @@ class SubscriptionService {
 			const proc = spawn(ytdlpService.getPath(), args);
 			let output = '';
 			let error = '';
+			let settled = false;
+
+			// Guard against a hung/slow yt-dlp keeping a scheduler tick alive forever.
+			const timeout = setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				try { proc.kill('SIGKILL'); } catch {}
+				reject(new Error('yt-dlp playlist fetch timed out'));
+			}, 120000);
 
 			proc.stdout.on('data', (data) => {
 				output += data.toString();
@@ -176,7 +185,17 @@ class SubscriptionService {
 				error += data.toString();
 			});
 
+			proc.on('error', (err) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timeout);
+				reject(err);
+			});
+
 			proc.on('close', (code) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timeout);
 				if (code === 0) {
 					const lines = output.trim().split('\n');
 					const videos = [];

@@ -49,7 +49,11 @@ class AutoDeleteService {
 				}
 				// Delete record
 				await prisma.download.delete({ where: { id: dl.id } });
-				sseEmitter.broadcast('download:deleted', { id: dl.id });
+				if (dl.userId) {
+					sseEmitter.broadcastToUser('download:deleted', { id: dl.id }, dl.userId);
+				} else {
+					sseEmitter.broadcast('download:deleted', { id: dl.id });
+				}
 				deleted++;
 			}
 		}

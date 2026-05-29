@@ -24,10 +24,21 @@ class JobScheduler {
 
 	private jobRegistry = new Map<string, JobInfo>();
 
+	/** Names of jobs currently executing, to prevent overlapping runs piling up. */
+	private runningJobs = new Set<string>();
+
 	/**
 	 * Log a job run to the database
 	 */
 	private async logJobRun(jobName: string, fn: () => Promise<void>): Promise<void> {
+		// Skip if a previous run of this job is still in flight (e.g. a slow cache-cleanup
+		// on a large library that takes longer than its 5-minute interval).
+		if (this.runningJobs.has(jobName)) {
+			console.warn(`[Scheduler] Skipping ${jobName}: previous run still in progress`);
+			return;
+		}
+		this.runningJobs.add(jobName);
+
 		const run = await prisma.scheduledJobRun.create({
 			data: { jobName, status: 'running' },
 		});
@@ -48,6 +59,8 @@ class JobScheduler {
 				},
 			});
 			throw error;
+		} finally {
+			this.runningJobs.delete(jobName);
 		}
 	}
 

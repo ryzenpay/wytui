@@ -17,7 +17,8 @@
 	/* ---------- Color: Text ---------- */
 	--color-text-primary: #ffffff;
 	--color-text-secondary: #a0a0a0;
-	--color-text-tertiary: #606060;
+	/* Bumped from #606060 to meet WCAG AA contrast (~5:1) on the dark background. */
+	--color-text-tertiary: #8a8a8a;
 	--color-text-on-accent: #ffffff;
 
 	/* ---------- Color: Accent ---------- */

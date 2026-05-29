@@ -275,7 +275,7 @@
 			{:else if isAudio && download.status === 'COMPLETED'}
 				<div class="audio-area">
 					{#if download.thumbnail}
-						<img src={download.thumbnail} alt="" class="audio-cover" />
+						<img src={download.thumbnail} alt={download.title || 'Cover art'} class="audio-cover" />
 					{/if}
 					<!-- svelte-ignore a11y_media_has_caption -->
 					<audio controls preload="metadata" class="audio-player">
@@ -283,7 +283,7 @@
 					</audio>
 				</div>
 			{:else if download.thumbnail}
-				<img src={download.thumbnail} alt="" class="thumbnail" />
+				<img src={download.thumbnail} alt={download.title || 'Thumbnail'} class="thumbnail" />
 			{:else}
 				<div class="no-thumbnail">
 					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
