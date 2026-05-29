@@ -5,6 +5,7 @@ import { isOidcConfigured, getOidcDisplayName } from '$lib/server/oidc';
 import { resolve, normalize } from 'path';
 import { statfs } from 'fs/promises';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 const ALLOWED_SETTINGS_FIELDS = new Set([
@@ -129,7 +130,7 @@ export const GET = apiRoute('/api/settings', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get settings:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get settings');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -200,9 +201,7 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 	},
 }, async ({ request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const body = await request.json();
 
@@ -371,6 +370,6 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 	} catch (e: any) {
 		console.error('Failed to update settings:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to update settings');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

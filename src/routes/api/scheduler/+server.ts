@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { jobScheduler } from '$lib/server/jobs/scheduler';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/scheduler', 'GET', {
@@ -47,9 +48,7 @@ export const GET = apiRoute('/api/scheduler', 'GET', {
 	},
 }, async ({ locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const jobs = jobScheduler.getJobs();
 
@@ -62,6 +61,6 @@ export const GET = apiRoute('/api/scheduler', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get scheduler info:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get scheduler info');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

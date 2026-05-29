@@ -58,6 +58,6 @@ export const POST = apiRoute('/api/downloads/[id]/refresh', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to refresh metadata:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to refresh metadata');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

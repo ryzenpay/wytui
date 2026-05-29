@@ -7,6 +7,9 @@ interface ParamSchema {
 	default?: number | string | boolean;
 	format?: string;
 	nullable?: boolean;
+	// Nested schemas for array element types and object shapes.
+	items?: ParamSchema;
+	properties?: Record<string, ParamSchema>;
 }
 
 interface BodySchema {

@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { channelOverrideService } from '$lib/server/services/channel-override.service';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const PATCH = apiRoute('/api/channel-overrides/[id]', 'PATCH', {
@@ -39,9 +40,7 @@ export const PATCH = apiRoute('/api/channel-overrides/[id]', 'PATCH', {
 	},
 }, async ({ params, request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const existing = await prisma.channelOverride.findUnique({
 			where: { id: params.id },
@@ -67,7 +66,7 @@ export const PATCH = apiRoute('/api/channel-overrides/[id]', 'PATCH', {
 	} catch (e: any) {
 		console.error('Failed to update channel override:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to update channel override');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -90,9 +89,7 @@ export const DELETE = apiRoute('/api/channel-overrides/[id]', 'DELETE', {
 	},
 }, async ({ params, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const existing = await prisma.channelOverride.findUnique({
 			where: { id: params.id },
@@ -110,6 +107,6 @@ export const DELETE = apiRoute('/api/channel-overrides/[id]', 'DELETE', {
 	} catch (e: any) {
 		console.error('Failed to delete channel override:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to delete channel override');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { formatBytes, formatDuration } from '$lib/utils/format';
+	import {
+		formatBytes,
+		formatDuration,
+		getDownloadStatusColor,
+		getDownloadStatusLabel,
+	} from '$lib/utils/format';
+	import { clickOnEnterOrSpace } from '$lib/utils/a11y';
 
 	interface Props {
 		download: any;
@@ -8,8 +14,8 @@
 
 	let { download, onclick }: Props = $props();
 
-	let statusColor = $derived(getStatusColor(download.status));
-	let statusLabel = $derived(getStatusLabel(download.status));
+	let statusColor = $derived(getDownloadStatusColor(download.status));
+	let statusLabel = $derived(getDownloadStatusLabel(download.status));
 	let thumbnailFailed = $state(false);
 
 	let formattedSize = $derived(download.filesize ? formatBytes(download.filesize) : null);
@@ -22,36 +28,15 @@
 		return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 	});
 
-	function getStatusColor(status: string) {
-		const colors: Record<string, string> = {
-			PENDING: 'var(--text-tertiary)',
-			FETCHING_INFO: 'var(--info)',
-			DOWNLOADING: 'var(--accent-primary)',
-			PROCESSING: 'var(--warning)',
-			COMPLETED: 'var(--success)',
-			FAILED: 'var(--error)',
-			CANCELLED: 'var(--text-tertiary)',
-		};
-		return colors[status] || 'var(--text-secondary)';
-	}
-
-	function getStatusLabel(status: string) {
-		const labels: Record<string, string> = {
-			PENDING: 'Pending',
-			FETCHING_INFO: 'Fetching',
-			DOWNLOADING: 'Downloading',
-			PROCESSING: 'Processing',
-			COMPLETED: 'Completed',
-			FAILED: 'Failed',
-			CANCELLED: 'Cancelled',
-		};
-		return labels[status] || status;
-	}
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="list-row" {onclick}>
+<div
+	class="list-row"
+	role="button"
+	tabindex="0"
+	{onclick}
+	onkeydown={clickOnEnterOrSpace(onclick)}
+>
 	<div class="thumbnail">
 		{#if download.thumbnail && !thumbnailFailed}
 			<img
@@ -103,13 +88,19 @@
 
 	.list-row:hover {
 		border-color: var(--border-light);
-		background: var(--bg-hover, rgba(255, 255, 255, 0.03));
+		background: var(--bg-hover);
+	}
+
+	.list-row:focus-visible {
+		outline: none;
+		border-color: var(--accent-primary);
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 
 	.thumbnail {
 		width: 80px;
 		height: 45px;
-		border-radius: var(--radius-sm, 4px);
+		border-radius: var(--radius-sm);
 		overflow: hidden;
 		flex-shrink: 0;
 		background: var(--bg-tertiary);
@@ -135,7 +126,7 @@
 	}
 
 	.title {
-		font-size: 0.875rem;
+		font-size: var(--font-size-sm);
 		font-weight: 500;
 		color: var(--text-primary);
 		white-space: nowrap;
@@ -144,7 +135,7 @@
 	}
 
 	.uploader {
-		font-size: 0.75rem;
+		font-size: var(--font-size-xs);
 		color: var(--text-tertiary);
 		white-space: nowrap;
 		overflow: hidden;
@@ -152,20 +143,20 @@
 	}
 
 	.meta {
-		font-size: 0.75rem;
+		font-size: var(--font-size-xs);
 		color: var(--text-secondary);
 		white-space: nowrap;
 		flex-shrink: 0;
 	}
 
 	.duration {
-		font-family: monospace;
-		font-size: 0.6875rem;
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-2xs);
 	}
 
 	.size {
-		font-family: monospace;
-		font-size: 0.6875rem;
+		font-family: var(--font-family-mono);
+		font-size: var(--font-size-2xs);
 		min-width: 60px;
 		text-align: right;
 	}
@@ -173,15 +164,15 @@
 	.date {
 		min-width: 80px;
 		text-align: right;
-		font-size: 0.6875rem;
+		font-size: var(--font-size-2xs);
 		color: var(--text-tertiary);
 	}
 
 	.status-badge {
-		font-size: 0.625rem;
+		font-size: var(--font-size-2xs);
 		font-weight: 600;
 		padding: 2px 8px;
-		border-radius: var(--radius-sm, 4px);
+		border-radius: var(--radius-sm);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		color: var(--status-color);

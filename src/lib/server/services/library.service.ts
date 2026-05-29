@@ -302,11 +302,13 @@ class LibraryService {
 		};
 	}
 
-	async clearCache(): Promise<number> {
+	async clearCache(userId?: string): Promise<number> {
 		const candidates = await prisma.download.findMany({
 			where: {
 				storagePool: 'cache',
 				status: DownloadStatus.COMPLETED,
+				// Scope to the requesting user so one user can't wipe another's cache.
+				...(userId ? { userId } : {}),
 			},
 			select: { id: true, filepath: true, url: true, userId: true },
 		});

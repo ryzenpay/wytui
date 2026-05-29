@@ -1,7 +1,8 @@
 import { json, error } from '@sveltejs/kit';
 import { readdir, stat } from 'fs/promises';
-import { resolve, normalize, dirname, basename } from 'path';
+import { resolve, normalize, dirname, basename, sep } from 'path';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from '@sveltejs/kit';
 
 // Whitelist of allowed base paths for directory browsing
@@ -33,9 +34,7 @@ export const GET = apiRoute('/api/browse', 'GET', {
 		},
 	},
 }, async ({ url, locals }) => {
-	if (!locals.session?.user?.isAdmin) {
-		throw error(403, 'Admin access required');
-	}
+	requireAdmin(locals);
 
 	const path = url.searchParams.get('path') || '/';
 	const normalized = normalize(resolve(path));
@@ -45,9 +44,10 @@ export const GET = apiRoute('/api/browse', 'GET', {
 	}
 
 	// Validate path is within allowed base paths
-	const isAllowed = ALLOWED_BASE_PATHS.some((basePath) =>
-		normalized.startsWith(normalize(resolve(basePath)))
-	);
+	const isAllowed = ALLOWED_BASE_PATHS.some((basePath) => {
+		const base = normalize(resolve(basePath));
+		return normalized === base || normalized.startsWith(base + sep);
+	});
 
 	if (!isAllowed) {
 		throw error(403, 'Access denied. Path must be within allowed directories.');

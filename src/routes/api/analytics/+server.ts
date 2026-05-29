@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { DownloadStatus } from '@prisma/client';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/analytics', 'GET', {
@@ -27,9 +28,7 @@ export const GET = apiRoute('/api/analytics', 'GET', {
 	},
 }, async ({ locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		// Total downloads by status
 		const totalDownloads = await prisma.download.count();
@@ -232,6 +231,6 @@ export const GET = apiRoute('/api/analytics', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get analytics:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get analytics');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

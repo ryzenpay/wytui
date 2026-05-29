@@ -139,9 +139,7 @@ export const POST = apiRoute('/api/downloads/quick', 'POST', {
 		}
 		if (!profile) {
 			profile = await prisma.downloadProfile.findFirst({
-				where: {
-					OR: [{ userId: locals.session.user.id }, { isSystem: true }],
-				},
+				where: userId ? { OR: [{ userId }, { isSystem: true }] } : { isSystem: true },
 				orderBy: [{ isDefault: 'desc' }, { isSystem: 'asc' }],
 			});
 		}

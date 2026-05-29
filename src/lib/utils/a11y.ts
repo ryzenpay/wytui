@@ -92,3 +92,12 @@ export function uniqueId(prefix = 'a11y'): string {
 	idCounter += 1;
 	return `${prefix}-${idCounter}`;
 }
+
+/**
+ * Svelte action that focuses the node when it mounts. Use in place of the
+ * native `autofocus` attribute (which triggers an a11y lint warning and is
+ * applied inconsistently) for inputs revealed inside menus/dialogs.
+ */
+export function focusOnMount(node: HTMLElement) {
+	node.focus();
+}

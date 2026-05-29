@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
+	import { focusOnMount } from '$lib/utils/a11y';
 	import ListPlusIcon from '$lib/components/icons/ListPlusIcon.svelte';
 
 	let { downloadId }: { downloadId: string } = $props();
@@ -182,11 +183,11 @@
 								type="text"
 								placeholder="Playlist name"
 								bind:value={newName}
-								autofocus
+								use:focusOnMount
 								maxlength={100}
 							/>
 							<button class="btn btn-sm btn-primary" type="submit" disabled={creating || !newName.trim()}>
-								{creating ? '...' : 'Create'}
+								{creating ? 'Creating…' : 'Create'}
 							</button>
 							<button class="btn btn-sm btn-ghost" type="button" onclick={() => { showNewInput = false; newName = ''; }}>
 								Cancel
@@ -217,11 +218,11 @@
 		position: absolute;
 		bottom: calc(100% + 6px);
 		left: 0;
-		z-index: 100;
-		background: var(--bg-elevated, #1e1e1e);
-		border: 1px solid var(--border, #333);
-		border-radius: var(--radius-md, 8px);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+		z-index: var(--z-dropdown);
+		background: var(--bg-elevated);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-dropdown);
 		min-width: 220px;
 		max-width: 280px;
 		overflow: hidden;
@@ -230,8 +231,8 @@
 	.popover-loading,
 	.popover-empty {
 		padding: 12px 16px;
-		color: var(--text-muted, #666);
-		font-size: 0.875rem;
+		color: var(--text-secondary);
+		font-size: var(--font-size-sm);
 	}
 
 	.popover-list {
@@ -249,16 +250,16 @@
 		border: none;
 		text-align: left;
 		cursor: pointer;
-		color: var(--text-primary, #e0e0e0);
-		font-size: 0.875rem;
+		color: var(--text-primary);
+		font-size: var(--font-size-sm);
 		min-height: unset;
 		min-width: unset;
 		border-radius: 0;
-		transition: background var(--transition-fast, 0.15s);
+		transition: background var(--transition-fast);
 	}
 
 	.playlist-row:hover:not(:disabled) {
-		background: var(--bg-hover, rgba(255,255,255,0.05));
+		background: var(--color-overlay-hover);
 	}
 
 	.playlist-row:disabled {
@@ -270,8 +271,8 @@
 		flex-shrink: 0;
 		width: 16px;
 		height: 16px;
-		border-radius: 4px;
-		border: 1.5px solid var(--border, #555);
+		border-radius: var(--radius-sm);
+		border: 1.5px solid var(--border);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -279,9 +280,9 @@
 	}
 
 	.playlist-check.checked {
-		background: var(--accent-primary, #3b82f6);
-		border-color: var(--accent-primary, #3b82f6);
-		color: white;
+		background: var(--accent-primary);
+		border-color: var(--accent-primary);
+		color: var(--color-text-on-accent);
 	}
 
 	.playlist-name {
@@ -302,7 +303,7 @@
 	}
 
 	.popover-footer {
-		border-top: 1px solid var(--border, #333);
+		border-top: 1px solid var(--border);
 		padding: 8px;
 	}
 
@@ -314,17 +315,17 @@
 		padding: 6px 8px;
 		background: none;
 		border: none;
-		color: var(--text-muted, #888);
+		color: var(--text-secondary);
 		font-size: var(--font-size-control);
 		cursor: pointer;
-		border-radius: var(--radius-sm, 4px);
+		border-radius: var(--radius-sm);
 		min-height: unset;
 		transition: color var(--transition-fast), background var(--transition-fast);
 	}
 
 	.new-playlist-btn:hover {
-		color: var(--text-primary, #e0e0e0);
-		background: var(--bg-hover, rgba(255,255,255,0.05));
+		color: var(--text-primary);
+		background: var(--color-overlay-hover);
 	}
 
 	.new-playlist-form {

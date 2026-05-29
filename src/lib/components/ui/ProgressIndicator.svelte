@@ -175,4 +175,14 @@
 	.step.status-failed .step-label {
 		color: var(--color-status-error);
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.progress-fill {
+			transition: none;
+		}
+
+		.step-marker {
+			transition: none;
+		}
+	}
 </style>

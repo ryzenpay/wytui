@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
+	import { getDownloadStatusColor, getDownloadStatusLabel } from '$lib/utils/format';
 	import type { Download } from '$lib/types';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
 	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
@@ -27,8 +28,8 @@
 		onToggleSelect?: () => void;
 	} = $props();
 
-	let progressPercent = $derived(download.progress?.toFixed(1) || 0);
-	let statusColor = $derived(getStatusColor(download.status));
+	let progressPercent = $derived(download.progress?.toFixed(1) ?? '0');
+	let statusColor = $derived(getDownloadStatusColor(download.status));
 	let mediaType = $derived(download.filename?.split('.').pop()?.toUpperCase() || null);
 
 	const VIDEO_EXTENSIONS = new Set(['MP4', 'WEBM', 'MKV', 'FLV', 'MOV', 'AVI']);
@@ -153,34 +154,6 @@
 			? `${download.artist} ${download.title?.split(' - ').pop()?.trim() || download.title || ''}`
 			: download.title || ''
 	);
-
-	function getStatusColor(status: string) {
-		const colors: Record<string, string> = {
-			PENDING: 'var(--text-tertiary)',
-			FETCHING_INFO: 'var(--info)',
-			DOWNLOADING: 'var(--accent-primary)',
-			PROCESSING: 'var(--warning)',
-			COMPLETED: 'var(--success)',
-			FAILED: 'var(--error)',
-			CANCELLED: 'var(--text-tertiary)',
-			DELETED: 'var(--text-tertiary)',
-		};
-		return colors[status] || 'var(--text-secondary)';
-	}
-
-	function getStatusLabel(status: string) {
-		const labels: Record<string, string> = {
-			PENDING: 'Pending',
-			FETCHING_INFO: 'Fetching Info',
-			DOWNLOADING: 'Downloading',
-			PROCESSING: 'Processing',
-			COMPLETED: 'Completed',
-			FAILED: 'Failed',
-			CANCELLED: 'Cancelled',
-			DELETED: 'Deleted',
-		};
-		return labels[status] || status;
-	}
 
 	async function cancelDownload() {
 		const confirmed = await showConfirm(
@@ -359,14 +332,6 @@
 					onerror={() => thumbnailFailed = true}
 				/>
 			{/if}
-			{#if (!download.thumbnail || thumbnailFailed) && isPreviewable}
-				<video
-					class="video-preview"
-					src="/api/files/{download.id}#t=0.1"
-					muted
-					preload="metadata"
-				></video>
-			{/if}
 			{#if !showPreview && download.status === 'COMPLETED'}
 				<div class="play-overlay">
 					<svg viewBox="0 0 24 24" fill="white" width="36" height="36"><path d="M8 5v14l11-7z"/></svg>
@@ -428,7 +393,7 @@
 						{download.storagePool === 'library' ? 'Library' : 'Cache'}
 					</span>
 				{/if}
-				<span class="status-icon" title={getStatusLabel(download.status)}>
+				<span class="status-icon" title={getDownloadStatusLabel(download.status)}>
 					{#if download.status === 'COMPLETED'}
 						<svg viewBox="0 0 20 20" fill="var(--success)" width="18" height="18"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg>
 					{:else if download.status === 'FAILED'}
@@ -590,7 +555,7 @@
 	.download-card:hover {
 		border-color: var(--color-border-translucent-hover);
 		transform: translateY(-3px) scale(1.01);
-		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.06);
+		box-shadow: var(--shadow-lg), 0 0 0 1px var(--color-focus-ring);
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -808,7 +773,7 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
-		transition: color 0.15s;
+		transition: color var(--transition-fast);
 	}
 
 	.header-badges {
@@ -824,9 +789,9 @@
 		padding: 2px 6px;
 		border-radius: var(--radius-sm);
 		letter-spacing: 0.05em;
-		background: rgba(99, 102, 241, 0.15);
+		background: var(--color-status-info-bg);
 		color: var(--accent-primary);
-		font-family: monospace;
+		font-family: var(--font-family-mono);
 	}
 
 	.pool-badge {
@@ -841,7 +806,7 @@
 	}
 
 	.pool-badge.library {
-		background: rgba(16, 185, 129, 0.15);
+		background: var(--color-status-success-bg);
 		color: var(--success);
 	}
 
@@ -902,9 +867,9 @@
 		font-weight: 500;
 		padding: 2px 6px;
 		border-radius: var(--radius-sm);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-overlay-white-06);
 		color: var(--text-secondary);
-		font-family: monospace;
+		font-family: var(--font-family-mono);
 		letter-spacing: 0.02em;
 	}
 
@@ -996,7 +961,7 @@
 	}
 
 	.error {
-		background: rgba(239, 68, 68, 0.1);
+		background: var(--color-status-error-bg);
 		border: 1px solid var(--error);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm);

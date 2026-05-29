@@ -38,7 +38,7 @@ export const GET = apiRoute('/api/rescan', 'GET', {
 	} catch (e: any) {
 		console.error('Rescan failed:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Rescan failed');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -75,6 +75,6 @@ export const POST = apiRoute('/api/rescan', 'POST', {
 	} catch (e: any) {
 		console.error('Reconcile failed:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Reconcile failed');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

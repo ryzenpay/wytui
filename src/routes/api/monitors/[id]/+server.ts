@@ -50,7 +50,7 @@ export const GET = apiRoute('/api/monitors/[id]', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get monitor:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get monitor');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -162,7 +162,7 @@ export const PATCH = apiRoute('/api/monitors/[id]', 'PATCH', {
 	} catch (e: any) {
 		console.error('Failed to update monitor:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to update monitor');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -211,6 +211,6 @@ export const DELETE = apiRoute('/api/monitors/[id]', 'DELETE', {
 	} catch (e: any) {
 		console.error('Failed to delete monitor:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to delete monitor');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

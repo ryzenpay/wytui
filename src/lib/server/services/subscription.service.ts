@@ -196,6 +196,8 @@ class SubscriptionService {
 					reject(new Error(`yt-dlp failed: ${error}`));
 				}
 			});
+
+			proc.on('error', (err) => reject(err));
 		});
 	}
 

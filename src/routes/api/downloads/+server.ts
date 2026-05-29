@@ -80,7 +80,7 @@ export const POST = apiRoute('/api/downloads', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create download:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create download');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -189,6 +189,6 @@ export const GET = apiRoute('/api/downloads', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to list downloads:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list downloads');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

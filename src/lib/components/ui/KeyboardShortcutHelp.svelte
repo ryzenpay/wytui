@@ -1,10 +1,21 @@
 <script lang="ts">
+	import { trapFocus } from '$lib/utils/a11y';
+
 	interface Props {
 		open: boolean;
 		onClose: () => void;
 	}
 
 	let { open, onClose }: Props = $props();
+
+	let modalEl: HTMLDivElement | null = $state(null);
+
+	$effect(() => {
+		if (open && modalEl) {
+			const release = trapFocus(modalEl);
+			return release;
+		}
+	});
 
 	const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 	const modKey = isMac ? 'Cmd' : 'Ctrl';
@@ -39,7 +50,7 @@
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="overlay" onclick={handleOverlayClick} onkeydown={handleOverlayKeydown}>
-		<div class="modal" onclick={handleModalClick} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" tabindex="-1">
+		<div bind:this={modalEl} class="modal" onclick={handleModalClick} onkeydown={handleOverlayKeydown} role="dialog" aria-modal="true" aria-label="Keyboard shortcuts" tabindex="-1">
 			<div class="modal-header">
 				<h3>Keyboard Shortcuts</h3>
 				<button class="close-btn" onclick={handleOverlayClick} aria-label="Close">
@@ -77,13 +88,13 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--color-overlay-medium);
 		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
-		animation: fadeIn 150ms ease;
+		z-index: var(--z-modal);
+		animation: fadeIn var(--transition-fast);
 	}
 
 	@keyframes fadeIn {
@@ -122,7 +133,7 @@
 
 	.modal-header h3 {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: var(--font-size-xl);
 		color: var(--text-primary);
 	}
 
@@ -134,11 +145,17 @@
 		height: 28px;
 		padding: 0;
 		border: none;
-		border-radius: var(--radius-sm, 4px);
+		border-radius: var(--radius-sm);
 		background: transparent;
 		color: var(--text-tertiary);
 		cursor: pointer;
 		transition: all var(--transition-fast);
+	}
+
+	.close-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
+		color: var(--text-primary);
 	}
 
 	.close-btn:hover {
@@ -177,24 +194,31 @@
 		height: 24px;
 		padding: 0 6px;
 		font-family: inherit;
-		font-size: 0.75rem;
+		font-size: var(--font-size-xs);
 		font-weight: 600;
 		color: var(--text-primary);
 		background: var(--bg-tertiary);
 		border: 1px solid var(--border);
-		border-radius: var(--radius-sm, 4px);
+		border-radius: var(--radius-sm);
 		box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
 	}
 
 	.key-separator {
-		font-size: 0.6875rem;
+		font-size: var(--font-size-2xs);
 		color: var(--text-tertiary);
 		padding: 0 2px;
 	}
 
 	.shortcut-desc {
-		font-size: 0.875rem;
+		font-size: var(--font-size-sm);
 		color: var(--text-secondary);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.overlay,
+		.modal {
+			animation: none;
+		}
 	}
 
 	@media (max-width: 768px) {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { tick } from 'svelte';
+	import { tick, onDestroy } from 'svelte';
 
 	interface Props {
 		value: string;
@@ -18,6 +18,12 @@
 	let inputEl = $state<HTMLInputElement>();
 	let dropdownEl = $state<HTMLElement>();
 	let debounceTimer: ReturnType<typeof setTimeout>;
+	let blurTimer: ReturnType<typeof setTimeout>;
+
+	onDestroy(() => {
+		clearTimeout(debounceTimer);
+		clearTimeout(blurTimer);
+	});
 
 	async function browse(path: string) {
 		loading = true;
@@ -122,7 +128,8 @@
 		const related = e.relatedTarget as HTMLElement | null;
 		if (dropdownEl?.contains(related)) return;
 		focused = false;
-		setTimeout(() => {
+		clearTimeout(blurTimer);
+		blurTimer = setTimeout(() => {
 			if (!focused) {
 				open = false;
 				selectedIndex = -1;

@@ -5,6 +5,7 @@
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -191,6 +192,7 @@
 			await loadSubscriptions();
 		} catch (e) {
 			console.error('Failed to toggle subscription:', e);
+			addToast('error', 'Failed to update subscription');
 		}
 	}
 
@@ -259,6 +261,7 @@
 			}
 		} catch (e) {
 			console.error('Failed to update subscription:', e);
+			addToast('error', 'Failed to save changes');
 		}
 	}
 
@@ -405,10 +408,10 @@
 				/>
 			</div>
 		{:else if subscriptions.length === 0}
-			<div class="empty-state">
-				<p>No subscriptions yet</p>
-				<p class="text-muted">Add a channel to start monitoring for new videos</p>
-			</div>
+			<EmptyState
+				title="No subscriptions yet"
+				description="Add a channel to start monitoring for new videos"
+			/>
 		{:else}
 			<div class="content-grid">
 				{#each subscriptions as sub}
@@ -417,26 +420,26 @@
 							<div class="edit-form">
 								<div class="form-row">
 									<div class="form-group">
-										<label>Name</label>
-										<input type="text" bind:value={editSubName} />
+										<label for="edit-sub-name">Name</label>
+										<input type="text" id="edit-sub-name" bind:value={editSubName} />
 									</div>
 									<div class="form-group">
-										<label>URL</label>
-										<input type="url" bind:value={editSubUrl} />
+										<label for="edit-sub-url">URL</label>
+										<input type="url" id="edit-sub-url" bind:value={editSubUrl} />
 									</div>
 								</div>
 								<div class="form-row">
 									<div class="form-group">
-										<label>Profile</label>
-										<select bind:value={editSubProfileId}>
+										<label for="edit-sub-profile">Profile</label>
+										<select id="edit-sub-profile" bind:value={editSubProfileId}>
 											{#each profiles as profile}
 												<option value={profile.id}>{profile.name}</option>
 											{/each}
 										</select>
 									</div>
 									<div class="form-group">
-										<label>Check Interval</label>
-										<select bind:value={editSubCheckInterval}>
+										<label for="edit-sub-interval">Check Interval</label>
+										<select id="edit-sub-interval" bind:value={editSubCheckInterval}>
 											<option value={900}>Every 15 minutes</option>
 											<option value={1800}>Every 30 minutes</option>
 											<option value={3600}>Every hour</option>
@@ -678,20 +681,8 @@
 		margin-bottom: var(--spacing-lg);
 	}
 
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		background: var(--bg-secondary);
-		border: 1px dashed var(--border);
-		border-radius: var(--radius-lg);
-	}
-
 	.error-wrapper {
 		margin-bottom: var(--spacing-md);
-	}
-
-	.empty-state p {
-		margin-bottom: var(--spacing-sm);
 	}
 
 

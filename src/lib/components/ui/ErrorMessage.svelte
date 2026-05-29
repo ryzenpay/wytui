@@ -140,4 +140,12 @@
 		outline: 2px solid var(--color-accent-primary);
 		outline-offset: 2px;
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.error-message {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+	}
 </style>

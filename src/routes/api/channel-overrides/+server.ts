@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { channelOverrideService } from '$lib/server/services/channel-override.service';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/channel-overrides', 'GET', {
@@ -31,9 +32,7 @@ export const GET = apiRoute('/api/channel-overrides', 'GET', {
 	},
 }, async ({ locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const overrides = await channelOverrideService.list();
 
@@ -43,7 +42,7 @@ export const GET = apiRoute('/api/channel-overrides', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to list channel overrides:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to list channel overrides');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -80,9 +79,7 @@ export const POST = apiRoute('/api/channel-overrides', 'POST', {
 	},
 }, async ({ request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const data = await request.json();
 
@@ -106,6 +103,6 @@ export const POST = apiRoute('/api/channel-overrides', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create channel override:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create channel override');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { backupService } from '$lib/server/services/backup.service';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const POST = apiRoute('/api/backup/restore', 'POST', {
@@ -24,7 +25,7 @@ export const POST = apiRoute('/api/backup/restore', 'POST', {
 	},
 }, async ({ request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) throw error(403, 'Admin access required');
+		requireAdmin(locals);
 
 		const body = await request.json();
 		if (!body.backupId) throw error(400, 'backupId is required');
@@ -37,6 +38,6 @@ export const POST = apiRoute('/api/backup/restore', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to restore backup:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to restore backup');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
 	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
 	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
@@ -13,6 +14,7 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast, addStickyToast, updateToast, resolveToast } from '$lib/stores/toast.svelte';
 	import { formatBytes, formatTimestamp } from '$lib/utils/format';
+	import { focusOnMount } from '$lib/utils/a11y';
 	import CheckSquareIcon from '$lib/components/icons/CheckSquareIcon.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
 	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
@@ -719,7 +721,7 @@
 								tabindex="-1"
 								onclick={(e) => e.stopPropagation()}
 							>
-								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." aria-label="Search channels" bind:value={channelSearch} autofocus />
+								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." aria-label="Search channels" bind:value={channelSearch} use:focusOnMount />
 								<div class="channel-dropdown-options">
 									<button type="button" role="option" aria-selected={channelFilter === 'all'} class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={(e) => { e.stopPropagation(); channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
 									{#each filteredChannelOptions as channel}
@@ -949,7 +951,7 @@
 				{#each filteredCompletedDownloads as download (download.id)}
 					<DownloadListRow
 						{download}
-						onclick={() => { if (download.status === 'COMPLETED') window.location.href = `/downloads/${download.id}`; }}
+						onclick={() => { if (download.status === 'COMPLETED') goto(`/downloads/${download.id}`); }}
 					/>
 				{/each}
 			</div>
@@ -1027,6 +1029,11 @@
 		gap: var(--spacing-lg);
 		max-height: 70vh;
 		overflow-y: auto;
+		/* Room for the card's hover lift/scale so it doesn't overflow the
+		   scroll container and trigger a scrollbar. Negative margin keeps the
+		   cards visually aligned with the rest of the layout. */
+		padding: var(--spacing-xs);
+		margin: calc(var(--spacing-xs) * -1);
 	}
 
 	.section { margin-bottom: var(--spacing-xl); width: 100%; }
@@ -1327,7 +1334,7 @@
 
 	.subtitle-match-time {
 		flex-shrink: 0;
-		font-family: var(--font-mono, monospace);
+		font-family: var(--font-family-mono);
 		font-size: 0.8125rem;
 		color: var(--accent-primary);
 		padding-top: 1px;

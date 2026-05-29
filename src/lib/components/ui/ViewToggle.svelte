@@ -58,7 +58,7 @@
 	.view-toggle {
 		display: inline-flex;
 		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		padding: 3px;
 	}
@@ -82,8 +82,14 @@
 		color: var(--text-primary);
 	}
 
+	.toggle-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--color-focus-ring);
+		color: var(--text-primary);
+	}
+
 	.toggle-btn.active {
-		background: rgba(59, 130, 246, 0.15);
+		background: var(--color-status-info-bg);
 		color: var(--accent-primary);
 	}
 </style>

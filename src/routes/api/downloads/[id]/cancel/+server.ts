@@ -41,6 +41,6 @@ export const POST = apiRoute('/api/downloads/[id]/cancel', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to cancel download:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to cancel download');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

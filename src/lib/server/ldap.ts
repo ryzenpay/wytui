@@ -42,6 +42,10 @@ export async function authenticateLdap(username: string, password: string): Prom
 	const config = await getLdapSettings();
 	if (!config) throw new Error('LDAP is not configured');
 
+	// Reject empty credentials: an empty password triggers an unauthenticated
+	// (anonymous) bind that many directories accept, which would be an auth bypass.
+	if (!username || !password) return null;
+
 	const client = new Client({ url: config.url });
 
 	try {

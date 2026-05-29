@@ -216,6 +216,6 @@ export const POST = apiRoute('/api/playlists/import', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to import playlist:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to import playlist');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

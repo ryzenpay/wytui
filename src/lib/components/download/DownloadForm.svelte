@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { addToast } from "$lib/stores/toast.svelte";
   import { onSSEEvent } from "$lib/stores/sse.svelte";
   import { csrfFetch } from "$lib/utils/fetch";
@@ -41,6 +41,12 @@
 
   let allPrefs = $state<Record<string, SavedPrefs>>({});
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  let playlistProgressTimer: ReturnType<typeof setTimeout> | undefined;
+
+  onDestroy(() => {
+    clearTimeout(saveTimer);
+    clearTimeout(playlistProgressTimer);
+  });
 
   function getMode(isAudio: boolean, library: boolean): string {
     return `${isAudio ? "audio" : "video"}_${library ? "library" : "cache"}`;
@@ -1224,7 +1230,8 @@
       unsubProgress();
       unsubComplete();
       // Keep progress visible briefly after completion
-      setTimeout(() => { playlistProgress = null; }, 5000);
+      clearTimeout(playlistProgressTimer);
+      playlistProgressTimer = setTimeout(() => { playlistProgress = null; }, 5000);
     }
   }
 </script>

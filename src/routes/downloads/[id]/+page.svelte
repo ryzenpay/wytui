@@ -503,7 +503,7 @@
 
 	{#if data.similar && data.similar.length > 0}
 		<div class="similar-section">
-			<h3 class="similar-heading">More from <a href="/channels/{encodeURIComponent(download.uploader)}" class="similar-channel-link">{download.uploader}</a></h3>
+			<h3 class="similar-heading">More from <a href="/channels/{encodeURIComponent(download.uploader ?? '')}" class="similar-channel-link">{download.uploader}</a></h3>
 			<div class="similar-grid">
 				{#each data.similar as item}
 					<a href="/downloads/{item.id}" class="similar-card">

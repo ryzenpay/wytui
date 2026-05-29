@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { importService } from '$lib/server/services/import.service';
 import { apiRoute } from '$lib/server/openapi';
+import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const POST = apiRoute('/api/import', 'POST', {
@@ -25,9 +26,7 @@ export const POST = apiRoute('/api/import', 'POST', {
 	},
 }, async ({ request, locals }) => {
 	try {
-		if (!locals.session?.user?.isAdmin) {
-			throw error(403, 'Admin access required');
-		}
+		requireAdmin(locals);
 
 		const { files, profileId } = await request.json();
 
@@ -45,6 +44,6 @@ export const POST = apiRoute('/api/import', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to import files:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to import files');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

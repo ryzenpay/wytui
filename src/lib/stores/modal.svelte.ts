@@ -18,7 +18,16 @@ let modal = $state<ModalState>({
 	message: '',
 });
 
+// If a modal is already open when a new one is requested, resolve the
+// displaced modal's promise (as a cancel) so awaiting callers never hang.
+function dismissActive() {
+	if (modal.isOpen) {
+		modal.onCancel?.();
+	}
+}
+
 export function showAlert(title: string, message: string): Promise<void> {
+	dismissActive();
 	return new Promise((resolve) => {
 		modal = {
 			isOpen: true,
@@ -27,6 +36,11 @@ export function showAlert(title: string, message: string): Promise<void> {
 			message,
 			confirmText: 'OK',
 			onConfirm: () => {
+				modal.isOpen = false;
+				resolve();
+			},
+			// Dismissing an alert via backdrop/escape/close still resolves it.
+			onCancel: () => {
 				modal.isOpen = false;
 				resolve();
 			},
@@ -40,6 +54,7 @@ export function showConfirm(
 	confirmText = 'Confirm',
 	cancelText = 'Cancel'
 ): Promise<boolean> {
+	dismissActive();
 	return new Promise((resolve) => {
 		modal = {
 			isOpen: true,
@@ -82,8 +97,8 @@ export function getModalState() {
 		},
 		confirm: () => modal.onConfirm?.(),
 		cancel: () => modal.onCancel?.(),
-		close: () => {
-			modal.isOpen = false;
-		},
+		// close() resolves the pending promise (as a cancel) so callers
+		// awaiting showConfirm/showAlert never hang when closed this way.
+		close: () => modal.onCancel?.(),
 	};
 }

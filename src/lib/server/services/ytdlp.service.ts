@@ -45,6 +45,8 @@ export class YtdlpService {
 					reject(new Error('Failed to get yt-dlp version'));
 				}
 			});
+
+			proc.on('error', (err) => reject(err));
 		});
 	}
 
@@ -108,6 +110,8 @@ export class YtdlpService {
 					resolve(null);
 				}
 			});
+
+			proc.on('error', () => resolve(null));
 		});
 	}
 
@@ -155,6 +159,8 @@ export class YtdlpService {
 					resolve(null);
 				}
 			});
+
+			proc.on('error', () => resolve(null));
 		});
 	}
 
@@ -225,6 +231,8 @@ export class YtdlpService {
 					reject(new Error(`yt-dlp failed: ${error}`));
 				}
 			});
+
+			proc.on('error', (err) => reject(err));
 		});
 	}
 
@@ -720,6 +728,8 @@ export class YtdlpService {
 					reject(new Error(`Failed to update yt-dlp: ${error}`));
 				}
 			});
+
+			proc.on('error', (err) => reject(err));
 		});
 	}
 }

@@ -102,6 +102,6 @@ export const POST = apiRoute('/api/downloads/batch', 'POST', {
 	} catch (e: any) {
 		console.error('Failed to create batch download:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to create batch download');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

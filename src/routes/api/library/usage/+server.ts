@@ -33,6 +33,6 @@ export const GET = apiRoute('/api/library/usage', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get cache usage:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get cache usage');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

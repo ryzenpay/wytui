@@ -58,7 +58,7 @@ export const GET = apiRoute('/api/downloads/[id]', 'GET', {
 	} catch (e: any) {
 		console.error('Failed to get download:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to get download');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;
 
@@ -141,6 +141,6 @@ export const DELETE = apiRoute('/api/downloads/[id]', 'DELETE', {
 	} catch (e: any) {
 		console.error('Failed to delete download:', e);
 		if (e.status) throw e;
-		throw error(500, e.message || 'Failed to delete download');
+		throw error(500, 'Internal server error');
 	}
 }) satisfies RequestHandler;

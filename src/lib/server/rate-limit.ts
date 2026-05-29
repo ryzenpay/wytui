@@ -112,10 +112,10 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
  * Get client identifier for rate limiting (IP address + user agent)
  */
 export function getClientIdentifier(event: RequestEvent): string {
+	// Key on IP only. Including the client-controlled User-Agent let a single
+	// IP mint unlimited buckets (rotate UA) and defeated brute-force throttling.
 	const forwarded = event.request.headers.get('x-forwarded-for');
-	const ip = forwarded ? forwarded.split(',')[0].trim() : event.getClientAddress();
-	const userAgent = event.request.headers.get('user-agent') || 'unknown';
-	return `${ip}:${userAgent}`;
+	return forwarded ? forwarded.split(',')[0].trim() : event.getClientAddress();
 }
 
 /**

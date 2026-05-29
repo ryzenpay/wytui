@@ -3,8 +3,10 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
+	import { trapFocus } from '$lib/utils/a11y';
 	import PathBrowser from '$lib/components/ui/PathBrowser.svelte';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
+	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
 	import ZapIcon from '$lib/components/icons/ZapIcon.svelte';
 	import BellIcon from '$lib/components/icons/BellIcon.svelte';
@@ -80,6 +82,14 @@
 
 	// Password change form
 	let passwordChangeUserId = $state<string | null>(null);
+	let passwordModalEl: HTMLDivElement | null = $state(null);
+
+	$effect(() => {
+		if (passwordChangeUserId && passwordModalEl) {
+			const release = trapFocus(passwordModalEl);
+			return release;
+		}
+	});
 	let passwordForm = $state({
 		newPassword: '',
 		confirmPassword: '',
@@ -160,10 +170,12 @@
 		}
 	}
 
-	onMount(async () => {
+	onMount(() => {
 		loadApiKeys();
 		if (isAdmin) {
-			await Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
+			// Fire-and-forget: onMount must stay synchronous so the cleanup
+			// it returns below is treated as a teardown, not a Promise.
+			void Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
 		}
 
 		// Set up Intersection Observer to track active section
@@ -1668,7 +1680,7 @@
 					{/each}
 
 					{#if users.length === 0}
-						<div class="empty-state">No users found</div>
+						<EmptyState title="No users found" variant="subtle" size="sm" />
 					{/if}
 				</div>
 			</div>
@@ -1725,8 +1737,18 @@
 
 	<!-- Password Change Modal -->
 	{#if passwordChangeUserId}
-		<div class="modal-overlay" role="button" tabindex="-1" onclick={closePasswordChange} onkeydown={(e) => { if (e.key === 'Escape') closePasswordChange(); }}>
-			<div class="modal-content" role="dialog" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="modal-overlay" onclick={closePasswordChange}>
+			<div
+				bind:this={passwordModalEl}
+				class="modal-content"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Change password"
+				tabindex="-1"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => { if (e.key === 'Escape') closePasswordChange(); }}
+			>
 				<div class="modal-header">
 					<h3>Change Password</h3>
 					<button class="modal-close" onclick={closePasswordChange}>&times;</button>
@@ -1739,10 +1761,10 @@
 
 					<form onsubmit={(e) => { e.preventDefault(); changePassword(); }}>
 						<div class="form-group">
-							<label for="new-password">New Password</label>
+							<label for="change-new-password">New Password</label>
 							<input
 								type="password"
-								id="new-password"
+								id="change-new-password"
 								bind:value={passwordForm.newPassword}
 								placeholder="Enter new password"
 								required
@@ -2398,12 +2420,6 @@
 		cursor: not-allowed;
 	}
 
-	.empty-state {
-		text-align: center;
-		padding: var(--spacing-2xl);
-		color: var(--text-secondary);
-	}
-
 	.badge-you {
 		background: rgba(59, 130, 246, 0.2);
 		color: var(--accent-primary);
@@ -2496,22 +2512,25 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--color-overlay-medium);
+		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		z-index: var(--z-modal);
 		padding: var(--spacing-lg);
 	}
 
 	.modal-content {
 		background: var(--bg-secondary);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
-		max-width: 500px;
+		max-width: var(--modal-max-width);
 		width: 100%;
 		max-height: 90vh;
 		overflow-y: auto;
+		box-shadow: var(--shadow-xl);
+		outline: none;
 	}
 
 	.modal-header {
@@ -2519,12 +2538,12 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: var(--spacing-lg);
-		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.modal-header h3 {
 		margin: 0;
-		font-size: 1.25rem;
+		font-size: var(--font-size-xl);
 	}
 
 	.modal-close {
