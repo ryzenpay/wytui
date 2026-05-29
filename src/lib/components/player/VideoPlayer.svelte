@@ -229,6 +229,12 @@
 		videoEl.volume = Math.max(0, Math.min(1, videoEl.volume + delta));
 	}
 
+	function setVolume(newVolume: number) {
+		if (!videoEl) return;
+		videoEl.volume = Math.max(0, Math.min(1, newVolume));
+		if (newVolume > 0 && videoEl.muted) videoEl.muted = false;
+	}
+
 	function toggleMute() {
 		if (!videoEl) return;
 		videoEl.muted = !videoEl.muted;
@@ -735,21 +741,24 @@
 						</svg>
 					{/if}
 				</button>
-				<input
-					class="volume-slider"
-					type="range"
-					min="0"
-					max="1"
-					step="0.05"
-					value={muted ? 0 : volume}
-					oninput={(e) => {
-						if (!videoEl) return;
-						const v = parseFloat((e.target as HTMLInputElement).value);
-						videoEl.volume = v;
-						if (v > 0) videoEl.muted = false;
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div
+					class="volume-slider-wrapper"
+					onmousedown={(e) => {
+						const track = e.currentTarget;
+						const rect = track.getBoundingClientRect();
+						const update = (clientX: number) => setVolume(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)));
+						update(e.clientX);
+						const onMove = (ev: MouseEvent) => update(ev.clientX);
+						const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+						window.addEventListener('mousemove', onMove);
+						window.addEventListener('mouseup', onUp);
 					}}
-					aria-label="Volume"
-				/>
+				>
+					<div class="volume-slider-fill" style="width: {(muted ? 0 : volume) * 100}%">
+						<div class="volume-slider-thumb"></div>
+					</div>
+				</div>
 			</div>
 
 			<!-- Subtitles -->
@@ -1164,62 +1173,59 @@
 	.volume-control {
 		display: flex;
 		align-items: center;
-		gap: 0;
 	}
 
-	.volume-control:hover {
-		gap: 4px;
-	}
-
-	.volume-slider {
+	.volume-slider-wrapper {
+		position: relative;
 		width: 0;
+		height: 4px;
+		background: rgba(255, 255, 255, 0.2);
+		border-radius: 2px;
+		cursor: pointer;
+		overflow: visible;
+		transition: width 0.2s ease, margin 0.2s ease;
+		margin: 0;
+	}
+
+	.volume-slider-wrapper::before {
+		content: '';
+		position: absolute;
+		top: -8px;
+		bottom: -8px;
+		left: 0;
+		right: 0;
+	}
+
+	.volume-control:hover .volume-slider-wrapper {
+		width: 70px;
+		margin-right: var(--spacing-sm);
+		margin-left: 2px;
+	}
+
+	.volume-slider-fill {
+		position: absolute;
+		top: 0;
+		left: 0;
+		height: 100%;
+		background: white;
+		border-radius: 2px;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+	}
+
+	.volume-slider-thumb {
+		position: absolute;
+		right: -5px;
+		width: 10px;
+		height: 10px;
+		border-radius: 50%;
+		background: white;
 		opacity: 0;
-		transition: width var(--transition-normal), opacity var(--transition-normal);
-		cursor: pointer;
-		accent-color: #ef4444;
-		height: 4px;
-		-webkit-appearance: none;
-		appearance: none;
-		background: transparent;
+		transition: opacity 0.15s ease;
 	}
 
-	.volume-slider::-webkit-slider-runnable-track {
-		width: 100%;
-		height: 4px;
-		background: rgba(255, 255, 255, 0.3);
-		border-radius: 2px;
-	}
-
-	.volume-slider::-webkit-slider-thumb {
-		-webkit-appearance: none;
-		appearance: none;
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background: #ef4444;
-		cursor: pointer;
-		margin-top: -4px;
-	}
-
-	.volume-slider::-moz-range-track {
-		width: 100%;
-		height: 4px;
-		background: rgba(255, 255, 255, 0.3);
-		border-radius: 2px;
-	}
-
-	.volume-slider::-moz-range-thumb {
-		width: 12px;
-		height: 12px;
-		border-radius: 50%;
-		background: #ef4444;
-		cursor: pointer;
-		border: none;
-	}
-
-	.volume-control:hover .volume-slider,
-	.volume-slider:focus {
-		width: 72px;
+	.volume-control:hover .volume-slider-thumb {
 		opacity: 1;
 	}
 
