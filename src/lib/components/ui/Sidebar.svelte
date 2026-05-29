@@ -342,8 +342,8 @@
 	}
 
 	.logo h1 {
-		font-size: 1.5rem;
-		background: linear-gradient(135deg, #7c3aed, #3b82f6);
+		font-size: var(--font-size-2xl);
+		background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;

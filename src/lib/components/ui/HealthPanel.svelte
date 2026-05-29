@@ -220,9 +220,9 @@
 	.health-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-overlay-medium);
 		backdrop-filter: blur(4px);
-		z-index: 1000;
+		z-index: var(--z-modal);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -301,7 +301,7 @@
 	.close-btn:hover,
 	.refresh-btn:hover {
 		color: var(--text-primary);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-overlay-hover);
 	}
 
 	.close-btn:hover {
@@ -311,11 +311,6 @@
 	.refresh-btn:disabled {
 		cursor: default;
 		opacity: 0.5;
-	}
-
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
 	}
 
 	.spinning {
@@ -335,7 +330,7 @@
 
 	.stat-card {
 		background: var(--bg-tertiary);
-		border: 1px solid rgba(255, 255, 255, 0.06);
+		border: 1px solid var(--color-overlay-white-06);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-md);
 	}
@@ -369,7 +364,7 @@
 	}
 
 	.stat-row + .stat-row {
-		border-top: 1px solid rgba(255, 255, 255, 0.04);
+		border-top: 1px solid var(--color-overlay-white-05);
 	}
 
 	.stat-label {
@@ -421,19 +416,19 @@
 		width: 100%;
 		height: 6px;
 		background: var(--bg-elevated);
-		border-radius: 3px;
+		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
 
 	.health-progress-bar {
 		height: 100%;
-		border-radius: 3px;
+		border-radius: var(--radius-sm);
 		transition: width var(--transition-normal);
 	}
 
 	.library-stats {
 		margin-top: var(--spacing-xs);
-		border-top: 1px solid rgba(255, 255, 255, 0.04);
+		border-top: 1px solid var(--color-overlay-white-05);
 		padding-top: var(--spacing-xs);
 	}
 

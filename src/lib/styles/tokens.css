@@ -53,6 +53,20 @@
 	--color-overlay-hover-subtle: rgba(255, 255, 255, 0.05);
 	--color-overlay-hover: rgba(255, 255, 255, 0.06);
 
+	/* ---------- Color: Translucent whites (for use on dark/media surfaces) ---------- */
+	--color-overlay-white-05: rgba(255, 255, 255, 0.05);
+	--color-overlay-white-06: rgba(255, 255, 255, 0.06);
+	--color-overlay-white-08: rgba(255, 255, 255, 0.08);
+	--color-overlay-white-10: rgba(255, 255, 255, 0.1);
+	--color-overlay-white-12: rgba(255, 255, 255, 0.12);
+	--color-overlay-white-15: rgba(255, 255, 255, 0.15);
+	--color-overlay-white-20: rgba(255, 255, 255, 0.2);
+	--color-overlay-white-30: rgba(255, 255, 255, 0.3);
+
+	/* ---------- Color: Video player ---------- */
+	/* Deliberately YouTube-style red for the seek/progress bar, distinct from accent */
+	--color-player-progress: #ef4444;
+
 	/* ---------- Color: Focus rings ---------- */
 	--color-focus-ring: rgba(59, 130, 246, 0.1);
 	--color-focus-ring-search: rgba(99, 102, 241, 0.15);
@@ -74,7 +88,9 @@
 	--radius-full: 9999px;
 
 	/* ---------- Typography: Font size ---------- */
+	--font-size-2xs: 0.6875rem; /* 11px */
 	--font-size-xs: 0.75rem;    /* 12px */
+	--font-size-control: 0.8125rem; /* 13px — buttons, player chrome */
 	--font-size-sm: 0.875rem;   /* 14px */
 	--font-size-base: 1rem;     /* 16px */
 	--font-size-lg: 1.125rem;   /* 18px */
@@ -109,8 +125,16 @@
 
 	/* ---------- Transitions ---------- */
 	--transition-fast: 150ms ease;
+	--transition-snappy: 200ms ease;
 	--transition-normal: 250ms ease;
 	--transition-slow: 350ms ease;
+
+	/* ---------- Icon sizes ---------- */
+	--icon-xs: 14px;
+	--icon-sm: 16px;
+	--icon-md: 18px;
+	--icon-lg: 24px;
+	--icon-xl: 36px;
 
 	/* ---------- Z-index layers ---------- */
 	--z-base: 1;
@@ -134,6 +158,7 @@
 	--grid-card-min-width: 350px;
 	--grid-search-result-min-width: 280px;
 	--grid-card-min-width-sm: 300px;
+	--grid-card-min-width-xs: 250px;
 
 	/* ---------- Backwards-compatible aliases ---------- */
 	/* These mirror the older token names used across the codebase so

@@ -1701,6 +1701,7 @@
       <div class="submit-row">
         <button type="submit" class="btn btn-primary btn-lg" disabled={loading || playlistImporting}>
           {#if loading}
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             Downloading...
           {:else}
             Download Single
@@ -1723,6 +1724,7 @@
     {:else}
       <button type="submit" class="btn btn-primary btn-lg" disabled={loading}>
         {#if loading}
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
           Downloading...
         {:else}
           Download
@@ -1814,9 +1816,9 @@
   }
 
   .toggle-label {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
     color: var(--text-tertiary);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     transition: color var(--transition-fast);
   }
 
@@ -1855,12 +1857,12 @@
     letter-spacing: 0.03em;
     color: var(--text-tertiary);
     background: none;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: 1px 6px;
     cursor: pointer;
-    font-weight: 500;
-    transition: color 0.15s, border-color 0.15s;
+    font-weight: var(--font-weight-medium);
+    transition: color var(--transition-fast), border-color var(--transition-fast);
   }
 
   .reset-btn:hover {
@@ -1919,7 +1921,7 @@
   }
 
   .option-chip {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
   }
 
   .option-chip.active {
@@ -1969,7 +1971,7 @@
   }
 
   .advanced-title {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
     font-weight: 600;
     color: var(--text-secondary);
     display: flex;
@@ -2032,7 +2034,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
   }
 
   .save-dialog input:focus {
@@ -2091,7 +2093,7 @@
     background: transparent;
     border: none;
     color: var(--text-primary);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
     outline: none;
   }
 
@@ -2117,7 +2119,7 @@
     padding: var(--spacing-md);
     text-align: center;
     color: var(--text-tertiary);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
   }
 
   /* Categories */
@@ -2138,7 +2140,7 @@
     background: none;
     border: none;
     color: var(--text-secondary);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
     font-weight: 500;
     cursor: pointer;
     transition: background var(--transition-fast);
@@ -2218,7 +2220,7 @@
   }
 
   .flag-name {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
     color: var(--text-secondary);
     flex: 1;
   }
@@ -2245,7 +2247,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
   }
 
   .flag-value select {
@@ -2337,7 +2339,6 @@
     gap: var(--spacing-sm);
   }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
   .spin { animation: spin 1s linear infinite; }
 
   /* Playlist progress */
@@ -2357,7 +2358,7 @@
   }
 
   .playlist-progress-title {
-    font-size: 0.8125rem;
+    font-size: var(--font-size-control);
     font-weight: 600;
     color: var(--text-primary);
     overflow: hidden;
@@ -2412,7 +2413,7 @@
       flex: 1;
       min-width: 0;
       padding: var(--spacing-sm);
-      font-size: 0.8125rem;
+      font-size: var(--font-size-control);
     }
 
     .advanced-header {

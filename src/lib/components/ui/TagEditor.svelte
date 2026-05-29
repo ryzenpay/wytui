@@ -116,7 +116,7 @@
 		background: var(--bg-tertiary);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		color: var(--text-secondary);
 	}
 
@@ -145,7 +145,7 @@
 		background: transparent;
 		border: none;
 		color: var(--text-primary);
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		outline: none;
 		padding: 2px 0;
 	}
@@ -177,7 +177,7 @@
 		border: none;
 		padding: var(--spacing-xs) var(--spacing-sm);
 		color: var(--text-secondary);
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		cursor: pointer;
 	}
 

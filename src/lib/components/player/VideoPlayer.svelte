@@ -1,4 +1,6 @@
 <script lang="ts">
+	import CheckIcon from '$lib/components/icons/CheckIcon.svelte';
+
 	let {
 		src,
 		poster,
@@ -409,6 +411,7 @@
 
 	// -- Progress bar interaction --
 	let progressDragging = $state(false);
+	let volumeDragging = $state(false);
 
 	function handleProgressMouseDown(e: MouseEvent) {
 		progressDragging = true;
@@ -656,10 +659,12 @@
 			onmouseenter={() => (progressHovered = true)}
 			onmouseleave={() => (progressHovered = false)}
 			role="slider"
+			tabindex="0"
 			aria-label="Seek"
 			aria-valuenow={Math.floor(currentTime)}
 			aria-valuemin={0}
 			aria-valuemax={Math.floor(duration)}
+			aria-valuetext="{formatTime(currentTime)} of {formatTime(duration)}"
 		>
 			<div class="progress-bar-track">
 				<div class="progress-bar-buffered" style="width: {bufferedPct}%"></div>
@@ -728,7 +733,7 @@
 			</div>
 
 			<!-- Volume -->
-			<div class="volume-control">
+			<div class="volume-control" class:dragging={volumeDragging}>
 				<button class="ctrl-btn" onclick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
 					{#if volumeIcon === 'muted'}
 						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -756,9 +761,10 @@
 						const track = e.currentTarget;
 						const rect = track.getBoundingClientRect();
 						const update = (clientX: number) => setVolume(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)));
+						volumeDragging = true;
 						update(e.clientX);
 						const onMove = (ev: MouseEvent) => update(ev.clientX);
-						const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+						const onUp = () => { volumeDragging = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
 						window.addEventListener('mousemove', onMove);
 						window.addEventListener('mouseup', onUp);
 					}}
@@ -849,8 +855,8 @@
 	{#if contextMenu}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="ctx-backdrop" onclick={closeContextMenu}></div>
-		<div class="ctx-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;" oncontextmenu={(e) => e.preventDefault()}>
-			<button class="ctx-item ctx-item-toggle" class:active={loopEnabled} onclick={() => { loopEnabled = !loopEnabled; closeContextMenu(); }}>
+		<div class="ctx-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;" oncontextmenu={(e) => e.preventDefault()} role="menu" tabindex="-1" aria-label="Player options">
+			<button class="ctx-item ctx-item-toggle" class:active={loopEnabled} role="menuitemcheckbox" aria-checked={loopEnabled} onclick={() => { loopEnabled = !loopEnabled; closeContextMenu(); }}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<polyline points="17 1 21 5 17 9" />
 					<path d="M3 11V9a4 4 0 014-4h14" />
@@ -858,18 +864,18 @@
 					<path d="M21 13v2a4 4 0 01-4 4H3" />
 				</svg>
 				Loop
-				{#if loopEnabled}<span class="ctx-check">✓</span>{/if}
+				{#if loopEnabled}<span class="ctx-check"><CheckIcon width={14} height={14} /></span>{/if}
 			</button>
-			<button class="ctx-item ctx-item-toggle" class:active={autoSkipEnabled} onclick={() => { autoSkipEnabled = !autoSkipEnabled; closeContextMenu(); }}>
+			<button class="ctx-item ctx-item-toggle" class:active={autoSkipEnabled} role="menuitemcheckbox" aria-checked={autoSkipEnabled} onclick={() => { autoSkipEnabled = !autoSkipEnabled; closeContextMenu(); }}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<circle cx="12" cy="12" r="10" />
 					<path d="M10 15l5-3-5-3v6z" fill="currentColor" stroke="none" />
 				</svg>
 				Skip Sponsors
-				{#if autoSkipEnabled}<span class="ctx-check">✓</span>{/if}
+				{#if autoSkipEnabled}<span class="ctx-check"><CheckIcon width={14} height={14} /></span>{/if}
 			</button>
 			{#if downloadId}
-				<button class="ctx-item" onclick={() => { copyLinkAtCurrentTime(); closeContextMenu(); }}>
+				<button class="ctx-item" role="menuitem" onclick={() => { copyLinkAtCurrentTime(); closeContextMenu(); }}>
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
 						<path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
@@ -881,7 +887,7 @@
 			<div class="ctx-label">Speed</div>
 			<div class="ctx-speeds">
 				{#each SPEED_OPTIONS as speed}
-					<button class="ctx-speed" class:active={playbackRate === speed} onclick={() => { setSpeed(speed); closeContextMenu(); }}>
+					<button class="ctx-speed" class:active={playbackRate === speed} role="menuitemradio" aria-checked={playbackRate === speed} onclick={() => { setSpeed(speed); closeContextMenu(); }}>
 						{speed}x
 					</button>
 				{/each}
@@ -892,7 +898,7 @@
 	<!-- Help overlay -->
 	{#if showHelp}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="help-overlay" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()}>
+		<div class="help-overlay" role="dialog" tabindex="-1" aria-label="Keyboard shortcuts" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()}>
 			<h4>Keyboard Shortcuts</h4>
 			<div class="help-grid">
 				<span>Space</span><span>Play / Pause</span>
@@ -1001,7 +1007,7 @@
 		position: relative;
 		width: 100%;
 		height: 4px;
-		background: rgba(255, 255, 255, 0.2);
+		background: var(--color-overlay-white-20);
 		border-radius: 2px;
 		pointer-events: none;
 		transition: height var(--transition-fast);
@@ -1016,7 +1022,7 @@
 		top: 0;
 		left: 0;
 		height: 100%;
-		background: rgba(255, 255, 255, 0.3);
+		background: var(--color-overlay-white-30);
 		border-radius: 2px;
 		pointer-events: none;
 	}
@@ -1026,7 +1032,7 @@
 		top: 0;
 		left: 0;
 		height: 100%;
-		background: #ef4444;
+		background: var(--color-player-progress);
 		border-radius: 2px;
 		pointer-events: none;
 		z-index: 1;
@@ -1040,7 +1046,7 @@
 		width: 12px;
 		height: 12px;
 		border-radius: 50%;
-		background: #ef4444;
+		background: var(--color-player-progress);
 		opacity: 0;
 		transition: opacity var(--transition-fast);
 	}
@@ -1100,17 +1106,22 @@
 	.pip-active,
 	.theater-active,
 	.subtitle-active {
-		color: var(--accent-primary, #6366f1);
+		color: var(--color-accent-primary);
 	}
 
 	.ctrl-btn:hover {
-		background: rgba(255, 255, 255, 0.15);
+		background: var(--color-overlay-white-15);
+	}
+
+	.ctrl-btn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--color-accent-primary);
 	}
 
 	/* Time display */
 	.time-display {
 		color: white;
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
 		padding: 0 var(--spacing-xs);
@@ -1122,8 +1133,8 @@
 	}
 
 	.speed-btn {
-		font-size: 0.8125rem;
-		font-weight: 600;
+		font-size: var(--font-size-control);
+		font-weight: var(--font-weight-semibold);
 		width: auto;
 		padding: 0 var(--spacing-xs);
 		min-width: 36px;
@@ -1134,23 +1145,23 @@
 		bottom: 100%;
 		right: 0;
 		margin-bottom: var(--spacing-xs);
-		background: var(--bg-elevated, #2a2a2a);
-		border: 1px solid var(--border, #3a3a3a);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-xs);
 		display: flex;
 		flex-direction: column;
 		min-width: 80px;
 		z-index: 10;
-		box-shadow: var(--shadow-lg);
+		box-shadow: var(--shadow-dropdown);
 	}
 
 	.speed-option {
 		background: none;
 		border: none;
-		color: var(--text-secondary, #a0a0a0);
+		color: var(--color-text-secondary);
 		padding: var(--spacing-xs) var(--spacing-sm);
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		text-align: left;
 		cursor: pointer;
 		border-radius: var(--radius-sm);
@@ -1160,20 +1171,20 @@
 	}
 
 	.speed-option:hover {
-		background: rgba(255, 255, 255, 0.1);
-		color: white;
+		background: var(--color-overlay-white-10);
+		color: var(--color-text-primary);
 	}
 
 	.speed-option.active {
-		color: var(--accent-primary, #3b82f6);
-		font-weight: 600;
+		color: var(--color-accent-primary);
+		font-weight: var(--font-weight-semibold);
 	}
 
 	/* Theater mode */
 	.theater-mode {
 		position: fixed;
 		inset: 0;
-		z-index: 1000;
+		z-index: var(--z-modal);
 		border-radius: 0;
 		background: #000;
 		display: flex;
@@ -1197,11 +1208,11 @@
 		position: relative;
 		width: 0;
 		height: 4px;
-		background: rgba(255, 255, 255, 0.2);
+		background: var(--color-overlay-white-20);
 		border-radius: 2px;
 		cursor: pointer;
 		overflow: visible;
-		transition: width 0.2s ease, margin 0.2s ease;
+		transition: width var(--transition-snappy), margin var(--transition-snappy);
 		margin: 0;
 	}
 
@@ -1214,7 +1225,8 @@
 		right: 0;
 	}
 
-	.volume-control:hover .volume-slider-wrapper {
+	.volume-control:hover .volume-slider-wrapper,
+	.volume-control.dragging .volume-slider-wrapper {
 		width: 70px;
 		margin-right: var(--spacing-sm);
 		margin-left: 2px;
@@ -1240,10 +1252,11 @@
 		border-radius: 50%;
 		background: white;
 		opacity: 0;
-		transition: opacity 0.15s ease;
+		transition: opacity var(--transition-fast);
 	}
 
-	.volume-control:hover .volume-slider-thumb {
+	.volume-control:hover .volume-slider-thumb,
+	.volume-control.dragging .volume-slider-thumb {
 		opacity: 1;
 	}
 
@@ -1253,8 +1266,8 @@
 		top: 50%;
 		left: 50%;
 		transform: translate(-50%, -50%);
-		background: rgba(0, 0, 0, 0.88);
-		border: 1px solid rgba(255,255,255,0.12);
+		background: var(--color-overlay-heavy);
+		border: 1px solid var(--color-overlay-white-12);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-lg);
 		color: white;
@@ -1265,10 +1278,10 @@
 
 	.help-overlay h4 {
 		margin: 0 0 var(--spacing-md);
-		font-size: 0.875rem;
-		font-weight: 600;
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
 		text-align: center;
-		color: rgba(255,255,255,0.7);
+		color: rgba(255, 255, 255, 0.7);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
@@ -1277,12 +1290,12 @@
 		display: grid;
 		grid-template-columns: auto 1fr;
 		gap: 6px 16px;
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 	}
 
 	.help-grid span:nth-child(odd) {
-		font-family: monospace;
-		color: var(--accent-primary, #3b82f6);
+		font-family: var(--font-family-mono);
+		color: var(--color-accent-primary);
 		white-space: nowrap;
 	}
 
@@ -1290,23 +1303,23 @@
 		color: rgba(255,255,255,0.8);
 	}
 
-	/* Context menu */
+	/* Context menu — matches the app's elevated dropdown/menu styling */
 	.ctx-backdrop {
 		position: fixed;
 		inset: 0;
-		z-index: 200;
+		z-index: var(--z-overlay);
 	}
 
 	.ctx-menu {
 		position: fixed;
-		z-index: 201;
-		background: rgba(20, 20, 20, 0.95);
-		backdrop-filter: blur(8px);
-		border: 1px solid rgba(255, 255, 255, 0.12);
+		z-index: calc(var(--z-overlay) + 1);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-xs);
 		min-width: 180px;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--shadow-dropdown);
+		animation: fadeIn var(--transition-fast) ease-out both;
 	}
 
 	.ctx-item {
@@ -1314,12 +1327,12 @@
 		align-items: center;
 		gap: var(--spacing-sm);
 		width: 100%;
-		padding: 7px var(--spacing-sm);
+		padding: var(--spacing-sm);
 		background: none;
 		border: none;
-		color: rgba(255, 255, 255, 0.9);
+		color: var(--color-text-primary);
 		font: inherit;
-		font-size: 0.875rem;
+		font-size: var(--font-size-sm);
 		cursor: pointer;
 		border-radius: var(--radius-sm);
 		text-align: left;
@@ -1329,58 +1342,68 @@
 	}
 
 	.ctx-item:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-overlay-hover);
+	}
+
+	.ctx-item:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--color-accent-primary);
 	}
 
 	.ctx-check {
+		display: inline-flex;
 		margin-left: auto;
-		color: var(--accent-primary);
-		font-size: 0.75rem;
+		color: var(--color-accent-primary);
 	}
 
 	.ctx-divider {
 		height: 1px;
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-border-default);
 		margin: var(--spacing-xs) 0;
 	}
 
 	.ctx-label {
-		font-size: 0.6875rem;
-		color: rgba(255, 255, 255, 0.4);
+		font-size: var(--font-size-2xs);
+		color: var(--color-text-tertiary);
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		padding: 4px var(--spacing-sm) 2px;
+		padding: var(--spacing-xs) var(--spacing-sm) 2px;
 	}
 
 	.ctx-speeds {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: var(--spacing-xs);
 		padding: var(--spacing-xs);
 	}
 
 	.ctx-speed {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-bg-tertiary);
 		border: none;
-		color: rgba(255, 255, 255, 0.8);
+		color: var(--color-text-secondary);
 		border-radius: var(--radius-sm);
-		padding: 4px 8px;
+		padding: var(--spacing-xs) var(--spacing-sm);
 		font: inherit;
-		font-size: 0.75rem;
+		font-size: var(--font-size-xs);
 		cursor: pointer;
-		transition: background var(--transition-fast);
+		transition: background var(--transition-fast), color var(--transition-fast);
 		min-height: unset;
 		min-width: unset;
 	}
 
 	.ctx-speed:hover {
-		background: rgba(255, 255, 255, 0.15);
-		color: white;
+		background: var(--color-bg-hover);
+		color: var(--color-text-primary);
+	}
+
+	.ctx-speed:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 2px var(--color-accent-primary);
 	}
 
 	.ctx-speed.active {
-		background: var(--accent-primary);
-		color: white;
+		background: var(--color-accent-primary);
+		color: var(--color-text-on-accent);
 	}
 
 	/* Skip notification toast */
@@ -1392,8 +1415,8 @@
 		color: white;
 		padding: var(--spacing-sm) var(--spacing-md);
 		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 500;
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-medium);
 		z-index: 20;
 		pointer-events: none;
 		animation: toast-in 0.3s ease;
@@ -1401,7 +1424,7 @@
 	}
 
 	.link-toast {
-		border-left-color: var(--accent-primary, #3b82f6);
+		border-left-color: var(--color-accent-primary);
 	}
 
 	@keyframes toast-in {

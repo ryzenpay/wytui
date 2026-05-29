@@ -397,7 +397,7 @@
 					{/if}
 				</button>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="video-progress-bar" bind:this={progressBarEl} onmousedown={handleProgressMouseDown}>
+				<div class="video-progress-bar" class:dragging={isDragging} bind:this={progressBarEl} onmousedown={handleProgressMouseDown}>
 					<div class="progress-fill" style="width: {videoProgress * 100}%"></div>
 				</div>
 			{/if}
@@ -607,7 +607,7 @@
 	}
 
 	.download-card.clickable:hover h3 {
-		color: var(--accent-primary);
+		color: var(--color-accent-primary);
 	}
 
 	.play-overlay {
@@ -619,7 +619,7 @@
 		justify-content: center;
 		background: rgba(0, 0, 0, 0.3);
 		opacity: 0;
-		transition: opacity 0.2s;
+		transition: opacity var(--transition-snappy);
 		pointer-events: none;
 	}
 
@@ -632,8 +632,8 @@
 	}
 
 	.download-card.selected {
-		border-color: var(--accent-primary);
-		box-shadow: 0 0 0 1px var(--accent-primary);
+		border-color: var(--color-accent-primary);
+		box-shadow: 0 0 0 1px var(--color-accent-primary);
 	}
 
 	.select-overlay {
@@ -656,13 +656,22 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.15s;
+		transition: all var(--transition-fast);
+	}
+
+	.select-overlay:focus-visible {
+		outline: none;
+	}
+
+	.select-overlay:focus-visible .select-checkbox {
+		border-color: var(--color-accent-primary);
+		box-shadow: 0 0 0 3px var(--color-focus-ring);
 	}
 
 	.select-checkbox.checked {
-		background: var(--accent-primary);
-		border-color: var(--accent-primary);
-		color: white;
+		background: var(--color-accent-primary);
+		border-color: var(--color-accent-primary);
+		color: var(--color-text-on-accent);
 	}
 
 	.thumbnail {
@@ -698,11 +707,11 @@
 		z-index: 4;
 		background: rgba(0, 0, 0, 0.55);
 		backdrop-filter: blur(4px);
-		border-radius: 4px;
+		border-radius: var(--radius-sm);
 		padding: 2px 6px;
 		color: white;
-		font-size: 0.6875rem;
-		font-family: monospace;
+		font-size: var(--font-size-2xs);
+		font-family: var(--font-family-mono);
 		line-height: 1;
 		pointer-events: none;
 	}
@@ -724,7 +733,7 @@
 		justify-content: center;
 		cursor: pointer;
 		opacity: 0.8;
-		transition: opacity 0.15s, background 0.15s;
+		transition: opacity var(--transition-fast), background var(--transition-fast);
 	}
 
 	.mute-btn:hover {
@@ -738,29 +747,30 @@
 		left: 0;
 		width: 100%;
 		height: 6px;
-		background: rgba(255, 255, 255, 0.3);
+		background: var(--color-overlay-white-30);
 		z-index: 3;
 		cursor: pointer;
-		transition: height 0.15s;
+		transition: height var(--transition-fast);
 	}
 
-	.video-progress-bar:hover {
+	.video-progress-bar:hover,
+	.video-progress-bar.dragging {
 		height: 10px;
 	}
 
 	.progress-fill {
 		height: 100%;
-		background: #f00;
+		background: var(--color-player-progress);
 		transition: width 0.1s linear;
 	}
 
 	.deleted-info {
-		background: rgba(255, 255, 255, 0.05);
+		background: var(--color-overlay-white-05);
 		border: 1px solid var(--border);
 		border-radius: var(--radius-md);
 		padding: var(--spacing-sm);
 		color: var(--text-secondary);
-		font-size: 0.75rem;
+		font-size: var(--font-size-xs);
 		margin-bottom: var(--spacing-md);
 		text-align: center;
 	}
@@ -873,14 +883,9 @@
 		animation: spin 1.5s linear infinite;
 	}
 
-	@keyframes spin {
-		from { transform: rotate(0deg); }
-		to { transform: rotate(360deg); }
-	}
-
 	.uploader-text {
 		color: var(--text-secondary);
-		font-size: 0.875rem;
+		font-size: var(--font-size-sm);
 		margin-bottom: var(--spacing-sm);
 		display: block;
 	}

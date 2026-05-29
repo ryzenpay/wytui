@@ -248,7 +248,7 @@
 		border: 1px solid var(--color-border-translucent);
 		border-radius: var(--radius-md);
 		color: var(--color-text-primary);
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		cursor: pointer;
 		white-space: nowrap;
 		transition: border-color var(--transition-fast);
@@ -308,7 +308,7 @@
 		border-bottom: 1px solid var(--color-border-translucent);
 		border-radius: 0;
 		color: var(--color-text-primary);
-		font-size: 0.85rem;
+		font-size: var(--font-size-sm);
 		outline: none;
 	}
 
@@ -329,7 +329,7 @@
 		background: transparent;
 		border: none;
 		color: var(--color-text-primary);
-		font-size: 0.85rem;
+		font-size: var(--font-size-sm);
 		text-align: left;
 		cursor: pointer;
 		white-space: nowrap;
@@ -340,6 +340,12 @@
 	.dropdown-option:hover:not(:disabled),
 	.dropdown-option.active {
 		background: var(--color-overlay-hover);
+	}
+
+	.dropdown-option:focus-visible {
+		outline: none;
+		background: var(--color-overlay-hover);
+		box-shadow: inset 0 0 0 2px var(--color-accent-primary);
 	}
 
 	.dropdown-option.selected {
@@ -354,6 +360,6 @@
 	.dropdown-empty {
 		padding: var(--spacing-sm) var(--spacing-md);
 		color: var(--color-text-secondary);
-		font-size: 0.85rem;
+		font-size: var(--font-size-sm);
 	}
 </style>

@@ -145,34 +145,8 @@
 		gap: var(--spacing-md);
 	}
 
-	.btn-primary,
-	.btn-secondary {
-		padding: var(--spacing-sm) var(--spacing-lg);
-		border: none;
-		border-radius: var(--radius-md);
-		font-weight: var(--font-weight-semibold);
-		cursor: pointer;
-		transition: var(--transition-fast);
-	}
-
-	.btn-primary {
-		background: var(--color-accent-primary);
-		color: var(--color-text-on-accent);
-	}
-
-	.btn-primary:hover {
-		background: var(--color-accent-hover);
-	}
-
-	.btn-secondary {
-		background: var(--color-bg-tertiary);
-		color: var(--color-text-primary);
-		border: 1px solid var(--color-border-default);
-	}
-
-	.btn-secondary:hover {
-		background: var(--color-bg-hover);
-	}
+	/* Buttons use the global .btn / .btn-primary / .btn-secondary styles from app.css
+	   for consistency with the rest of the app (gradient primary, etc.). */
 
 	@media (max-width: 768px) {
 		.modal {

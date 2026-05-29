@@ -131,7 +131,7 @@ button:disabled,
 
 .btn-sm {
 	padding: var(--spacing-sm) var(--spacing-md);
-	font-size: 0.8125rem;
+	font-size: var(--font-size-control);
 }
 
 .btn-lg {
@@ -307,7 +307,7 @@ input[type='checkbox']:hover:not(:disabled) {
 }
 
 .grid-3 {
-	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(var(--grid-card-min-width-xs), 1fr));
 }
 
 .flex {
@@ -396,6 +396,13 @@ input[type='checkbox']:hover:not(:disabled) {
 	40%,
 	80% {
 		transform: translateX(6px);
+	}
+}
+
+/* Global spinner keyframe — shared by all loading indicators */
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
 	}
 }
 

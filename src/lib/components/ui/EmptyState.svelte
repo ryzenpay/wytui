@@ -33,7 +33,7 @@
 		<p class="empty-state-description">{description}</p>
 	{/if}
 	{#if actionLabel && onAction}
-		<button type="button" class="empty-state-action" onclick={onAction}>
+		<button type="button" class="btn btn-primary empty-state-action" onclick={onAction}>
 			{actionLabel}
 		</button>
 	{/if}
@@ -94,48 +94,29 @@
 
 	.empty-state-title {
 		margin: 0;
-		font-size: 1rem;
-		font-weight: 600;
+		font-size: var(--font-size-base);
+		font-weight: var(--font-weight-semibold);
 		color: var(--text-primary);
 	}
 
 	.empty-state[data-size='lg'] .empty-state-title {
-		font-size: 1.125rem;
+		font-size: var(--font-size-lg);
 	}
 
 	.empty-state-description {
 		margin: 0;
 		max-width: 42ch;
 		color: var(--text-tertiary);
-		font-size: 0.875rem;
-		line-height: 1.5;
+		font-size: var(--font-size-sm);
+		line-height: var(--line-height-base);
 	}
 
 	.empty-state-action {
 		margin-top: var(--spacing-sm);
-		padding: 8px 16px;
-		min-height: 36px;
-		background: var(--accent-primary, #3b82f6);
-		color: white;
-		border: none;
-		border-radius: var(--radius-md);
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background var(--transition-fast), transform var(--transition-fast);
-	}
-
-	.empty-state-action:hover {
-		background: var(--accent-primary-hover, #2563eb);
-		transform: translateY(-1px);
-	}
-
-	.empty-state-action:active {
-		transform: translateY(0);
 	}
 
 	.empty-state-action:focus-visible {
-		outline: 2px solid var(--accent-primary, #3b82f6);
+		outline: 2px solid var(--color-accent-primary);
 		outline-offset: 2px;
 	}
 </style>

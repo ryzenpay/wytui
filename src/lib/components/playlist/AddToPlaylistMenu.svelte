@@ -294,15 +294,11 @@
 	.playlist-spinner {
 		width: 12px;
 		height: 12px;
-		border: 2px solid var(--border, #555);
-		border-top-color: var(--accent-primary, #3b82f6);
+		border: 2px solid var(--border);
+		border-top-color: var(--accent-primary);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
 		flex-shrink: 0;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
 	}
 
 	.popover-footer {
@@ -319,7 +315,7 @@
 		background: none;
 		border: none;
 		color: var(--text-muted, #888);
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		cursor: pointer;
 		border-radius: var(--radius-sm, 4px);
 		min-height: unset;
@@ -339,7 +335,7 @@
 
 	.new-playlist-input {
 		flex: 1;
-		font-size: 0.8125rem;
+		font-size: var(--font-size-control);
 		padding: 4px 8px;
 		min-width: 0;
 	}
