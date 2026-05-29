@@ -1029,6 +1029,11 @@
 		gap: var(--spacing-lg);
 		max-height: 70vh;
 		overflow-y: auto;
+		/* Room for the card's hover lift/scale so it doesn't overflow the
+		   scroll container and trigger a scrollbar. Negative margin keeps the
+		   cards visually aligned with the rest of the layout. */
+		padding: var(--spacing-xs);
+		margin: calc(var(--spacing-xs) * -1);
 	}
 
 	.section { margin-bottom: var(--spacing-xl); width: 100%; }
