@@ -170,9 +170,17 @@
 	});
 
 	// -- Video event handlers --
+	let lastTime = 0;
+
 	function handleTimeUpdate() {
 		if (!videoEl) return;
 		currentTime = videoEl.currentTime;
+		// Detect a loop restart (native loop seeks to ~0 without firing `ended`)
+		// and reset skipped segments so SponsorBlock re-skips on the next pass.
+		if (lastTime > duration - 1 && currentTime < 1 && skippedUUIDs.size > 0) {
+			skippedUUIDs = new Set();
+		}
+		lastTime = currentTime;
 		// Update buffered
 		if (videoEl.buffered.length > 0) {
 			buffered = videoEl.buffered.end(videoEl.buffered.length - 1);
@@ -182,7 +190,7 @@
 	function handleMetadata() {
 		if (!videoEl) return;
 		duration = videoEl.duration;
-		if (startTime > 0 && startTime < videoEl.duration - 5) {
+		if (startTime > 0 && startTime < videoEl.duration - 0.5) {
 			videoEl.currentTime = startTime;
 		}
 	}
@@ -357,6 +365,10 @@
 			script.async = true;
 			document.head.appendChild(script);
 		}
+		return () => {
+			// Avoid leaking the global callback across remounts.
+			if (win['__onGCastApiAvailable']) delete win['__onGCastApiAvailable'];
+		};
 	});
 
 	function initCast() {
@@ -469,23 +481,37 @@
 	}
 
 	// -- SponsorBlock segment click (unskip) --
+	let rewatchCleanup: (() => void) | null = null;
+	let rewatchPrevAutoSkip = false;
+
 	function handleSegmentClick(seg: SBSegment) {
 		if (!videoEl) return;
 		// Seek to start of the segment to re-watch it
 		videoEl.currentTime = seg.segment[0];
-		// Remove from skipped so auto-skip doesn't re-trigger immediately; re-add after segment ends
+		// Mark as skipped so auto-skip doesn't re-trigger immediately
 		skippedUUIDs = new Set([...skippedUUIDs, seg.UUID]);
-		// Temporarily disable auto-skip for this segment
-		const prevAutoSkip = autoSkipEnabled;
+		// Capture the user's real auto-skip preference only on the first
+		// re-watch; clear any in-flight listener so they don't stack.
+		if (rewatchCleanup) {
+			rewatchCleanup();
+		} else {
+			rewatchPrevAutoSkip = autoSkipEnabled;
+		}
 		autoSkipEnabled = false;
 		const end = seg.segment[1];
+		const el = videoEl;
 		function checkEnd() {
-			if (videoEl && videoEl.currentTime >= end) {
-				autoSkipEnabled = prevAutoSkip;
-				videoEl.removeEventListener('timeupdate', checkEnd);
+			if (el.currentTime >= end) {
+				autoSkipEnabled = rewatchPrevAutoSkip;
+				cleanup();
 			}
 		}
-		videoEl.addEventListener('timeupdate', checkEnd);
+		function cleanup() {
+			el.removeEventListener('timeupdate', checkEnd);
+			rewatchCleanup = null;
+		}
+		rewatchCleanup = cleanup;
+		el.addEventListener('timeupdate', checkEnd);
 	}
 
 	// -- Keyboard shortcuts --
@@ -628,8 +654,8 @@
 		onended={handleEnded}
 		class="video-element"
 	>
-		{#each subtitles as sub, i}
-			<track kind="subtitles" label={sub.label} srclang={sub.lang} src={sub.src} default={i === 0} />
+		{#each subtitles as sub}
+			<track kind="subtitles" label={sub.label} srclang={sub.lang} src={sub.src} />
 		{/each}
 	</video>
 
@@ -754,9 +780,21 @@
 						</svg>
 					{/if}
 				</button>
-				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="volume-slider-wrapper"
+					role="slider"
+					tabindex="0"
+					aria-label="Volume"
+					aria-valuemin={0}
+					aria-valuemax={100}
+					aria-valuenow={Math.round((muted ? 0 : volume) * 100)}
+					aria-valuetext="{Math.round((muted ? 0 : volume) * 100)}%"
+					onkeydown={(e) => {
+						if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); changeVolume(0.05); }
+						else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); changeVolume(-0.05); }
+						else if (e.key === 'Home') { e.preventDefault(); setVolume(0); }
+						else if (e.key === 'End') { e.preventDefault(); setVolume(1); }
+					}}
 					onmousedown={(e) => {
 						const track = e.currentTarget;
 						const rect = track.getBoundingClientRect();

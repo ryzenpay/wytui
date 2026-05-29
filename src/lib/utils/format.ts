@@ -22,6 +22,36 @@ export function formatTimestamp(totalSeconds: number): string {
 	return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+const DOWNLOAD_STATUS_COLORS: Record<string, string> = {
+	PENDING: 'var(--text-tertiary)',
+	FETCHING_INFO: 'var(--info)',
+	DOWNLOADING: 'var(--accent-primary)',
+	PROCESSING: 'var(--warning)',
+	COMPLETED: 'var(--success)',
+	FAILED: 'var(--error)',
+	CANCELLED: 'var(--text-tertiary)',
+	DELETED: 'var(--text-tertiary)',
+};
+
+const DOWNLOAD_STATUS_LABELS: Record<string, string> = {
+	PENDING: 'Pending',
+	FETCHING_INFO: 'Fetching Info',
+	DOWNLOADING: 'Downloading',
+	PROCESSING: 'Processing',
+	COMPLETED: 'Completed',
+	FAILED: 'Failed',
+	CANCELLED: 'Cancelled',
+	DELETED: 'Deleted',
+};
+
+export function getDownloadStatusColor(status: string): string {
+	return DOWNLOAD_STATUS_COLORS[status] || 'var(--text-secondary)';
+}
+
+export function getDownloadStatusLabel(status: string): string {
+	return DOWNLOAD_STATUS_LABELS[status] || status;
+}
+
 export function formatUptime(ms: number): string {
 	const seconds = Math.floor(ms / 1000);
 	const days = Math.floor(seconds / 86400);

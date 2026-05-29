@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatBytes, formatUptime } from '$lib/utils/format';
 	import { getSSEState } from '$lib/stores/sse.svelte';
+	import { trapFocus } from '$lib/utils/a11y';
 
 	let { open, onClose }: { open: boolean; onClose: () => void } = $props();
 
@@ -8,6 +9,7 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let sseState = getSSEState();
+	let panelEl: HTMLDivElement | null = $state(null);
 
 	$effect(() => {
 		if (open) {
@@ -15,6 +17,13 @@
 		} else {
 			data = null;
 			error = null;
+		}
+	});
+
+	$effect(() => {
+		if (open && panelEl) {
+			const release = trapFocus(panelEl);
+			return release;
 		}
 	});
 
@@ -47,7 +56,16 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="health-overlay" onkeydown={handleKeydown} onclick={onClose}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="health-panel" onclick={(e) => e.stopPropagation()}>
+		<div
+			bind:this={panelEl}
+			class="health-panel"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Application health"
+			tabindex="-1"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={handleKeydown}
+		>
 			<div class="panel-header">
 				<h2><i class="bi bi-activity"></i> Application Health</h2>
 				<div class="panel-header-actions">

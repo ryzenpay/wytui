@@ -4,6 +4,7 @@
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
+	import { trapFocus } from '$lib/utils/a11y';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
 
@@ -22,6 +23,14 @@
 	let editFormDescription = $state('');
 	let editFormError = $state('');
 	let updating = $state(false);
+	let editModalEl: HTMLDivElement | null = $state(null);
+
+	$effect(() => {
+		if (editingPlaylist && editModalEl) {
+			const release = trapFocus(editModalEl);
+			return release;
+		}
+	});
 
 	onMount(() => {
 		loadPlaylists();
@@ -191,8 +200,18 @@
 		{/if}
 
 		{#if editingPlaylist}
+			<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 			<div class="modal-backdrop" onclick={cancelEdit}>
-				<div class="modal" onclick={(e) => e.stopPropagation()}>
+				<div
+					bind:this={editModalEl}
+					class="modal"
+					role="dialog"
+					aria-modal="true"
+					aria-label="Edit playlist"
+					tabindex="-1"
+					onclick={(e) => e.stopPropagation()}
+					onkeydown={(e) => { if (e.key === 'Escape') cancelEdit(); }}
+				>
 					<div class="modal-header">
 						<h3>Edit Playlist</h3>
 						<button class="modal-close" onclick={cancelEdit} aria-label="Close">
@@ -603,11 +622,12 @@
 	.modal-backdrop {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.7);
+		background: var(--color-overlay-medium);
+		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		z-index: 1000;
+		z-index: var(--z-modal);
 		padding: var(--spacing-lg);
 	}
 
@@ -616,9 +636,10 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		padding: var(--spacing-xl);
-		max-width: 500px;
+		max-width: var(--modal-max-width);
 		width: 100%;
-		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+		box-shadow: var(--shadow-xl);
+		outline: none;
 	}
 
 	.modal-header {

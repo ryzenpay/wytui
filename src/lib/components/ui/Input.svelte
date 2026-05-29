@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
+	import { uniqueId } from '$lib/utils/a11y';
 
 	interface Props extends Omit<HTMLInputAttributes, 'class' | 'value'> {
 		value?: string;
@@ -42,7 +43,8 @@
 	const isValid = $derived(touched && !displayError && value && value.length > 0);
 	const showSuccessState = $derived(showSuccess && isValid && !focused);
 
-	const inputId = $derived(id ?? `input-${Math.random().toString(36).slice(2, 9)}`);
+	const generatedId = uniqueId('input');
+	const inputId = $derived(id ?? generatedId);
 	const errorId = $derived(`${inputId}-error`);
 	const helperId = $derived(`${inputId}-helper`);
 	const countId = $derived(`${inputId}-count`);

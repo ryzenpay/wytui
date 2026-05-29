@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
 	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
 	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
@@ -949,7 +950,7 @@
 				{#each filteredCompletedDownloads as download (download.id)}
 					<DownloadListRow
 						{download}
-						onclick={() => { if (download.status === 'COMPLETED') window.location.href = `/downloads/${download.id}`; }}
+						onclick={() => { if (download.status === 'COMPLETED') goto(`/downloads/${download.id}`); }}
 					/>
 				{/each}
 			</div>
