@@ -25,7 +25,9 @@ export const POST = apiRoute('/api/library/clear', 'POST', {
 			throw error(401, 'Authentication required');
 		}
 
-		const count = await libraryService.clearCache();
+		// Admins clear the whole cache; regular users only their own downloads.
+		const scopeUserId = locals.session.user.isAdmin ? undefined : locals.session.user.id;
+		const count = await libraryService.clearCache(scopeUserId);
 		return json({ success: true, deleted: count });
 	} catch (e: any) {
 		console.error('Failed to clear cache:', e);

@@ -2,7 +2,7 @@ import { error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { createReadStream, existsSync } from 'fs';
 import { stat } from 'fs/promises';
-import { resolve, normalize } from 'path';
+import { resolve, normalize, sep } from 'path';
 import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
@@ -66,11 +66,14 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 			...(settings?.musicLibraryPath ? [settings.musicLibraryPath] : []),
 		];
 		const normalizedPath = normalize(resolve(download.filepath));
-		const allowed = allowedDirs.some((dir) =>
-			normalizedPath.startsWith(normalize(resolve(dir)))
-		);
+		const allowed = allowedDirs.some((dir) => {
+			const base = normalize(resolve(dir));
+			// Require an exact match or a true subpath — `startsWith(base)` alone
+			// would let a sibling like `/downloads-evil` pass for base `/downloads`.
+			return normalizedPath === base || normalizedPath.startsWith(base + sep);
+		});
 		if (!allowed) {
-			throw new Error('Access denied: file path outside allowed directory');
+			throw error(403, 'Access denied: file path outside allowed directory');
 		}
 
 		if (!existsSync(download.filepath)) {
