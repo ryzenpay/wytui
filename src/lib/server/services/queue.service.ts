@@ -69,7 +69,10 @@ export class QueueService {
 		if (max > 10) max = 10;
 
 		this.maxConcurrentDownloads = max;
-		this.downloadLimit = pLimit(max);
+		// Mutate the existing limiter rather than replacing it — swapping the
+		// instance orphaned in-flight/queued tasks on the old limiter and could
+		// briefly exceed the intended concurrency (old + new running together).
+		this.downloadLimit.concurrency = max;
 	}
 
 	/**

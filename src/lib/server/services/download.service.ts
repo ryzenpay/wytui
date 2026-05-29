@@ -63,6 +63,20 @@ class DownloadService {
 	// Track the last post-processing module name for ffmpeg progress mapping
 	private lastPostProcessModule = new Map<string, string>();
 
+	// Last fatal "ERROR:" line emitted by yt-dlp on stderr, used to enrich the
+	// failure message. Individual stderr lines are NOT treated as fatal — only a
+	// non-zero exit code fails the download (see executeDownload).
+	private lastErrorLine = new Map<string, string>();
+
+	/** Drop all per-download bookkeeping for a finished/cancelled download. */
+	private clearDownloadState(downloadId: string): void {
+		this.processingSteps.delete(downloadId);
+		this.downloadDurations.delete(downloadId);
+		this.downloadTaskIds.delete(downloadId);
+		this.lastPostProcessModule.delete(downloadId);
+		this.lastErrorLine.delete(downloadId);
+	}
+
 	private emitToOwner(event: string, data: any, downloadId: string): void {
 		const userId = this.downloadOwners.get(downloadId);
 		if (userId) {
@@ -390,11 +404,17 @@ class DownloadService {
 			startedAt: new Date(),
 		});
 
-		// Spawn download process
+		// Spawn download process (clear any stale error from a prior attempt)
+		this.lastErrorLine.delete(downloadId);
 		const proc = ytdlpService.spawnDownload(
 			args,
 			(data) => this.handleProgress(downloadId, data),
-			(error) => this.handleDownloadError(downloadId, error)
+			// Capture yt-dlp's fatal error line for the failure message, but do
+			// NOT fail/retry per stderr line — yt-dlp prints warnings/notices to
+			// stderr while still succeeding. Only a non-zero exit code is fatal.
+			(line) => {
+				if (line.startsWith('ERROR')) this.lastErrorLine.set(downloadId, line);
+			}
 		);
 
 		// Store process reference
@@ -409,7 +429,8 @@ class DownloadService {
 					await this.completeDownload(downloadId);
 					resolve();
 				} else {
-					reject(new Error(`yt-dlp exited with code ${code}`));
+					const detail = this.lastErrorLine.get(downloadId);
+					reject(new Error(detail || `yt-dlp exited with code ${code}`));
 				}
 			});
 
@@ -634,9 +655,7 @@ class DownloadService {
 			data: { status: 'skipped' },
 		});
 
-		this.processingSteps.delete(downloadId);
-		this.downloadDurations.delete(downloadId);
-		this.downloadTaskIds.delete(downloadId);
+		this.clearDownloadState(downloadId);
 		this.emitToOwner('download:complete', { id: downloadId, download }, downloadId);
 		this.downloadOwners.delete(downloadId);
 
@@ -699,9 +718,7 @@ class DownloadService {
 					data: { status: 'failed', message: error },
 				});
 
-				this.processingSteps.delete(downloadId);
-				this.downloadDurations.delete(downloadId);
-				this.downloadTaskIds.delete(downloadId);
+				this.clearDownloadState(downloadId);
 				this.emitToOwner('download:failed', { id: downloadId, error }, downloadId);
 				this.downloadOwners.delete(downloadId);
 
@@ -739,9 +756,7 @@ class DownloadService {
 			status: DownloadStatus.CANCELLED,
 		});
 
-		this.processingSteps.delete(downloadId);
-		this.downloadDurations.delete(downloadId);
-		this.downloadTaskIds.delete(downloadId);
+		this.clearDownloadState(downloadId);
 		this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
 		this.downloadOwners.delete(downloadId);
 	}
