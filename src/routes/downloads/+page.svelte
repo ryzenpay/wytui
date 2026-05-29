@@ -1036,7 +1036,7 @@
 		justify-content: space-between;
 		align-items: center;
 		gap: var(--spacing-md);
-		margin-bottom: var(--spacing-sm);
+		margin-bottom: var(--spacing-xl);
 		flex-wrap: wrap;
 	}
 
