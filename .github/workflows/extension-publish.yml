@@ -1,0 +1,82 @@
+name: Publish Extension (Firefox AMO)
+
+# Publishes the browser extension to addons.mozilla.org (listed channel) when
+# extension/ changes land on main. To cut a release, bump the version in
+# extension/manifest.json — publishing is guarded by an `ext-v<version>` git tag
+# so pushes that change the extension without bumping the version are skipped
+# (rather than failing on AMO's "duplicate version" error).
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'extension/**'
+      - '.github/workflows/extension-publish.yml'
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to push the ext-v<version> tag
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Read manifest version
+        id: ver
+        run: |
+          VERSION=$(jq -r .version extension/manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse "ext-v$VERSION" >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::ext-v$VERSION already tagged — skipping AMO publish. Bump extension/manifest.json to release."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Publishing extension v$VERSION to AMO."
+          fi
+
+      - name: Lint extension
+        if: steps.ver.outputs.already_published == 'false'
+        run: npx --yes web-ext lint --source-dir=extension
+
+      - name: Build unsigned zip (for Chrome / archival)
+        if: steps.ver.outputs.already_published == 'false'
+        run: npx --yes web-ext build --source-dir=extension --artifacts-dir=extension-artifacts --overwrite-dest
+
+      - name: Sign & publish to AMO (listed)
+        if: steps.ver.outputs.already_published == 'false'
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx --yes web-ext sign \
+            --source-dir=extension \
+            --artifacts-dir=extension-artifacts \
+            --channel=listed \
+            --api-key="$AMO_JWT_ISSUER" \
+            --api-secret="$AMO_JWT_SECRET"
+
+      - name: Upload build artifacts
+        if: steps.ver.outputs.already_published == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wytui-extension-${{ steps.ver.outputs.version }}
+          path: extension-artifacts/*
+          if-no-files-found: warn
+
+      - name: Tag published version
+        if: steps.ver.outputs.already_published == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "ext-v${{ steps.ver.outputs.version }}"
+          git push origin "ext-v${{ steps.ver.outputs.version }}"
