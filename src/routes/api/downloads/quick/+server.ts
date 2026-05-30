@@ -79,7 +79,14 @@ export const GET: RequestHandler = async ({ url, locals, request }) => {
 		orderBy: { createdAt: 'desc' },
 	});
 
-	return json(downloads, { headers: getCorsHeaders(request) });
+	// filesize is a Prisma BigInt — JSON.stringify can't serialize it, so coerce
+	// to a string (matching serializeDownload) before responding.
+	const serialized = downloads.map((d) => ({
+		...d,
+		filesize: d.filesize != null ? d.filesize.toString() : null,
+	}));
+
+	return json(serialized, { headers: getCorsHeaders(request) });
 };
 
 export const POST = apiRoute('/api/downloads/quick', 'POST', {
