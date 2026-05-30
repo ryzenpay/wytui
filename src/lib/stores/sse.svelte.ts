@@ -35,6 +35,8 @@ export function connectSSE() {
 			downloads[index] = { ...downloads[index], ...data };
 			downloads = [...downloads]; // Trigger reactivity
 		}
+
+		dispatchCallbacks('download:status', data);
 	});
 
 	eventSource.addEventListener('download:metadata', (e) => {
@@ -45,6 +47,8 @@ export function connectSSE() {
 			downloads[index] = { ...downloads[index], ...data };
 			downloads = [...downloads];
 		}
+
+		dispatchCallbacks('download:metadata', data);
 	});
 
 	eventSource.addEventListener('download:progress', (e) => {
@@ -55,6 +59,8 @@ export function connectSSE() {
 			downloads[index] = { ...downloads[index], ...data };
 			downloads = [...downloads]; // Trigger reactivity
 		}
+
+		dispatchCallbacks('download:progress', data);
 	});
 
 	eventSource.addEventListener('download:complete', (e) => {
@@ -86,6 +92,8 @@ export function connectSSE() {
 		setTimeout(() => {
 			downloads = downloads.filter(d => d.id !== id);
 		}, 5000);
+
+		dispatchCallbacks('download:failed', { id, error });
 	});
 
 	eventSource.addEventListener('download:cancelled', (e) => {
@@ -100,6 +108,8 @@ export function connectSSE() {
 		setTimeout(() => {
 			downloads = downloads.filter(d => d.id !== id);
 		}, 3000);
+
+		dispatchCallbacks('download:cancelled', { id });
 	});
 
 	eventSource.addEventListener('download:deleted', (e) => {

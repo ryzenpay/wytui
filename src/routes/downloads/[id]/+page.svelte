@@ -66,7 +66,34 @@
 				}
 			}
 		});
-		return () => { unsub1(); unsub2(); };
+
+		// Keep the download record itself live (title, metadata, status, progress)
+		// so a record opened before metadata is fetched populates without a reload.
+		const patch = (eventData: any) => {
+			if (eventData.id === download.id) {
+				download = { ...download, ...eventData };
+			}
+		};
+		const unsub3 = onSSEEvent('download:metadata', patch);
+		const unsub4 = onSSEEvent('download:status', patch);
+		const unsub5 = onSSEEvent('download:progress', patch);
+		const unsub6 = onSSEEvent('download:complete', (eventData: any) => {
+			if (eventData.id === download.id && eventData.download) {
+				download = { ...download, ...eventData.download };
+			}
+		});
+		const unsub7 = onSSEEvent('download:failed', (eventData: any) => {
+			if (eventData.id === download.id) {
+				download = { ...download, status: 'FAILED', error: eventData.error };
+			}
+		});
+		const unsub8 = onSSEEvent('download:cancelled', (eventData: any) => {
+			if (eventData.id === download.id) {
+				download = { ...download, status: 'CANCELLED' };
+			}
+		});
+
+		return () => { unsub1(); unsub2(); unsub3(); unsub4(); unsub5(); unsub6(); unsub7(); unsub8(); };
 	});
 
 	// Playlist autoplay
