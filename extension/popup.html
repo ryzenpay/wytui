@@ -31,6 +31,15 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
+    .version {
+      font-size: 10px;
+      font-weight: 500;
+      color: #606060;
+      letter-spacing: 0.02em;
+      align-self: flex-end;
+      margin-bottom: 2px;
+      margin-left: -4px;
+    }
     .status-badge {
       margin-left: auto;
       display: flex;
@@ -383,6 +392,7 @@
       <path d="M38 94L90 94" stroke="#fff" stroke-width="10" stroke-linecap="round" fill="none"/>
     </svg>
     <span class="logo">wytui</span>
+    <span class="version" id="versionText"></span>
     <div class="status-badge">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">Not configured</span>

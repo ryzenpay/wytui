@@ -1,6 +1,7 @@
 // Elements
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
+const versionText = document.getElementById('versionText');
 const urlText = document.getElementById('urlText');
 const urlFavicon = document.getElementById('urlFavicon');
 const openWytuiBtn = document.getElementById('openWytuiBtn');
@@ -35,6 +36,9 @@ let existingCopies = [];
 let copyIndex = 0;
 let deleteArmed = false;
 let deleteArmTimer = null;
+
+// Show the running extension version (read from manifest so it can't drift)
+try { versionText.textContent = 'v' + chrome.runtime.getManifest().version; } catch {}
 
 const downloadTabBtn = document.querySelector('.tab-btn[data-tab="download"]');
 
