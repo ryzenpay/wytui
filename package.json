@@ -13,7 +13,10 @@
 		"db:push": "prisma db push",
 		"db:migrate": "prisma migrate dev",
 		"db:studio": "prisma studio",
-		"db:seed": "tsx prisma/seed.ts"
+		"db:seed": "tsx prisma/seed.ts",
+		"ext:build": "npx --yes web-ext build --source-dir=extension --artifacts-dir=extension-artifacts --overwrite-dest",
+		"ext:lint": "npx --yes web-ext lint --source-dir=extension",
+		"ext:publish:firefox": "npx --yes web-ext sign --source-dir=extension --artifacts-dir=extension-artifacts --channel=listed --api-key=\"$AMO_JWT_ISSUER\" --api-secret=\"$AMO_JWT_SECRET\""
 	},
 	"dependencies": {
 		"@auth/core": "^0.41.1",
