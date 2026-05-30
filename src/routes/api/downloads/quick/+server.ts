@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import { downloadService } from '$lib/server/services/download.service';
 import { prisma } from '$lib/server/db';
 import { apiRoute } from '$lib/server/openapi';
+import { extractVideoId } from '$lib/utils/youtube';
 import type { RequestHandler } from './$types';
 
 // Whitelist of allowed origins for CORS
@@ -47,11 +48,16 @@ export const GET: RequestHandler = async ({ url, locals, request }) => {
 		return json({ error: 'Missing url parameter' }, { status: 400, headers: getCorsHeaders(request) });
 	}
 
+	// Match on the stable videoId (indexed) when we can derive one — exact-URL
+	// matching misses youtu.be/timestamp/param-order variants of the same video.
+	// Fall back to exact URL for non-YouTube links.
+	const videoId = extractVideoId(lookupUrl);
+
 	const downloads = await prisma.download.findMany({
 		where: {
 			userId: locals.session.user.id,
-			url: lookupUrl,
 			status: { notIn: ['DELETED'] },
+			...(videoId ? { OR: [{ videoId }, { url: lookupUrl }] } : { url: lookupUrl }),
 		},
 		select: {
 			id: true,
@@ -63,7 +69,12 @@ export const GET: RequestHandler = async ({ url, locals, request }) => {
 			uploader: true,
 			filesize: true,
 			completedAt: true,
-			profile: { select: { name: true } },
+			videoId: true,
+			profileId: true,
+			format: true,
+			height: true,
+			videoType: true,
+			profile: { select: { id: true, name: true, quality: true, audioOnly: true, audioFormat: true } },
 		},
 		orderBy: { createdAt: 'desc' },
 	});

@@ -313,24 +313,59 @@
       flex-shrink: 0;
     }
     .existing-view:hover { text-decoration: underline; }
-    .existing-footer {
-      padding: 6px 10px;
-      background: #141414;
-      border-top: 1px solid #1e1e1e;
-      display: flex;
-      justify-content: flex-end;
+    .existing-channel {
+      font-size: 11px;
+      color: #606060;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
     }
-    .btn-redownload {
+
+    /* Copy pager (page through the copies of one video) */
+    .copy-pager { display: flex; align-items: center; gap: 8px; }
+    .pager-arrow {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      display: flex; align-items: center; justify-content: center;
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      color: #a0a0a0;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 150ms ease, color 150ms ease, opacity 150ms ease;
+    }
+    .pager-arrow:hover:not(:disabled) { background: #2a2a2a; color: #fff; }
+    .pager-arrow:disabled { opacity: 0.3; cursor: default; }
+    .pager-arrow.hidden { display: none; }
+    .copy-body { flex: 1; min-width: 0; }
+    .copy-format {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .copy-foot {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .copy-counter { font-size: 10px; color: #606060; }
+    .copy-delete {
       background: none;
       border: none;
-      color: #606060;
+      color: #ef4444;
       font-size: 11px;
       font-family: inherit;
       cursor: pointer;
       padding: 0;
-      transition: color 150ms ease;
+      transition: opacity 150ms ease;
     }
-    .btn-redownload:hover { color: #a0a0a0; }
+    .copy-delete:hover:not(:disabled) { text-decoration: underline; }
+    .copy-delete:disabled { opacity: 0.4; cursor: default; }
   </style>
 </head>
 <body>
@@ -372,25 +407,33 @@
       </button>
     </div>
 
-    <!-- Existing download banner -->
+    <!-- Existing download card (one per video; page through its copies) -->
     <div class="existing-wrap" id="existingWrap">
       <div class="existing-header">
         <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 3.5a1 1 0 011 1V10a1 1 0 01-2 0V6.5a1 1 0 011-1zm0 7a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5z"/></svg>
         Already in wytui
       </div>
-      <div class="existing-item" id="existingItem">
+      <div class="existing-item">
         <div class="existing-title" id="existingTitle"></div>
-        <div class="existing-meta">
-          <span class="existing-status" id="existingStatus"></span>
-          <span id="existingProfile"></span>
+        <div class="existing-channel" id="existingChannel" style="display:none"></div>
+        <div class="copy-pager">
+          <button class="pager-arrow" id="copyPrev" aria-label="Previous copy">‹</button>
+          <div class="copy-body">
+            <div class="existing-meta">
+              <span class="existing-status" id="existingStatus"></span>
+              <span class="copy-format" id="existingFormat"></span>
+            </div>
+          </div>
+          <button class="pager-arrow" id="copyNext" aria-label="Next copy">›</button>
+        </div>
+        <div class="copy-foot">
+          <span class="copy-counter" id="copyCounter"></span>
           <a class="existing-view" id="existingViewLink" href="#" target="_blank">
             <svg width="10" height="10" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3h6v6M17 3l-9 9M8 5H4a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1v-4"/></svg>
             View
           </a>
+          <button class="copy-delete" id="copyDeleteBtn">Delete</button>
         </div>
-      </div>
-      <div class="existing-footer">
-        <button class="btn-redownload" id="redownloadBtn">Download anyway →</button>
       </div>
     </div>
 
@@ -416,7 +459,7 @@
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M10 3v10M6 9l4 4 4-4"/><path d="M4 15h12"/>
         </svg>
-        Download
+        <span id="downloadBtnLabel">Download</span>
       </button>
     </div>
 

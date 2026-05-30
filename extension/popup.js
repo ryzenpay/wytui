@@ -8,22 +8,33 @@ const profileSelect = document.getElementById('profileSelect');
 const libraryToggle = document.getElementById('libraryToggle');
 const libraryToggleRow = document.getElementById('libraryToggleRow');
 const downloadBtn = document.getElementById('downloadBtn');
+const downloadBtnLabel = document.getElementById('downloadBtnLabel');
 const messageEl = document.getElementById('message');
 const viewLink = document.getElementById('viewLink');
 const serverUrlInput = document.getElementById('serverUrl');
 const apiKeyInput = document.getElementById('apiKey');
 const saveBtn = document.getElementById('saveBtn');
+// Existing-download card
 const existingWrap = document.getElementById('existingWrap');
 const existingTitle = document.getElementById('existingTitle');
+const existingChannel = document.getElementById('existingChannel');
 const existingStatus = document.getElementById('existingStatus');
-const existingProfile = document.getElementById('existingProfile');
+const existingFormat = document.getElementById('existingFormat');
 const existingViewLink = document.getElementById('existingViewLink');
-const redownloadBtn = document.getElementById('redownloadBtn');
+const copyPrev = document.getElementById('copyPrev');
+const copyNext = document.getElementById('copyNext');
+const copyCounter = document.getElementById('copyCounter');
+const copyDeleteBtn = document.getElementById('copyDeleteBtn');
 
 let currentTabUrl = '';
 let serverUrl = '';
 let saveToLibrary = false;
-let existingLocked = false;
+
+// Copies of the video currently on the page (one card, page through these)
+let existingCopies = [];
+let copyIndex = 0;
+let deleteArmed = false;
+let deleteArmTimer = null;
 
 const downloadTabBtn = document.querySelector('.tab-btn[data-tab="download"]');
 
@@ -101,7 +112,7 @@ function switchToSettings() {
   document.getElementById('panel-settings').classList.add('active');
 }
 
-// Open in wytui (opens server root)
+// Open in wytui (opens downloads page)
 openWytuiBtn.addEventListener('click', () => {
   if (serverUrl) chrome.tabs.create({ url: serverUrl.replace(/\/+$/, '') + '/downloads' });
 });
@@ -130,11 +141,32 @@ function updateStatus(state) {
   statusDot.className = cls;
   statusText.textContent = label;
   const isConnected = state === 'connected-key' || state === 'connected-session';
-  if (isConnected) {
-    if (!existingLocked) downloadBtn.disabled = false;
+  downloadBtn.disabled = !isConnected;
+}
+
+const STATUS_MAP = {
+  COMPLETED: ['completed', 'Completed'],
+  PENDING: ['pending', 'Pending'],
+  DOWNLOADING: ['downloading', 'Downloading'],
+  FETCHING_INFO: ['downloading', 'Fetching info'],
+  PROCESSING: ['downloading', 'Processing'],
+  FAILED: ['failed', 'Failed'],
+  CANCELLED: ['failed', 'Cancelled'],
+};
+
+// Human label for a copy's format/profile (e.g. "1080p · MP4", "Audio · MP3")
+function copyFormatLabel(c) {
+  const p = c.profile;
+  let detail = '';
+  if (p?.audioOnly) {
+    detail = p.audioFormat ? p.audioFormat.toUpperCase() : 'Audio';
   } else {
-    downloadBtn.disabled = true;
+    detail = p?.quality || (c.height ? c.height + 'p' : (c.format || ''));
   }
+  const pool = c.storagePool === 'library' ? ' · Library' : '';
+  const name = p?.name || '';
+  if (name && detail) return `${name} · ${detail}${pool}`;
+  return (name || detail || '—') + pool;
 }
 
 async function lookupExisting(url) {
@@ -145,39 +177,96 @@ async function lookupExisting(url) {
     console.error('[wytui] sendMessage failed:', err);
     return;
   }
-  if (!result?.success || !result.downloads?.length) return;
 
-  const dl = result.downloads[0];
-  existingTitle.textContent = dl.title || url;
-  existingViewLink.href = serverUrl.replace(/\/+$/, '') + '/downloads/' + dl.id;
+  existingCopies = (result?.success && Array.isArray(result.downloads)) ? result.downloads : [];
+  copyIndex = 0;
+  disarmDelete();
 
-  const statusMap = {
-    COMPLETED: ['completed', 'Completed'],
-    PENDING: ['pending', 'Pending'],
-    DOWNLOADING: ['downloading', 'Downloading'],
-    FETCHING_INFO: ['downloading', 'Fetching info'],
-    PROCESSING: ['downloading', 'Processing'],
-    FAILED: ['failed', 'Failed'],
-    CANCELLED: ['failed', 'Cancelled'],
-  };
-  const [cls, label] = statusMap[dl.status] || ['other', dl.status];
-  existingStatus.className = 'existing-status ' + cls;
-  existingStatus.textContent = label;
-  existingProfile.textContent = dl.profile?.name || '';
+  if (!existingCopies.length) {
+    existingWrap.classList.remove('visible');
+    setDownloadButtonLabel('Download');
+    return;
+  }
 
-  existingLocked = true;
+  // Header: title + channel shown once (first copy with a title wins)
+  const named = existingCopies.find((d) => d.title) || existingCopies[0];
+  existingTitle.textContent = named.title || url;
+  if (named.uploader) {
+    existingChannel.textContent = named.uploader;
+    existingChannel.style.display = '';
+  } else {
+    existingChannel.style.display = 'none';
+  }
+
+  renderCopy();
   existingWrap.classList.add('visible');
-  downloadBtn.disabled = true;
-  libraryToggleRow.style.opacity = '0.4';
-  libraryToggleRow.style.pointerEvents = 'none';
+  setDownloadButtonLabel('Download another format');
 }
 
-redownloadBtn.addEventListener('click', () => {
-  existingLocked = false;
-  existingWrap.classList.remove('visible');
-  downloadBtn.disabled = false;
-  libraryToggleRow.style.opacity = '';
-  libraryToggleRow.style.pointerEvents = '';
+function renderCopy() {
+  if (!existingCopies.length) return;
+  if (copyIndex >= existingCopies.length) copyIndex = existingCopies.length - 1;
+  if (copyIndex < 0) copyIndex = 0;
+  disarmDelete();
+
+  const c = existingCopies[copyIndex];
+  const [cls, label] = STATUS_MAP[c.status] || ['other', c.status];
+  existingStatus.className = 'existing-status ' + cls;
+  existingStatus.textContent = label;
+  existingFormat.textContent = copyFormatLabel(c);
+  existingViewLink.href = serverUrl.replace(/\/+$/, '') + '/downloads/' + c.id;
+
+  const multi = existingCopies.length > 1;
+  copyCounter.textContent = multi ? `${copyIndex + 1} / ${existingCopies.length}` : '';
+  copyPrev.classList.toggle('hidden', !multi);
+  copyNext.classList.toggle('hidden', !multi);
+  copyPrev.disabled = copyIndex === 0;
+  copyNext.disabled = copyIndex === existingCopies.length - 1;
+}
+
+copyPrev.addEventListener('click', () => { if (copyIndex > 0) { copyIndex--; renderCopy(); } });
+copyNext.addEventListener('click', () => { if (copyIndex < existingCopies.length - 1) { copyIndex++; renderCopy(); } });
+
+function disarmDelete() {
+  deleteArmed = false;
+  if (deleteArmTimer) { clearTimeout(deleteArmTimer); deleteArmTimer = null; }
+  copyDeleteBtn.textContent = 'Delete';
+  copyDeleteBtn.disabled = false;
+}
+
+// Two-step delete (avoids confirm() dismissing the popup)
+copyDeleteBtn.addEventListener('click', async () => {
+  if (!existingCopies.length) return;
+
+  if (!deleteArmed) {
+    deleteArmed = true;
+    copyDeleteBtn.textContent = 'Confirm delete?';
+    deleteArmTimer = setTimeout(disarmDelete, 3000);
+    return;
+  }
+
+  if (deleteArmTimer) { clearTimeout(deleteArmTimer); deleteArmTimer = null; }
+  deleteArmed = false;
+  const target = existingCopies[copyIndex];
+  copyDeleteBtn.disabled = true;
+  copyDeleteBtn.textContent = 'Deleting…';
+
+  const res = await chrome.runtime.sendMessage({ action: 'deleteDownload', id: target.id });
+  if (!res?.success) {
+    showMessage(res?.error || 'Failed to delete.', 'error');
+    disarmDelete();
+    return;
+  }
+
+  existingCopies.splice(copyIndex, 1);
+  if (!existingCopies.length) {
+    existingWrap.classList.remove('visible');
+    setDownloadButtonLabel('Download');
+    showMessage('Deleted.', 'success');
+    return;
+  }
+  renderCopy();
+  showMessage('Deleted.', 'success');
 });
 
 function applyLibraryVisibility(result) {
@@ -207,7 +296,7 @@ function populateProfiles(result) {
     profileSelect.appendChild(opt);
   });
 
-  if (!existingLocked) profileSelect.disabled = false;
+  profileSelect.disabled = false;
 
   const defaultProfile = result.profiles.find((p) => p.isDefault);
   if (defaultProfile) profileSelect.value = defaultProfile.id;
@@ -238,6 +327,7 @@ saveBtn.addEventListener('click', () => {
     setConfigured(true);
     applyLibraryVisibility(profileResult);
     populateProfiles(profileResult);
+    if (currentTabUrl) lookupExisting(currentTabUrl);
   });
 });
 
@@ -250,20 +340,20 @@ function showSettingsError(msg) {
   }, 2500);
 }
 
-// Download
+function setDownloadButtonLabel(text) {
+  if (downloadBtnLabel) downloadBtnLabel.textContent = text;
+}
+
+// Download (also used to add another format when the video already exists)
 downloadBtn.addEventListener('click', async () => {
   if (!currentTabUrl) {
     showMessage('No page URL found.', 'error');
     return;
   }
 
+  const wasExisting = existingCopies.length > 0;
   downloadBtn.disabled = true;
-  downloadBtn.innerHTML = `
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite">
-      <path d="M21 12a9 9 0 11-6.219-8.56"/>
-    </svg>
-    Sending…
-  `;
+  setDownloadButtonLabel('Sending…');
   viewLink.style.display = 'none';
 
   const profileId = profileSelect.value || undefined;
@@ -276,12 +366,7 @@ downloadBtn.addEventListener('click', async () => {
   });
 
   downloadBtn.disabled = false;
-  downloadBtn.innerHTML = `
-    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M10 3v10M6 9l4 4 4-4"/><path d="M4 15h12"/>
-    </svg>
-    Download
-  `;
+  setDownloadButtonLabel(wasExisting ? 'Download another format' : 'Download');
 
   if (response?.success) {
     showMessage('Download started!', 'success');
@@ -289,6 +374,8 @@ downloadBtn.addEventListener('click', async () => {
       viewLink.href = serverUrl.replace(/\/+$/, '') + '/downloads/' + response.downloadId;
       viewLink.style.display = 'inline-flex';
     }
+    // Refresh the card so the new copy shows up in the pager
+    lookupExisting(currentTabUrl);
   } else {
     showMessage(response?.error || 'Failed to send download.', 'error');
   }

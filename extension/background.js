@@ -53,6 +53,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     lookupUrl(normalizeUrl(message.url)).then(sendResponse);
     return true;
   }
+  if (message.action === 'deleteDownload') {
+    deleteDownload(message.id).then(sendResponse);
+    return true;
+  }
 });
 
 function authHeaders(apiKey) {
@@ -81,6 +85,29 @@ async function lookupUrl(url) {
   } catch (err) {
     console.error('[wytui] lookupUrl exception:', err);
     return { success: false, downloads: [] };
+  }
+}
+
+async function deleteDownload(id) {
+  try {
+    if (!id) return { success: false, error: 'Missing download id' };
+    const data = await chrome.storage.local.get(['serverUrl', 'apiKey']);
+    if (!data.serverUrl) return { success: false, error: 'Extension not configured.' };
+
+    const endpoint = `${data.serverUrl.replace(/\/+$/, '')}/api/downloads/${encodeURIComponent(id)}`;
+    const res = await fetch(endpoint, {
+      method: 'DELETE',
+      credentials: authCredentials(data.apiKey),
+      headers: authHeaders(data.apiKey),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { success: false, error: body.message || body.error || 'Server returned ' + res.status };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: 'Connection failed: ' + err.message };
   }
 }
 

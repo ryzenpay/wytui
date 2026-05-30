@@ -10,6 +10,7 @@ import { libraryService } from './library.service';
 import { channelOverrideService } from './channel-override.service';
 import { notificationService } from './notification.service';
 import { subtitleService } from './subtitle.service';
+import { extractVideoId } from '$lib/utils/youtube';
 
 /**
  * Serialize download object for JSON responses
@@ -140,10 +141,13 @@ class DownloadService {
 			throw new Error('This URL is already being downloaded');
 		}
 
-		// Create download record
+		// Create download record. Derive videoId from the URL up front so the
+		// record is detectable (e.g. by the extension lookup) immediately, before
+		// phase-1 metadata runs and sets the canonical id.
 		const download = await prisma.download.create({
 			data: {
 				url,
+				videoId: extractVideoId(url) ?? undefined,
 				status: DownloadStatus.PENDING,
 				profileId,
 				userId,
@@ -1111,20 +1115,10 @@ class DownloadService {
 	}
 
 	/**
-	 * Extract video ID from URL
+	 * Extract video ID from URL (shared with the lookup route via $lib/utils/youtube)
 	 */
 	private extractVideoId(url: string): string | null {
-		try {
-			const urlObj = new URL(url);
-			if (urlObj.hostname.includes('youtube.com')) {
-				return urlObj.searchParams.get('v');
-			} else if (urlObj.hostname.includes('youtu.be')) {
-				return urlObj.pathname.slice(1);
-			}
-			return null;
-		} catch {
-			return null;
-		}
+		return extractVideoId(url);
 	}
 
 	/**
