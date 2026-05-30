@@ -240,6 +240,14 @@
 	let isAudio = $derived(
 		download.filepath?.match(/\.(mp3|m4a|aac|flac|opus|ogg|wav)$/i) !== null
 	);
+
+	// Metadata is fetched in phase 1 (PENDING -> FETCHING_INFO). If the record was
+	// opened before that completed, title/uploader/etc. are still null. Show a
+	// loading treatment that the SSE handlers above will resolve in place.
+	let metadataPending = $derived(
+		!download.title &&
+		['PENDING', 'FETCHING_INFO', 'DOWNLOADING'].includes(download.status)
+	);
 </script>
 
 <svelte:head>
@@ -311,6 +319,8 @@
 				</div>
 			{:else if download.thumbnail}
 				<img src={download.thumbnail} alt={download.title || 'Thumbnail'} class="thumbnail" />
+			{:else if metadataPending}
+				<div class="skeleton thumbnail-skeleton" aria-hidden="true"></div>
 			{:else}
 				<div class="no-thumbnail">
 					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -323,10 +333,21 @@
 
 		<!-- Metadata -->
 		<div class="meta-area">
-			<h1 class="title">{download.title || 'Untitled'}</h1>
+			{#if metadataPending}
+				<div class="meta-loading" aria-busy="true" aria-label="Fetching video details">
+					<div class="skeleton skeleton-line skeleton-title-line"></div>
+					<div class="skeleton skeleton-line skeleton-uploader-line"></div>
+					<div class="fetching-indicator" role="status">
+						<span class="fetching-spinner" aria-hidden="true"></span>
+						<span>Fetching details…</span>
+					</div>
+				</div>
+			{:else}
+				<h1 class="title">{download.title || 'Untitled'}</h1>
 
-			{#if download.uploader}
-				<a href="/channels/{encodeURIComponent(download.uploader)}" class="uploader-link">{download.uploader}</a>
+				{#if download.uploader}
+					<a href="/channels/{encodeURIComponent(download.uploader)}" class="uploader-link">{download.uploader}</a>
+				{/if}
 			{/if}
 
 			<div class="badges">
@@ -669,6 +690,59 @@
 
 	.uploader-link:hover {
 		color: var(--color-accent-primary);
+	}
+
+	/* Loading treatment while phase-1 metadata is still being fetched */
+	.thumbnail-skeleton {
+		width: 100%;
+		height: 300px;
+		border-radius: 0;
+	}
+
+	.meta-loading {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+	}
+
+	.skeleton-line {
+		border-radius: var(--radius-sm);
+	}
+
+	.skeleton-title-line {
+		height: 1.5rem;
+		width: 70%;
+		max-width: 480px;
+	}
+
+	.skeleton-uploader-line {
+		height: 1rem;
+		width: 35%;
+		max-width: 240px;
+	}
+
+	.fetching-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		margin-top: var(--spacing-xs);
+		font-size: 0.8125rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.fetching-spinner {
+		width: 12px;
+		height: 12px;
+		border: 2px solid transparent;
+		border-top-color: var(--color-accent-primary);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.fetching-spinner {
+			animation: none;
+		}
 	}
 
 	.badges {
