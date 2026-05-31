@@ -28,11 +28,14 @@
 		{ label: 'Playlists', href: '/playlists', icon: 'playlist' }
 	];
 
-	const systemItems: NavItem[] = [
-		{ label: 'Settings', href: '/settings', icon: 'gear' },
+	// Settings is available to ALL users (Account tab: password + API keys).
+	// Analytics/Scheduler are admin-only.
+	const settingsItem: NavItem = { label: 'Settings', href: '/settings', icon: 'gear' };
+	const adminItems: NavItem[] = [
 		{ label: 'Analytics', href: '/analytics', icon: 'chart' },
 		{ label: 'Scheduler', href: '/scheduler', icon: 'clock' }
 	];
+	let systemItems = $derived(isAdmin ? [settingsItem, ...adminItems] : [settingsItem]);
 
 	function isActive(href: string): boolean {
 		if (href === '/') return $page.url.pathname === '/';
@@ -145,8 +148,7 @@
 			{/each}
 		</div>
 
-		{#if isAdmin}
-			<div class="nav-group">
+		<div class="nav-group">
 				{#if !collapsed}<span class="nav-label">System</span>{/if}
 				{#each systemItems as item}
 					<a
@@ -173,7 +175,6 @@
 					</a>
 				{/each}
 			</div>
-		{/if}
 	</nav>
 
 	<div class="sidebar-footer">
