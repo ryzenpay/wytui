@@ -54,19 +54,20 @@
 
 	async function triggerDownload(id: string) {
 		// On mobile, open the native share sheet so users can "Save to Photos"
-		// instead of dumping the file into Files/Downloads. Falls back to a plain
-		// download on desktop or when the Share API is unavailable.
-		const canShareFiles =
-			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
-		if (canShareFiles) {
+		// instead of dumping the file into Files/Downloads. canShare must be tested
+		// against the *real* file — an empty placeholder File reports false on iOS
+		// Safari, which would silently skip the share sheet.
+		if (isMobileDevice()) {
 			try {
 				const res = await fetch(fileUrl(id));
 				if (!res.ok) throw new Error('fetch failed');
 				const blob = await res.blob();
 				const name = filenameFromResponse(res) || 'download';
 				const file = new File([blob], name, { type: blob.type });
-				await navigator.share({ files: [file] });
-				return;
+				if (navigator.canShare?.({ files: [file] })) {
+					await navigator.share({ files: [file] });
+					return;
+				}
 			} catch (e: any) {
 				if (e.name === 'AbortError') return; // user dismissed the share sheet
 				console.warn('Share unavailable, falling back to download:', e);
@@ -110,6 +111,13 @@
 	function handleClick() {
 		if (open) {
 			open = false;
+			return;
+		}
+		// On mobile, share the primary file directly within this tap gesture.
+		// Fetching the versions list first would consume the user activation that
+		// iOS requires for navigator.share(), so we skip the version menu there.
+		if (isMobileDevice()) {
+			triggerDownload(downloadId);
 			return;
 		}
 		open = true;
