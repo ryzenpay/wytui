@@ -22,8 +22,12 @@
 
 	let sseState = getSSEState();
 
+	const DOWNLOADS_PAGE_SIZE = 50;
 	let completedDownloads = $state<any[]>([]);
 	let completedLoading = $state(false);
+	let completedOffset = $state(0);
+	let hasMoreDownloads = $state(false);
+	let loadingMoreDownloads = $state(false);
 	let completedFilter = $state<'all' | 'cache' | 'library'>('all');
 	let watchStateFilter = $state<'all' | 'watched' | 'unwatched' | 'in_progress'>('all');
 	let channelFilter = $state<string>('all');
@@ -39,6 +43,9 @@
 	let searchQuery = $state('');
 	let searchResults = $state<any[]>([]);
 	let searchTotal = $state(0);
+	let searchOffset = $state(0);
+	let hasMoreSearch = $state(false);
+	let loadingMoreSearch = $state(false);
 	let searchLoading = $state(false);
 	let searchError = $state<FetchError | null>(null);
 	let subtitleMatches = $state<any[]>([]);
@@ -108,35 +115,61 @@
 		}
 	});
 
+	function buildSearchParams(q: string, sp: string, uf: string, ws: string, rf: string, df: string, dt: string, offset: number) {
+		const params = new URLSearchParams({ q, limit: String(DOWNLOADS_PAGE_SIZE), offset: String(offset) });
+		if (sp !== 'all') params.set('storagePool', sp);
+		if (uf !== 'all') params.set('uploader', uf);
+		if (ws !== 'all') params.set('watchState', ws);
+		const heightRange = getHeightRange(rf);
+		if (heightRange.min) params.set('minHeight', String(heightRange.min));
+		if (heightRange.max) params.set('maxHeight', String(heightRange.max));
+		if (df) params.set('dateFrom', df);
+		if (dt) params.set('dateTo', dt);
+		return params;
+	}
+
 	async function runSearch(q: string, sp: string, uf: string, ws: string, rf: string, df: string, dt: string) {
 		searchLoading = true;
 		searchError = null;
+		searchOffset = 0;
 		try {
-			const params = new URLSearchParams({ q, limit: '50' });
-			if (sp !== 'all') params.set('storagePool', sp);
-			if (uf !== 'all') params.set('uploader', uf);
-			if (ws !== 'all') params.set('watchState', ws);
-			const heightRange = getHeightRange(rf);
-			if (heightRange.min) params.set('minHeight', String(heightRange.min));
-			if (heightRange.max) params.set('maxHeight', String(heightRange.max));
-			if (df) params.set('dateFrom', df);
-			if (dt) params.set('dateTo', dt);
-
+			const params = buildSearchParams(q, sp, uf, ws, rf, df, dt, 0);
 			const data = await safeFetchJson<any>(`/api/search?${params}`);
-			searchResults = data.results || data;
-			searchTotal = data.total || searchResults.length;
+			const results = data.results || data;
+			searchResults = results;
+			searchTotal = data.total || results.length;
 			subtitleMatches = data.subtitleMatches || [];
 			subtitleTotal = data.subtitleTotal || 0;
+			searchOffset = results.length;
+			hasMoreSearch = results.length === DOWNLOADS_PAGE_SIZE;
 		} catch (e) {
 			searchResults = [];
 			searchTotal = 0;
 			subtitleMatches = [];
 			subtitleTotal = 0;
+			hasMoreSearch = false;
 			searchError = isFetchError(e)
 				? e
 				: { type: 'unknown', message: 'Search failed. Please try again.', canRetry: true };
 		} finally {
 			searchLoading = false;
+		}
+	}
+
+	async function loadMoreSearch() {
+		if (loadingMoreSearch || !hasMoreSearch || !searchQuery.trim()) return;
+		loadingMoreSearch = true;
+		try {
+			const params = buildSearchParams(searchQuery, completedFilter, channelFilter, watchStateFilter, resolutionFilter, dateFrom, dateTo, searchOffset);
+			const data = await safeFetchJson<any>(`/api/search?${params}`);
+			const results = data.results || data;
+			searchResults = [...searchResults, ...results];
+			searchOffset += results.length;
+			hasMoreSearch = results.length === DOWNLOADS_PAGE_SIZE;
+		} catch (e) {
+			console.error('Failed to load more search results:', e);
+		} finally {
+			loadingMoreSearch = false;
 		}
 	}
 
@@ -163,6 +196,8 @@
 			subtitleTotal = 0;
 			searchLoading = false;
 			searchError = null;
+			searchOffset = 0;
+			hasMoreSearch = false;
 			return;
 		}
 
@@ -248,26 +283,57 @@
 		}
 	}
 
+	function buildCompletedParams(offset: number) {
+		const params = new URLSearchParams({
+			status: 'COMPLETED',
+			limit: String(DOWNLOADS_PAGE_SIZE),
+			offset: String(offset),
+		});
+		if (watchStateFilter !== 'all') {
+			params.set('watchState', watchStateFilter);
+		}
+		const heightRange = getHeightRange(resolutionFilter);
+		if (heightRange.min) params.set('minHeight', String(heightRange.min));
+		if (heightRange.max) params.set('maxHeight', String(heightRange.max));
+		if (dateFrom) params.set('dateFrom', dateFrom);
+		if (dateTo) params.set('dateTo', dateTo);
+		return params;
+	}
+
 	async function loadCompletedDownloads() {
+		// Fresh load: reset pagination and replace the list from offset 0.
 		completedLoading = true;
+		completedOffset = 0;
 		try {
-			const params = new URLSearchParams({ status: 'COMPLETED', limit: '50' });
-			if (watchStateFilter !== 'all') {
-				params.set('watchState', watchStateFilter);
-			}
-			const heightRange = getHeightRange(resolutionFilter);
-			if (heightRange.min) params.set('minHeight', String(heightRange.min));
-			if (heightRange.max) params.set('maxHeight', String(heightRange.max));
-			if (dateFrom) params.set('dateFrom', dateFrom);
-			if (dateTo) params.set('dateTo', dateTo);
-			const res = await fetch(`/api/downloads?${params}`);
+			const res = await fetch(`/api/downloads?${buildCompletedParams(0)}`);
 			if (res.ok) {
-				completedDownloads = await res.json();
+				const page: any[] = await res.json();
+				completedDownloads = page;
+				completedOffset = page.length;
+				hasMoreDownloads = page.length === DOWNLOADS_PAGE_SIZE;
 			}
 		} catch (e) {
 			console.error('Failed to load completed downloads:', e);
 		} finally {
 			completedLoading = false;
+		}
+	}
+
+	async function loadMoreCompletedDownloads() {
+		if (loadingMoreDownloads || !hasMoreDownloads) return;
+		loadingMoreDownloads = true;
+		try {
+			const res = await fetch(`/api/downloads?${buildCompletedParams(completedOffset)}`);
+			if (res.ok) {
+				const page: any[] = await res.json();
+				completedDownloads = [...completedDownloads, ...page];
+				completedOffset += page.length;
+				hasMoreDownloads = page.length === DOWNLOADS_PAGE_SIZE;
+			}
+		} catch (e) {
+			console.error('Failed to load more completed downloads:', e);
+		} finally {
+			loadingMoreDownloads = false;
 		}
 	}
 
@@ -957,6 +1023,22 @@
 			</div>
 		{/if}
 
+		{#if searchQuery.trim()}
+			{#if hasMoreSearch}
+				<div class="load-more-row">
+					<button class="btn btn-secondary" onclick={loadMoreSearch} disabled={loadingMoreSearch}>
+						{loadingMoreSearch ? 'Loading…' : 'Load More'}
+					</button>
+				</div>
+			{/if}
+		{:else if hasMoreDownloads && !completedLoading}
+			<div class="load-more-row">
+				<button class="btn btn-secondary" onclick={loadMoreCompletedDownloads} disabled={loadingMoreDownloads}>
+					{loadingMoreDownloads ? 'Loading…' : 'Load More'}
+				</button>
+			</div>
+		{/if}
+
 		{#if selectionMode && selectedIds.size > 0}
 			<div class="bulk-bar" class:bulk-bar-success={bulkSuccess}>
 				<span class="bulk-count">{selectedIds.size} selected</span>
@@ -1122,6 +1204,8 @@
 	.sort-dropdown { position: relative; }
 
 	.downloads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-card-min-width), 1fr)); gap: var(--spacing-lg); width: 100%; }
+
+	.load-more-row { display: flex; justify-content: center; margin-top: var(--spacing-xl); }
 
 	.downloads-list { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; }
 

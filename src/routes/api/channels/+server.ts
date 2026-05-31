@@ -7,6 +7,15 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	const search = url.searchParams.get('q')?.trim() || '';
 
+	// Optional pagination — callers without `limit` get all channels (back-compat);
+	// the UI passes limit/offset and uses a "load more" model.
+	const hasLimit = url.searchParams.has('limit');
+	let limit = parseInt(url.searchParams.get('limit') || '60', 10);
+	let offset = parseInt(url.searchParams.get('offset') || '0', 10);
+	if (isNaN(limit) || limit < 1) limit = 60;
+	if (limit > 200) limit = 200;
+	if (isNaN(offset) || offset < 0) offset = 0;
+
 	const groups = await prisma.download.groupBy({
 		by: ['uploader'],
 		where: {
@@ -16,6 +25,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		},
 		_count: { id: true },
 		orderBy: { _count: { id: 'desc' } },
+		...(hasLimit ? { take: limit, skip: offset } : {}),
 	});
 
 	// Fetch a representative thumbnail per uploader

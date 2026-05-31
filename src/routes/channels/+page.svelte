@@ -8,22 +8,34 @@
 
 	type Channel = { name: string; count: number; thumbnail: string | null };
 
+	const CHANNELS_PAGE_SIZE = 60;
+
 	let channels = $state<Channel[]>([]);
 	let loading = $state(true);
+	let loadingMore = $state(false);
 	let error = $state<string | null>(null);
 	let viewMode = $state<'grid' | 'list'>('grid');
 	let search = $state('');
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	let offset = $state(0);
+	let hasMore = $state(false);
 
 	onMount(() => loadChannels());
 
 	async function loadChannels(q = search) {
+		// Fresh load: reset pagination and replace results.
 		loading = true;
 		error = null;
+		offset = 0;
 		try {
-			const res = await fetch(`/api/channels${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+			const params = new URLSearchParams({ limit: String(CHANNELS_PAGE_SIZE), offset: '0' });
+			if (q) params.set('q', q);
+			const res = await fetch(`/api/channels?${params}`);
 			if (res.ok) {
-				channels = await res.json();
+				const page: Channel[] = await res.json();
+				channels = page;
+				offset = page.length;
+				hasMore = page.length === CHANNELS_PAGE_SIZE;
 			} else {
 				error = `Failed to load channels (${res.status})`;
 			}
@@ -31,6 +43,26 @@
 			error = e instanceof Error ? e.message : 'Failed to load channels';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadMoreChannels() {
+		if (loadingMore || !hasMore) return;
+		loadingMore = true;
+		try {
+			const params = new URLSearchParams({ limit: String(CHANNELS_PAGE_SIZE), offset: String(offset) });
+			if (search) params.set('q', search);
+			const res = await fetch(`/api/channels?${params}`);
+			if (res.ok) {
+				const page: Channel[] = await res.json();
+				channels = [...channels, ...page];
+				offset += page.length;
+				hasMore = page.length === CHANNELS_PAGE_SIZE;
+			}
+		} catch (e) {
+			console.error('Failed to load more channels:', e);
+		} finally {
+			loadingMore = false;
 		}
 	}
 
@@ -110,12 +142,26 @@
 			{/each}
 		</div>
 	{/if}
+
+	{#if !loading && !error && hasMore}
+		<div class="load-more-row">
+			<button class="btn btn-secondary" onclick={loadMoreChannels} disabled={loadingMore}>
+				{loadingMore ? 'Loading…' : 'Load More'}
+			</button>
+		</div>
+	{/if}
 </div>
 
 <style>
 	.page {
 		max-width: 1200px;
 		margin: 0 auto;
+	}
+
+	.load-more-row {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--spacing-xl);
 	}
 
 	.page-header {

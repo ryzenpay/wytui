@@ -17,8 +17,12 @@
 	let libraryConfigured = $state(false);
 
 	// Subscriptions state
+	const SUBS_PAGE_SIZE = 50;
 	let subscriptions = $state<any[]>([]);
 	let subsLoading = $state(false);
+	let subsLoadingMore = $state(false);
+	let subsOffset = $state(0);
+	let subsHasMore = $state(false);
 	let subsError = $state<FetchError | null>(null);
 	let profilesError = $state<FetchError | null>(null);
 	let checkingNow = $state<Set<string>>(new Set());
@@ -135,16 +139,36 @@
 	}
 
 	async function loadSubscriptions() {
+		// Fresh load: reset pagination and replace the list from offset 0.
 		subsLoading = true;
 		subsError = null;
+		subsOffset = 0;
 		try {
-			subscriptions = await safeFetchJson<any[]>('/api/subscriptions');
+			const page = await safeFetchJson<any[]>(`/api/subscriptions?limit=${SUBS_PAGE_SIZE}&offset=0`);
+			subscriptions = page;
+			subsOffset = page.length;
+			subsHasMore = page.length === SUBS_PAGE_SIZE;
 		} catch (e) {
 			subsError = isFetchError(e)
 				? e
 				: { type: 'unknown', message: 'Failed to load subscriptions.', canRetry: true };
 		} finally {
 			subsLoading = false;
+		}
+	}
+
+	async function loadMoreSubscriptions() {
+		if (subsLoadingMore || !subsHasMore) return;
+		subsLoadingMore = true;
+		try {
+			const page = await safeFetchJson<any[]>(`/api/subscriptions?limit=${SUBS_PAGE_SIZE}&offset=${subsOffset}`);
+			subscriptions = [...subscriptions, ...page];
+			subsOffset += page.length;
+			subsHasMore = page.length === SUBS_PAGE_SIZE;
+		} catch (e) {
+			console.error('Failed to load more subscriptions:', e);
+		} finally {
+			subsLoadingMore = false;
 		}
 	}
 
@@ -599,6 +623,13 @@
 					</div>
 				{/each}
 			</div>
+			{#if subsHasMore}
+				<div class="load-more-row">
+					<button class="btn btn-secondary" onclick={loadMoreSubscriptions} disabled={subsLoadingMore}>
+						{subsLoadingMore ? 'Loading…' : 'Load More'}
+					</button>
+				</div>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -683,6 +714,12 @@
 
 	.error-wrapper {
 		margin-bottom: var(--spacing-md);
+	}
+
+	.load-more-row {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--spacing-xl);
 	}
 
 

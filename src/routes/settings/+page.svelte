@@ -32,6 +32,14 @@
 	let settings = $state<any>(null);
 	let settingsError = $state<string | null>(null);
 	let users = $state<any[]>([]);
+
+	// Users tab: search + pagination state.
+	const USERS_PAGE_SIZE = 25;
+	let userSearch = $state('');
+	let usersOffset = $state(0);
+	let usersTotal = $state(0);
+	let usersLoading = $state(false);
+	let userSearchTimeout: ReturnType<typeof setTimeout> | undefined;
 	let loading = $state(true);
 	let saving = $state(false);
 	let settingsLoaded = $state(false);
@@ -52,32 +60,23 @@
 			],
 		},
 		{
-			label: 'Integrations',
+			label: 'Downloading',
 			sections: [
+				{ id: 'ytdlp', label: 'yt-dlp' },
+				{ id: 'cookies', label: 'Cookies' },
+				{ id: 'ryd', label: 'Return YouTube Dislike' },
 				{ id: 'jellyfin', label: 'Jellyfin' },
 				{ id: 'plex', label: 'Plex' },
 			],
 		},
 		{
-			label: 'Downloader',
-			sections: [
-				{ id: 'ytdlp', label: 'yt-dlp' },
-				{ id: 'version-check', label: 'Version Check' },
-				{ id: 'cookies', label: 'Cookies' },
-				{ id: 'ryd', label: 'Return YouTube Dislike' },
-			],
-		},
-		{
-			label: 'Maintenance',
+			label: 'Automation',
 			sections: [
 				{ id: 'auto-delete', label: 'Auto-Delete' },
 				{ id: 'rescan', label: 'Rescan Library' },
 				{ id: 'backup', label: 'Backup' },
+				{ id: 'notifications', label: 'Notifications' },
 			],
-		},
-		{
-			label: 'Notifications',
-			sections: [{ id: 'notifications', label: 'Notifications' }],
 		},
 		{
 			label: 'Access & Privacy',
@@ -323,14 +322,55 @@
 	}
 
 	async function loadUsers() {
+		usersLoading = true;
 		try {
-			const res = await fetch('/api/users');
+			const params = new URLSearchParams({
+				limit: String(USERS_PAGE_SIZE),
+				offset: String(usersOffset),
+			});
+			if (userSearch.trim()) params.set('search', userSearch.trim());
+			const res = await fetch(`/api/users?${params.toString()}`);
 			if (res.ok) {
-				users = await res.json();
+				const body = await res.json();
+				users = body.users ?? [];
+				usersTotal = body.total ?? 0;
 			}
 		} catch (e) {
 			console.error('Failed to load users:', e);
+		} finally {
+			usersLoading = false;
 		}
+	}
+
+	// Debounced search: reset to the first page and reload.
+	function onUserSearchInput(value: string) {
+		userSearch = value;
+		clearTimeout(userSearchTimeout);
+		userSearchTimeout = setTimeout(() => {
+			usersOffset = 0;
+			void loadUsers();
+		}, 300);
+	}
+
+	function usersPrevPage() {
+		if (usersOffset === 0) return;
+		usersOffset = Math.max(0, usersOffset - USERS_PAGE_SIZE);
+		void loadUsers();
+	}
+
+	function usersNextPage() {
+		if (usersOffset + USERS_PAGE_SIZE >= usersTotal) return;
+		usersOffset += USERS_PAGE_SIZE;
+		void loadUsers();
+	}
+
+	// Reload the current page after a create/delete, clamping the offset if the
+	// last item on the final page was removed.
+	async function reloadUsersClamped() {
+		if (usersOffset > 0 && usersOffset >= usersTotal - 1) {
+			usersOffset = Math.max(0, usersOffset - USERS_PAGE_SIZE);
+		}
+		await loadUsers();
 	}
 
 	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'plexUrl', 'plexToken', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled', 'rydEnabled', 'libraryAccessMode', 'statsVisibleToNonAdmins', 'showTotalSizeToNonAdmins'];
@@ -644,7 +684,7 @@
 			});
 
 			if (res.ok) {
-				await loadUsers();
+				await reloadUsersClamped();
 			} else {
 				const data = await res.json();
 				addToast('error', data.message || 'Failed to delete user');
@@ -671,6 +711,7 @@
 
 			if (res.ok) {
 				await loadUsers();
+				usersTotal += 1;
 				showCreateUser = false;
 				newUser = { email: '', password: '', name: '', isAdmin: false };
 			} else {
@@ -1167,7 +1208,89 @@
 					</div>
 				</div>
 
-				<h3 class="category-heading">Integrations</h3>
+				<h3 class="category-heading">Downloading</h3>
+				<div class="settings-section" id="ytdlp">
+					<h2>yt-dlp</h2>
+					<div class="form-group">
+						<label>
+							<input
+								type="checkbox"
+								bind:checked={settings.autoUpdateYtdlp}
+							/>
+							Auto-update yt-dlp
+						</label>
+					</div>
+
+					{#if settings.ytdlpVersion}
+						<div class="info-box">
+							<strong>Current version:</strong> {settings.ytdlpVersion}
+						</div>
+					{/if}
+
+					<div class="form-group">
+						<label>
+							<input
+								type="checkbox"
+								bind:checked={settings.versionCheckEnabled}
+							/>
+							Check for new versions
+						</label>
+						<p class="help-text">Periodically check GitHub for new releases and show an indicator in the sidebar</p>
+					</div>
+				</div>
+
+				<div class="settings-section" id="cookies">
+					<h2>Cookies</h2>
+					<p class="help-text" style="margin-bottom: var(--spacing-lg);">
+						Upload a Netscape-format cookies.txt file to access member-only and age-restricted content.
+					</p>
+
+					{#if cookieStatus.hasCookies}
+						<div class="info-box" style="margin-bottom: var(--spacing-md);">
+							Cookie file is active.
+						</div>
+						<button
+							class="btn btn-danger btn-sm btn-with-icon"
+							onclick={deleteCookieFile}
+						>
+							<TrashIcon width={14} height={14} />
+							Remove Cookies
+						</button>
+					{:else}
+						<label class="cookie-upload-label btn-secondary btn-sm btn-with-icon">
+							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+							{uploadingCookies ? 'Uploading...' : 'Upload cookies.txt'}
+							<input
+								type="file"
+								accept=".txt"
+								onchange={uploadCookieFile}
+								disabled={uploadingCookies}
+								style="display: none;"
+							/>
+						</label>
+					{/if}
+
+					{#if cookieError}
+						<div class="error-message" style="margin-top: var(--spacing-md);">
+							{cookieError}
+						</div>
+					{/if}
+				</div>
+
+				<div class="settings-section" id="ryd">
+					<h2>Return YouTube Dislike</h2>
+					<div class="form-group">
+						<label>
+							<input
+								type="checkbox"
+								bind:checked={settings.rydEnabled}
+							/>
+							Enable dislike counts
+						</label>
+						<p class="help-text">Fetch dislike counts from the Return YouTube Dislike API when downloading videos. When enabled, video IDs are sent to an external service (<a href="https://returnyoutubedislike.com" target="_blank" rel="noopener noreferrer">returnyoutubedislike.com</a>).</p>
+					</div>
+				</div>
+
 				<div class="settings-section" id="jellyfin">
 					<h2>Jellyfin</h2>
 
@@ -1410,93 +1533,7 @@
 					{/if}
 				</div>
 
-				<h3 class="category-heading">Downloader</h3>
-				<div class="settings-section" id="ytdlp">
-					<h2>yt-dlp</h2>
-					<div class="form-group">
-						<label>
-							<input
-								type="checkbox"
-								bind:checked={settings.autoUpdateYtdlp}
-							/>
-							Auto-update yt-dlp
-						</label>
-					</div>
-
-					{#if settings.ytdlpVersion}
-						<div class="info-box">
-							<strong>Current version:</strong> {settings.ytdlpVersion}
-						</div>
-					{/if}
-				</div>
-
-				<div class="settings-section" id="version-check">
-					<h2>Version Check</h2>
-					<div class="form-group">
-						<label>
-							<input
-								type="checkbox"
-								bind:checked={settings.versionCheckEnabled}
-							/>
-							Check for new versions
-						</label>
-						<p class="help-text">Periodically check GitHub for new releases and show an indicator in the sidebar</p>
-					</div>
-				</div>
-
-				<div class="settings-section" id="cookies">
-					<h2>Cookies</h2>
-					<p class="help-text" style="margin-bottom: var(--spacing-lg);">
-						Upload a Netscape-format cookies.txt file to access member-only and age-restricted content.
-					</p>
-
-					{#if cookieStatus.hasCookies}
-						<div class="info-box" style="margin-bottom: var(--spacing-md);">
-							Cookie file is active.
-						</div>
-						<button
-							class="btn btn-danger btn-sm btn-with-icon"
-							onclick={deleteCookieFile}
-						>
-							<TrashIcon width={14} height={14} />
-							Remove Cookies
-						</button>
-					{:else}
-						<label class="cookie-upload-label btn-secondary btn-sm btn-with-icon">
-							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-							{uploadingCookies ? 'Uploading...' : 'Upload cookies.txt'}
-							<input
-								type="file"
-								accept=".txt"
-								onchange={uploadCookieFile}
-								disabled={uploadingCookies}
-								style="display: none;"
-							/>
-						</label>
-					{/if}
-
-					{#if cookieError}
-						<div class="error-message" style="margin-top: var(--spacing-md);">
-							{cookieError}
-						</div>
-					{/if}
-				</div>
-
-				<div class="settings-section" id="ryd">
-					<h2>Return YouTube Dislike</h2>
-					<div class="form-group">
-						<label>
-							<input
-								type="checkbox"
-								bind:checked={settings.rydEnabled}
-							/>
-							Enable dislike counts
-						</label>
-						<p class="help-text">Fetch dislike counts from the Return YouTube Dislike API when downloading videos. When enabled, video IDs are sent to an external service (<a href="https://returnyoutubedislike.com" target="_blank" rel="noopener noreferrer">returnyoutubedislike.com</a>).</p>
-					</div>
-				</div>
-
-				<h3 class="category-heading">Maintenance</h3>
+				<h3 class="category-heading">Automation</h3>
 				<div class="settings-section" id="auto-delete">
 					<h2>Auto-Delete</h2>
 					<div class="form-group">
@@ -1613,7 +1650,6 @@
 					{/if}
 				</div>
 
-				<h3 class="category-heading">Notifications</h3>
 				<div class="settings-section" id="notifications">
 					<h2>Notifications</h2>
 					<div class="form-group">
@@ -1874,6 +1910,15 @@
 					</div>
 				{/if}
 
+				<div class="users-search">
+					<input
+						type="text"
+						placeholder="Search users by email or name"
+						value={userSearch}
+						oninput={(e) => onUserSearchInput(e.currentTarget.value)}
+					/>
+				</div>
+
 				<div class="users-list">
 					{#each users as user}
 						<div class="user-card">
@@ -1964,9 +2009,37 @@
 					{/each}
 
 					{#if users.length === 0}
-						<EmptyState title="No users found" variant="subtle" size="sm" />
+						<EmptyState
+							title={userSearch.trim() ? 'No users match your search' : 'No users found'}
+							variant="subtle"
+							size="sm"
+						/>
 					{/if}
 				</div>
+
+				{#if usersTotal > 0}
+					<div class="users-pagination">
+						<span class="users-pagination-info">
+							{usersOffset + 1}–{Math.min(usersOffset + USERS_PAGE_SIZE, usersTotal)} of {usersTotal}
+						</span>
+						<div class="users-pagination-controls">
+							<button
+								class="btn btn-secondary btn-sm"
+								onclick={usersPrevPage}
+								disabled={usersOffset === 0 || usersLoading}
+							>
+								Prev
+							</button>
+							<button
+								class="btn btn-secondary btn-sm"
+								onclick={usersNextPage}
+								disabled={usersOffset + USERS_PAGE_SIZE >= usersTotal || usersLoading}
+							>
+								Next
+							</button>
+						</div>
+					</div>
+				{/if}
 			</div>
 
 			<div class="settings-section">
@@ -2531,10 +2604,32 @@
 		font-size: 0.875rem;
 	}
 
+	.users-search {
+		margin-bottom: var(--spacing-lg);
+	}
+
 	.users-list {
 		display: flex;
 		flex-direction: column;
 		gap: var(--spacing-md);
+	}
+
+	.users-pagination {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--spacing-md);
+		margin-top: var(--spacing-lg);
+	}
+
+	.users-pagination-info {
+		font-size: 0.875rem;
+		color: var(--color-text-secondary);
+	}
+
+	.users-pagination-controls {
+		display: flex;
+		gap: var(--spacing-sm);
 	}
 
 	.user-card {

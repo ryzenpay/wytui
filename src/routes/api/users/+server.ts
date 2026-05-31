@@ -6,58 +6,79 @@ import { requireAdmin } from '$lib/server/guards';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/users', 'GET', {
-	summary: 'List all users',
+	summary: 'List users (paginated, searchable)',
 	tags: ['Users'],
 	auth: 'admin',
+	query: {
+		search: { type: 'string', description: 'Filter by email or name (case-insensitive)' },
+		limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+		offset: { type: 'integer', minimum: 0, default: 0 },
+	},
 	responses: {
 		200: {
-			description: 'Array of users with download/subscription counts',
+			description: 'Page of users with total count',
 			schema: {
-				type: 'array',
-				items: {
-					type: 'object',
-					properties: {
-						id: { type: 'string' },
-						email: { type: 'string' },
-						name: { type: 'string' },
-						isAdmin: { type: 'boolean' },
-						createdAt: { type: 'string', format: 'date-time' },
-						_count: {
-							type: 'object',
-							properties: {
-								downloads: { type: 'integer' },
-								subscriptions: { type: 'integer' },
-							},
-						},
-					},
+				type: 'object',
+				properties: {
+					users: { type: 'array', items: { type: 'object' } },
+					total: { type: 'integer' },
+					limit: { type: 'integer' },
+					offset: { type: 'integer' },
 				},
 			},
 		},
 	},
-}, async ({ locals }) => {
+}, async ({ url, locals }) => {
 	try {
 		requireAdmin(locals);
 
-		const users = await prisma.user.findMany({
-			select: {
-				id: true,
-				email: true,
-				name: true,
-				isAdmin: true,
-				libraryAccess: true,
-				cacheQuotaBytes: true,
-				createdAt: true,
-				_count: {
-					select: {
-						downloads: true,
-						subscriptions: true,
+		let limit = parseInt(url.searchParams.get('limit') || '25', 10);
+		let offset = parseInt(url.searchParams.get('offset') || '0', 10);
+		if (isNaN(limit) || limit < 1) limit = 25;
+		if (limit > 100) limit = 100;
+		if (isNaN(offset) || offset < 0) offset = 0;
+
+		const search = (url.searchParams.get('search') || '').trim();
+		const where = search
+			? {
+					OR: [
+						{ email: { contains: search, mode: 'insensitive' as const } },
+						{ name: { contains: search, mode: 'insensitive' as const } },
+					],
+			  }
+			: {};
+
+		const [users, total] = await Promise.all([
+			prisma.user.findMany({
+				where,
+				select: {
+					id: true,
+					email: true,
+					name: true,
+					isAdmin: true,
+					libraryAccess: true,
+					cacheQuotaBytes: true,
+					createdAt: true,
+					_count: {
+						select: {
+							downloads: true,
+							subscriptions: true,
+						},
 					},
 				},
-			},
-			orderBy: { createdAt: 'desc' },
-		});
+				orderBy: { createdAt: 'desc' },
+				take: limit,
+				skip: offset,
+			}),
+			prisma.user.count({ where }),
+		]);
 
-		return json(users.map((u) => ({ ...u, cacheQuotaBytes: u.cacheQuotaBytes?.toString() ?? null })));
+		return json({
+			users: users.map((u) => ({ ...u, cacheQuotaBytes: u.cacheQuotaBytes?.toString() ?? null })),
+			total,
+			limit,
+			offset,
+		});
 	} catch (e: any) {
 		console.error('Failed to list users:', e);
 		if (e.status) throw e;

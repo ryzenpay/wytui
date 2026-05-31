@@ -34,7 +34,7 @@ export const GET = apiRoute('/api/subscriptions', 'GET', {
 			},
 		},
 	},
-}, async ({ locals }) => {
+}, async ({ url, locals }) => {
 	try {
 		if (!locals.session?.user?.id) {
 			throw error(401, 'Authentication required');
@@ -42,10 +42,20 @@ export const GET = apiRoute('/api/subscriptions', 'GET', {
 
 		const userId = locals.session.user.id;
 
+		// Optional pagination — callers without `limit` get the full list (back-compat);
+		// the UI passes limit/offset and uses a "load more" model.
+		const hasLimit = url.searchParams.has('limit');
+		let limit = parseInt(url.searchParams.get('limit') || '50', 10);
+		let offset = parseInt(url.searchParams.get('offset') || '0', 10);
+		if (isNaN(limit) || limit < 1) limit = 50;
+		if (limit > 100) limit = 100;
+		if (isNaN(offset) || offset < 0) offset = 0;
+
 		const subscriptions = await prisma.subscription.findMany({
 			where: { userId },
 			include: { profile: true },
 			orderBy: { createdAt: 'desc' },
+			...(hasLimit ? { take: limit, skip: offset } : {}),
 		});
 
 		return json(subscriptions);
