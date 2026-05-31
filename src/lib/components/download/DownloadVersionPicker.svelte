@@ -54,27 +54,27 @@
 	}
 
 	async function triggerDownload(id: string) {
-		// On mobile, open the native share sheet so users can "Save to Photos"
-		// instead of dumping the file into Files/Downloads. canShare must be tested
-		// against the *real* file — an empty placeholder File reports false on iOS
-		// Safari, which would silently skip the share sheet.
-		if (isMobileDevice()) {
-			try {
-				const res = await fetch(fileUrl(id));
-				if (!res.ok) throw new Error('fetch failed');
-				const blob = await res.blob();
-				const name = filenameFromResponse(res) || 'download';
-				const file = new File([blob], name, { type: blob.type });
-				if (navigator.canShare?.({ files: [file] })) {
-					await navigator.share({ files: [file] });
-					return;
-				}
-			} catch (e: any) {
-				if (e.name === 'AbortError') return; // user dismissed the share sheet
-				console.warn('Share unavailable, falling back to download:', e);
-			}
+		// On mobile, open the native share sheet so users can "Save to Photos".
+		// Check canShare *synchronously* up front (inside the tap gesture) — this
+		// matches the original working implementation. Then fetch the file and
+		// share it; the button stays mounted throughout so iOS keeps the share
+		// activation alive across the single fetch.
+		const canShareFiles =
+			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
+		if (!canShareFiles) {
+			window.open(fileUrl(id), '_blank');
+			return;
 		}
-		window.open(fileUrl(id), '_blank');
+		try {
+			const res = await fetch(fileUrl(id));
+			if (!res.ok) throw new Error('fetch failed');
+			const blob = await res.blob();
+			const name = filenameFromResponse(res) || 'download';
+			const file = new File([blob], name, { type: blob.type });
+			await navigator.share({ files: [file] });
+		} catch (e: any) {
+			if (e.name !== 'AbortError') console.warn('Share failed:', e);
+		}
 	}
 
 	function versionLabel(v: Version): string {
@@ -95,11 +95,8 @@
 			const res = await fetch(`/api/downloads/${downloadId}/versions`);
 			versions = res.ok ? await res.json() : [];
 			loaded = true;
-			// Single (or no) version → just download it, no menu. On mobile we keep
-			// the menu open even for a single version: tapping a row is a fresh user
-			// gesture, which is what iOS requires for navigator.share() to open the
-			// share sheet (a fetch before share() would consume the activation).
-			if (versions.length <= 1 && !isMobileDevice()) {
+			// Single (or no) version → just download it, no menu.
+			if (versions.length <= 1) {
 				triggerDownload(versions[0]?.id ?? downloadId);
 				open = false;
 			}
@@ -115,6 +112,14 @@
 	function handleClick() {
 		if (open) {
 			open = false;
+			return;
+		}
+		// Mobile: replicate the original behavior — fetch the file and open the
+		// native share sheet directly from this tap, no version dropdown. Routing
+		// through a versions fetch first, or unmounting a menu mid-share, breaks the
+		// user activation iOS requires for navigator.share().
+		if (isMobileDevice()) {
+			triggerDownload(downloadId);
 			return;
 		}
 		open = true;
@@ -157,7 +162,7 @@
 		{#if showLabel}{label}{/if}
 	</button>
 
-	{#if open && versions.length >= 1 && (versions.length > 1 || isMobileDevice())}
+	{#if open && versions.length > 1}
 		<div class="dvp-popover" class:down={direction === 'down'} bind:this={menuEl} role="menu" aria-label="Choose version to download">
 			<div class="dvp-head">Choose version</div>
 			{#each versions as v}
