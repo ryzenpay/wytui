@@ -748,9 +748,12 @@ class DownloadService {
 		notificationService.notifyComplete(download.title || download.url).catch(() => {});
 
 		// Enforce cache quota asynchronously — per-user so each user is evicted
-		// against their own limit.
+		// against their own limit, then globally against the total cache cap.
 		libraryService.enforceCacheQuota(download.userId ?? undefined).catch((error) => {
 			console.error('[DownloadService] Cache quota enforcement failed:', error);
+		});
+		libraryService.enforceTotalCacheQuota().catch((error) => {
+			console.error('[DownloadService] Total cache quota enforcement failed:', error);
 		});
 	}
 

@@ -21,6 +21,7 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'libraryPath',
 	'musicLibraryPath',
 	'cacheQuotaBytes',
+	'totalCacheQuotaBytes',
 	'jellyfinUrl',
 	'jellyfinApiKey',
 	'jellyfinExternalUrl',
@@ -134,6 +135,7 @@ export const GET = apiRoute('/api/settings', 'GET', {
 			ldapBindPassword: settings.ldapBindPassword ? '***SET***' : null,
 			appriseUrl: settings.appriseUrl ? '***SET***' : null,
 			cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
+			totalCacheQuotaBytes: settings.totalCacheQuotaBytes?.toString() ?? null,
 			oidcConfigured: isOidcConfigured(),
 			oidcDisplayName: isOidcConfigured() ? getOidcDisplayName() : null,
 			canUsePasswordOnly,
@@ -160,7 +162,8 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		authMode: { type: 'string', description: 'Authentication mode', enum: ['password', 'oidc', 'both'] },
 		libraryPath: { type: 'string', description: 'Library directory path' },
 		musicLibraryPath: { type: 'string', description: 'Music library path' },
-		cacheQuotaBytes: { type: 'string', description: 'Cache quota in bytes' },
+		cacheQuotaBytes: { type: 'string', description: 'Default per-user cache quota in bytes' },
+		totalCacheQuotaBytes: { type: 'string', description: 'Global total cache cap in bytes; empty/null = auto (disk − 5 GB)', nullable: true },
 		jellyfinUrl: { type: 'string', description: 'Jellyfin server URL' },
 		jellyfinApiKey: { type: 'string', description: 'Jellyfin API key' },
 		jellyfinExternalUrl: { type: 'string', description: 'Jellyfin external URL' },
@@ -296,6 +299,33 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 			updates.cacheQuotaBytes = val;
 		}
 
+		if (updates.totalCacheQuotaBytes !== undefined) {
+			// Empty string or null clears the override → auto (disk − 5 GB).
+			if (updates.totalCacheQuotaBytes === null || updates.totalCacheQuotaBytes === '') {
+				updates.totalCacheQuotaBytes = null;
+			} else {
+				const val = BigInt(updates.totalCacheQuotaBytes);
+				if (val < BigInt(0)) {
+					throw error(400, 'Total cache quota must be positive');
+				}
+
+				const currentSettings = await prisma.settings.findUnique({ where: { id: 'singleton' } });
+				const downloadPath = updates.downloadPath || currentSettings?.downloadPath || '/downloads';
+				try {
+					const stats = await statfs(downloadPath);
+					const totalBytes = BigInt(stats.bsize) * BigInt(stats.blocks);
+					if (val > totalBytes) {
+						const totalGB = Number(totalBytes) / (1024 * 1024 * 1024);
+						throw error(400, `Total cache quota exceeds total disk space (${totalGB.toFixed(1)} GB)`);
+					}
+				} catch (e: any) {
+					if (e.status) throw e;
+				}
+
+				updates.totalCacheQuotaBytes = val;
+			}
+		}
+
 		if (updates.maxConcurrentDownloads !== undefined) {
 			const val = Number(updates.maxConcurrentDownloads);
 			if (!Number.isInteger(val) || val < 1 || val > 20) {
@@ -377,6 +407,7 @@ export const PATCH = apiRoute('/api/settings', 'PATCH', {
 		return json({
 			...settings,
 			cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
+			totalCacheQuotaBytes: settings.totalCacheQuotaBytes?.toString() ?? null,
 		});
 	} catch (e: any) {
 		console.error('Failed to update settings:', e);

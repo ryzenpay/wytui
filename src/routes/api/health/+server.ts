@@ -21,7 +21,7 @@ export const GET = apiRoute('/api/health', 'GET', {
 					connection: { type: 'object', properties: { sseClients: { type: 'integer' } } },
 					downloads: { type: 'object', properties: { active: { type: 'integer' }, queued: { type: 'integer' }, completed: { type: 'integer' }, failed: { type: 'integer' } } },
 					queue: { type: 'object', properties: { metadata: { type: 'integer' }, downloads: { type: 'integer' }, active: { type: 'integer' }, maxConcurrent: { type: 'integer' } } },
-					storage: { type: 'object', properties: { cache: { type: 'object' }, library: { type: 'object' }, disk: { type: 'object', nullable: true } } },
+					storage: { type: 'object', properties: { cache: { type: 'object' }, totalCache: { type: 'object', nullable: true }, library: { type: 'object' }, disk: { type: 'object', nullable: true } } },
 					system: { type: 'object', properties: { ytdlpVersion: { type: 'string', nullable: true }, uptimeMs: { type: 'integer' } } },
 					subscriptions: { type: 'object', properties: { total: { type: 'integer' }, active: { type: 'integer' } } },
 					monitors: { type: 'object', properties: { total: { type: 'integer' }, enabled: { type: 'integer' }, live: { type: 'integer' } } },
@@ -58,6 +58,7 @@ export const GET = apiRoute('/api/health', 'GET', {
 
 	const [
 		cacheUsage,
+		totalCacheUsage,
 		libraryUsage,
 		downloadCounts,
 		subscriptionTotal,
@@ -66,7 +67,10 @@ export const GET = apiRoute('/api/health', 'GET', {
 		monitorEnabled,
 		monitorLive,
 	] = await Promise.all([
-		libraryService.getCacheUsage(isAdmin ? undefined : userId),
+		// Always the requester's OWN cache usage vs their per-user limit.
+		libraryService.getCacheUsage(userId),
+		// Global total cache usage — gated like other totals (admins always).
+		showTotals ? libraryService.getTotalCacheUsage() : Promise.resolve(null),
 		showTotals ? libraryService.getLibraryUsage() : Promise.resolve(null),
 		prisma.download.groupBy({ by: ['status'], _count: true }),
 		prisma.subscription.count(),
@@ -122,6 +126,7 @@ export const GET = apiRoute('/api/health', 'GET', {
 		},
 		storage: {
 			cache: cacheUsage,
+			totalCache: totalCacheUsage,
 			library: libraryUsage,
 			disk,
 		},

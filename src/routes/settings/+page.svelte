@@ -373,12 +373,16 @@
 		await loadUsers();
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'plexUrl', 'plexToken', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled', 'rydEnabled', 'libraryAccessMode', 'statsVisibleToNonAdmins', 'showTotalSizeToNonAdmins'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'totalCacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'plexUrl', 'plexToken', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled', 'rydEnabled', 'libraryAccessMode', 'statsVisibleToNonAdmins', 'showTotalSizeToNonAdmins'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
 	let cacheQuotaGB = $derived(settings ? Math.floor(Number(BigInt(settings.cacheQuotaBytes || '10737418240')) / (1024 * 1024 * 1024)) : 10);
 	let cacheQuotaExceedsDisk = $derived(diskTotalGB !== null && cacheQuotaGB > diskTotalGB);
+	// Global total cache cap: blank input = auto (disk − 5 GB).
+	let totalCacheGB = $derived(settings && settings.totalCacheQuotaBytes ? Math.floor(Number(BigInt(settings.totalCacheQuotaBytes)) / (1024 * 1024 * 1024)) : '');
+	let autoTotalCacheGB = $derived(diskTotalGB !== null ? Math.max(0, Math.floor(diskTotalGB - 5)) : null);
+	let totalCacheExceedsDisk = $derived(diskTotalGB !== null && totalCacheGB !== '' && Number(totalCacheGB) > diskTotalGB);
 	let libraryEnabled = $derived(settings ? !!settings.libraryPath : false);
 	let jellyfinEnabled = $derived(settings ? !!(settings.jellyfinUrl || settings.jellyfinApiKey) : false);
 	let plexEnabled = $derived(settings ? !!(settings.plexUrl || settings.plexToken) : false);
@@ -399,6 +403,12 @@
 		if (settings) {
 			settings.cacheQuotaBytes = String(Math.round(gb * 1024 * 1024 * 1024));
 		}
+	}
+
+	function updateTotalCacheQuota(raw: string) {
+		if (!settings) return;
+		const trimmed = raw.trim();
+		settings.totalCacheQuotaBytes = trimmed === '' ? null : String(Math.round(parseFloat(trimmed) * 1024 * 1024 * 1024));
 	}
 
 	function toggleLibrary(enabled: boolean) {
@@ -1091,6 +1101,29 @@
 								<p class="help-text">Default cache budget per user. {diskTotalGB.toFixed(1)} GB total on disk. Override per user in the Users tab.</p>
 							{:else}
 								<p class="help-text">Default cache budget per user. Oldest downloads are auto-removed when exceeded. Override per user in the Users tab.</p>
+							{/if}
+						</div>
+					</div>
+
+					<div class="form-row">
+						<div class="form-group">
+							<label for="totalCacheQuota">Total Cache Limit (GB)</label>
+							<input
+								type="number"
+								id="totalCacheQuota"
+								value={totalCacheGB}
+								oninput={(e) => updateTotalCacheQuota(e.currentTarget.value)}
+								placeholder={autoTotalCacheGB !== null ? `Auto (${autoTotalCacheGB})` : 'Auto'}
+								min="1"
+								max={diskTotalGB ? Math.floor(diskTotalGB) : undefined}
+								step="1"
+							/>
+							{#if totalCacheExceedsDisk && diskTotalGB}
+								<p class="help-text error-text">Exceeds total disk space ({diskTotalGB.toFixed(1)} GB)</p>
+							{:else}
+								<p class="help-text">
+									Global cap across all users. Blank = auto{autoTotalCacheGB !== null ? ` (disk − 5 GB ≈ ${autoTotalCacheGB} GB)` : ' (disk − 5 GB)'}. Oldest cached items across all users are auto-removed when exceeded. Use this when not bounded by a PVC.
+								</p>
 							{/if}
 						</div>
 					</div>

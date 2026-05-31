@@ -145,9 +145,29 @@
 
 						<div class="stat-card wide">
 							<div class="card-title"><i class="bi bi-hdd"></i> Storage</div>
+							{#if data.storage.totalCache}
+								<div class="progress-section">
+									<div class="progress-header">
+										<span class="stat-label">Total Cache</span>
+										<span class="stat-detail">
+											{#if data.storage.totalCache.quotaBytes}
+												{formatBytes(data.storage.totalCache.usedBytes)} / {formatBytes(data.storage.totalCache.quotaBytes)}
+											{:else}
+												{formatBytes(data.storage.totalCache.usedBytes)} &middot; No limit
+											{/if}
+										</span>
+									</div>
+									<div class="health-progress">
+										<div
+											class="health-progress-bar"
+											style="width: {data.storage.totalCache.percentage}%; background: {progressColor(data.storage.totalCache.percentage)};"
+										></div>
+									</div>
+								</div>
+							{/if}
 							<div class="progress-section">
 								<div class="progress-header">
-									<span class="stat-label">{isAdmin ? 'Cache' : 'Your Cache'}</span>
+									<span class="stat-label">Your Cache</span>
 									<span class="stat-detail">{formatBytes(data.storage.cache.usedBytes)} / {formatBytes(data.storage.cache.quotaBytes)}</span>
 								</div>
 								<div class="health-progress">

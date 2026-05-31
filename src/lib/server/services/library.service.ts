@@ -1,7 +1,7 @@
 import { prisma } from '../db';
 import { sseEmitter } from '../sse/emitter';
 import { DownloadStatus } from '@prisma/client';
-import { copyFile, unlink, mkdir, access, writeFile } from 'fs/promises';
+import { copyFile, unlink, mkdir, access, writeFile, statfs } from 'fs/promises';
 import { join, basename, resolve, extname, sep } from 'path';
 import { musicMetadataService } from './music-metadata.service';
 import { ytdlpService } from './ytdlp.service';
@@ -284,6 +284,108 @@ class LibraryService {
 			quotaBytes: quotaBytes.toString(),
 			percentage: Math.min(percentage, 100),
 		};
+	}
+
+	/** Total capacity of the disk backing the cache/download path, or null if unreadable. */
+	private async getDiskTotalBytes(downloadPath: string): Promise<bigint | null> {
+		try {
+			const stats = await statfs(downloadPath);
+			return BigInt(stats.bsize) * BigInt(stats.blocks);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Effective global cache cap. An explicit Settings.totalCacheQuotaBytes wins;
+	 * otherwise default to (disk capacity − 5 GB) so non-PVC installs leave headroom.
+	 * Returns null when no explicit cap is set and the disk can't be read — callers
+	 * treat null as "no global enforcement" (fail-safe, never mass-evict on bad data).
+	 */
+	async getEffectiveTotalCacheQuota(
+		settings?: { totalCacheQuotaBytes: bigint | null; downloadPath: string | null }
+	): Promise<bigint | null> {
+		const s = settings ?? (await this.getSettings());
+		if (s.totalCacheQuotaBytes != null) return s.totalCacheQuotaBytes;
+
+		const FIVE_GIB = BigInt(5_368_709_120);
+		const diskTotal = await this.getDiskTotalBytes(s.downloadPath || '/downloads');
+		if (diskTotal == null) return null;
+		const cap = diskTotal - FIVE_GIB;
+		return cap > BigInt(0) ? cap : BigInt(0);
+	}
+
+	/** Global cache usage across all users vs the effective global cap. */
+	async getTotalCacheUsage(): Promise<{ usedBytes: string; quotaBytes: string | null; percentage: number }> {
+		const quotaBytes = await this.getEffectiveTotalCacheQuota();
+
+		const result = await prisma.download.aggregate({
+			where: { storagePool: 'cache', status: DownloadStatus.COMPLETED },
+			_sum: { filesize: true },
+		});
+		const usedBytes = result._sum.filesize ?? BigInt(0);
+
+		const percentage = quotaBytes && quotaBytes > BigInt(0)
+			? Math.min(Number((usedBytes * BigInt(10000)) / quotaBytes) / 100, 100)
+			: 0;
+
+		return {
+			usedBytes: usedBytes.toString(),
+			quotaBytes: quotaBytes == null ? null : quotaBytes.toString(),
+			percentage,
+		};
+	}
+
+	/**
+	 * Enforce the global total cache cap by evicting the oldest completed cache
+	 * downloads across ALL users until total usage is back under the cap. No-op when
+	 * there's no effective cap. Mirrors the per-user eviction in enforceCacheQuota.
+	 */
+	async enforceTotalCacheQuota(): Promise<void> {
+		const quotaBytes = await this.getEffectiveTotalCacheQuota();
+		if (quotaBytes == null) return;
+
+		const result = await prisma.download.aggregate({
+			where: { storagePool: 'cache', status: DownloadStatus.COMPLETED },
+			_sum: { filesize: true },
+		});
+
+		const usedBytes = result._sum.filesize ?? BigInt(0);
+		if (usedBytes <= quotaBytes) return;
+
+		const candidates = await prisma.download.findMany({
+			where: { storagePool: 'cache', status: DownloadStatus.COMPLETED },
+			orderBy: { completedAt: 'asc' },
+			select: { id: true, filesize: true, filepath: true, userId: true },
+		});
+
+		let currentUsage = usedBytes;
+		for (const candidate of candidates) {
+			if (currentUsage <= quotaBytes) break;
+
+			if (candidate.filepath) {
+				try {
+					await unlink(candidate.filepath);
+				} catch {
+					continue;
+				}
+			}
+
+			const videoId = await this.getVideoIdForDownload(candidate.id);
+			if (videoId) {
+				await prisma.archive.deleteMany({ where: { videoId } });
+			}
+
+			await prisma.download.delete({ where: { id: candidate.id } });
+
+			if (candidate.userId) {
+				sseEmitter.broadcastToUser('download:deleted', { id: candidate.id, reason: 'cache_quota' }, candidate.userId);
+			} else {
+				sseEmitter.broadcast('download:deleted', { id: candidate.id, reason: 'cache_quota' });
+			}
+
+			currentUsage -= candidate.filesize ?? BigInt(0);
+		}
 	}
 
 	async getLibraryUsage(): Promise<{ video: { usedBytes: string; count: number } | null; music: { usedBytes: string; count: number } | null }> {

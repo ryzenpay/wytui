@@ -360,7 +360,8 @@ model Settings {
   // Library & cache
   libraryPath     String?
   musicLibraryPath String?
-  cacheQuotaBytes BigInt    @default(10737418240) // 10 GB
+  cacheQuotaBytes BigInt    @default(10737418240) // 10 GB — default per-user cache limit
+  totalCacheQuotaBytes BigInt? // global total cache cap across all users; null = auto (disk capacity − 5 GB)
 
   // Jellyfin integration
   jellyfinUrl         String?
