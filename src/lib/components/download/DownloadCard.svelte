@@ -715,16 +715,26 @@
 		bottom: 0;
 		left: 0;
 		width: 100%;
-		height: 6px;
+		height: 8px;
 		background: var(--color-overlay-white-30);
 		z-index: 3;
 		cursor: pointer;
 		transition: height var(--transition-fast);
 	}
 
+	/* Invisible grab zone extending above the visible bar so it's easy to drag */
+	.video-progress-bar::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		top: -16px;
+	}
+
 	.video-progress-bar:hover,
 	.video-progress-bar.dragging {
-		height: 10px;
+		height: 12px;
 	}
 
 	.progress-fill {

@@ -1047,8 +1047,8 @@
 	.progress-bar-hitarea {
 		position: relative;
 		width: 100%;
-		/* 4px visual bar + 10px padding top/bottom = 24px interaction zone */
-		padding: 10px 0;
+		/* 4px visual bar + 16px padding top/bottom = 36px interaction zone */
+		padding: 16px 0;
 		cursor: pointer;
 		touch-action: none;
 	}
@@ -1064,7 +1064,7 @@
 	}
 
 	.progress-bar-hitarea.hovered .progress-bar-track {
-		height: 6px;
+		height: 8px;
 	}
 
 	.progress-bar-buffered {
@@ -1090,11 +1090,11 @@
 
 	.progress-bar-thumb {
 		position: absolute;
-		right: -6px;
+		right: -8px;
 		top: 50%;
 		transform: translateY(-50%);
-		width: 12px;
-		height: 12px;
+		width: 16px;
+		height: 16px;
 		border-radius: 50%;
 		background: var(--color-player-progress);
 		opacity: 0;
