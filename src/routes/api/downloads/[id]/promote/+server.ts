@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { downloadService } from '$lib/server/services/download.service';
 import { libraryService } from '$lib/server/services/library.service';
+import { prisma } from '$lib/server/db';
 import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
 
@@ -57,6 +58,22 @@ export const POST = apiRoute('/api/downloads/[id]/promote', 'POST', {
 
 		if (download.status !== 'COMPLETED') {
 			throw error(400, 'Download must be completed');
+		}
+
+		// Enforce library access for the download's owner. In 'request' mode a
+		// pending library request is filed for admin approval instead of promoting.
+		const ownerId = download.userId ?? locals.session.user.id;
+		const access = await downloadService.resolveLibraryAccess(ownerId);
+		if (access === 'denied') {
+			throw error(403, 'Library access is not enabled for this account');
+		}
+		if (access === 'request') {
+			await prisma.libraryRequest.upsert({
+				where: { downloadId: params.id },
+				create: { downloadId: params.id, userId: ownerId, status: 'pending' },
+				update: { status: 'pending', resolvedAt: null, resolvedBy: null },
+			});
+			return json({ requested: true });
 		}
 
 		await libraryService.promoteToLibrary(params.id);

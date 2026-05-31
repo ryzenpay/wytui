@@ -18,6 +18,9 @@
 	let sseState = getSSEState();
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
 	let sidebarCollapsed = $state(false);
+	// Stats panel can be hidden from non-admins; total/global size separately gated.
+	let statsVisible = $derived(isAdmin || (data.statsVisibleToNonAdmins ?? true));
+	let showTotalSize = $derived(isAdmin || (data.showTotalSizeToNonAdmins ?? false));
 
 	onMount(() => {
 		connectSSE();
@@ -35,6 +38,7 @@
 <div class="app-layout">
 	<Sidebar
 		{isAdmin}
+		statsVisible={statsVisible}
 		connected={sseState.connected}
 		userEmail={data.session?.user?.email}
 		onHealthClick={() => healthPanelOpen = true}
@@ -82,7 +86,7 @@
 
 <Modal />
 <Toast />
-<HealthPanel open={healthPanelOpen} onClose={() => healthPanelOpen = false} />
+<HealthPanel open={healthPanelOpen} onClose={() => healthPanelOpen = false} {isAdmin} {showTotalSize} />
 <KeyboardShortcutHelp open={keyboard.showHelp} onClose={() => keyboard.closeHelp()} />
 
 <style>

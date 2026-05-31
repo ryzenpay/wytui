@@ -8,6 +8,8 @@ const openWytuiBtn = document.getElementById('openWytuiBtn');
 const profileSelect = document.getElementById('profileSelect');
 const libraryToggle = document.getElementById('libraryToggle');
 const libraryToggleRow = document.getElementById('libraryToggleRow');
+const libraryToggleTitle = document.getElementById('libraryToggleTitle');
+const libraryToggleSub = document.getElementById('libraryToggleSub');
 const downloadBtn = document.getElementById('downloadBtn');
 const downloadBtnLabel = document.getElementById('downloadBtnLabel');
 const messageEl = document.getElementById('message');
@@ -96,13 +98,13 @@ chrome.storage.local.get(['serverUrl', 'apiKey'], async (data) => {
   updateStatus('checking');
   const profileResult = await chrome.runtime.sendMessage({ action: 'fetchProfiles' });
   if (!profileResult?.success) {
-    updateStatus('error');
+    updateStatus(data.apiKey ? 'key-invalid' : 'error');
     setConfigured(false);
     switchToSettings();
     return;
   }
 
-  updateStatus(data.apiKey ? 'connected-key' : 'connected-session');
+  updateStatus(statusFromResult(profileResult), profileResult.email);
   setConfigured(true);
   applyLibraryVisibility(profileResult);
   populateProfiles(profileResult);
@@ -133,19 +135,31 @@ function formatUrl(url) {
   }
 }
 
-function updateStatus(state) {
+function updateStatus(state, detail) {
   const states = {
     unconfigured:          ['status-dot', 'Not configured'],
     checking:              ['status-dot checking', 'Checking…'],
     'connected-key':       ['status-dot connected', 'Connected · API key'],
     'connected-session':   ['status-dot connected', 'Connected · Session'],
+    'connected-proxy':     ['status-dot connected', 'Connected · Proxy'],
+    'key-invalid':         ['status-dot error', 'API key invalid'],
     error:                 ['status-dot error', 'Auth failed'],
   };
   const [cls, label] = states[state] || states.unconfigured;
   statusDot.className = cls;
-  statusText.textContent = label;
-  const isConnected = state === 'connected-key' || state === 'connected-session';
+  statusText.textContent = detail ? `${label} · ${detail}` : label;
+  const isConnected = state.startsWith('connected-');
   downloadBtn.disabled = !isConnected;
+}
+
+// Map a successful fetchProfiles result to the status the server actually used.
+// If an API key is stored but the server did NOT authenticate via it, the key is
+// invalid — surface that instead of a misleading "connected" state.
+function statusFromResult(result) {
+  if (result.hasApiKey && result.authMethod !== 'apikey') return 'key-invalid';
+  if (result.authMethod === 'apikey') return 'connected-key';
+  if (result.authMethod === 'proxy') return 'connected-proxy';
+  return 'connected-session';
 }
 
 const STATUS_MAP = {
@@ -274,7 +288,23 @@ copyDeleteBtn.addEventListener('click', async () => {
 });
 
 function applyLibraryVisibility(result) {
-  libraryToggleRow.style.display = result?.libraryEnabled ? '' : 'none';
+  const mode = result?.libraryMode || 'none';
+  if (mode === 'none') {
+    libraryToggleRow.style.display = 'none';
+    saveToLibrary = false;
+    libraryToggle.classList.remove('on');
+    return;
+  }
+  libraryToggleRow.style.display = '';
+  if (libraryToggleTitle && libraryToggleSub) {
+    if (mode === 'request') {
+      libraryToggleTitle.textContent = 'Request Library Save';
+      libraryToggleSub.textContent = 'Needs admin approval';
+    } else {
+      libraryToggleTitle.textContent = 'Save to Library';
+      libraryToggleSub.textContent = 'Skip cache and save permanently';
+    }
+  }
 }
 
 function populateProfiles(result) {
@@ -323,11 +353,11 @@ saveBtn.addEventListener('click', () => {
     updateStatus('checking');
     const profileResult = await chrome.runtime.sendMessage({ action: 'fetchProfiles' });
     if (!profileResult?.success) {
-      updateStatus('error');
+      updateStatus(key ? 'key-invalid' : 'error');
       setConfigured(false);
       return;
     }
-    updateStatus(key ? 'connected-key' : 'connected-session');
+    updateStatus(statusFromResult(profileResult), profileResult.email);
     setConfigured(true);
     applyLibraryVisibility(profileResult);
     populateProfiles(profileResult);

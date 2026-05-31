@@ -6,6 +6,7 @@ import { resolve, normalize } from 'path';
 import { statfs } from 'fs/promises';
 import { apiRoute } from '$lib/server/openapi';
 import { requireAdmin } from '$lib/server/guards';
+import { libraryAccessStatus, effectiveCacheQuota } from '$lib/server/permissions';
 import type { RequestHandler } from './$types';
 
 const ALLOWED_SETTINGS_FIELDS = new Set([
@@ -50,6 +51,9 @@ const ALLOWED_SETTINGS_FIELDS = new Set([
 	'proxyAuthHeader',
 	'versionCheckEnabled',
 	'rydEnabled',
+	'libraryAccessMode',
+	'statsVisibleToNonAdmins',
+	'showTotalSizeToNonAdmins',
 ]);
 
 export const GET = apiRoute('/api/settings', 'GET', {
@@ -97,10 +101,17 @@ export const GET = apiRoute('/api/settings', 'GET', {
 		}
 
 		if (!locals.session.user.isAdmin) {
+			const user = await prisma.user.findUnique({
+				where: { id: locals.session.user.id },
+				select: { libraryAccess: true, isAdmin: true, cacheQuotaBytes: true },
+			});
+			const access = libraryAccessStatus(user, settings);
+			const libraryConfigured = !!settings.libraryPath;
 			return json({
-				libraryPath: settings.libraryPath,
-				musicLibraryPath: settings.musicLibraryPath,
-				cacheQuotaBytes: settings.cacheQuotaBytes.toString(),
+				libraryAccess: access, // 'allowed' | 'request' | 'denied'
+				canUseLibrary: access === 'allowed' && libraryConfigured,
+				canRequestLibrary: access === 'request' && libraryConfigured,
+				cacheQuotaBytes: effectiveCacheQuota(user, settings).toString(),
 			});
 		}
 

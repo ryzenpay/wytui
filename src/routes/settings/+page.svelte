@@ -38,36 +38,86 @@
 	let settingsSnapshot = $state('');
 	let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 	let isAdmin = $derived(data.session?.user?.isAdmin ?? false);
-	let activeTab = $state<'general' | 'users'>('general');
+	let activeTab = $state<'account' | 'app' | 'users'>('account');
 	let activeSection = $state<string>('storage');
 
-	// Settings sections for navigation
-	const settingsSections = [
-		{ id: 'storage', label: 'Storage' },
-		{ id: 'jellyfin', label: 'Jellyfin' },
-		{ id: 'plex', label: 'Plex' },
-		{ id: 'ytdlp', label: 'yt-dlp' },
-		{ id: 'version-check', label: 'Version Check' },
-		{ id: 'cookies', label: 'Cookies' },
-		{ id: 'auto-delete', label: 'Auto-Delete' },
-		{ id: 'ryd', label: 'Return YouTube Dislike' },
-		{ id: 'rescan', label: 'Rescan Library' },
-		{ id: 'notifications', label: 'Notifications' },
-		{ id: 'backup', label: 'Backup' },
-		{ id: 'ldap', label: 'LDAP' },
-		{ id: 'proxy-auth', label: 'Reverse Proxy Auth' },
-		{ id: 'auth-mode', label: 'Authentication' },
+	// Settings sections grouped into labeled categories. The flat list of
+	// section ids (derived below) is used for scroll-spy / IntersectionObserver.
+	const settingsGroups = [
+		{
+			label: 'Storage & Library',
+			sections: [
+				{ id: 'storage', label: 'Storage' },
+				{ id: 'library-access', label: 'Access' },
+			],
+		},
+		{
+			label: 'Integrations',
+			sections: [
+				{ id: 'jellyfin', label: 'Jellyfin' },
+				{ id: 'plex', label: 'Plex' },
+			],
+		},
+		{
+			label: 'Downloader',
+			sections: [
+				{ id: 'ytdlp', label: 'yt-dlp' },
+				{ id: 'version-check', label: 'Version Check' },
+				{ id: 'cookies', label: 'Cookies' },
+				{ id: 'ryd', label: 'Return YouTube Dislike' },
+			],
+		},
+		{
+			label: 'Maintenance',
+			sections: [
+				{ id: 'auto-delete', label: 'Auto-Delete' },
+				{ id: 'rescan', label: 'Rescan Library' },
+				{ id: 'backup', label: 'Backup' },
+			],
+		},
+		{
+			label: 'Notifications',
+			sections: [{ id: 'notifications', label: 'Notifications' }],
+		},
+		{
+			label: 'Access & Privacy',
+			sections: [
+				{ id: 'ldap', label: 'LDAP' },
+				{ id: 'proxy-auth', label: 'Reverse Proxy Auth' },
+				{ id: 'auth-mode', label: 'Authentication' },
+				{ id: 'privacy', label: 'Stats & Privacy' },
+			],
+		},
 	];
+
+	// Flat list of section ids (used by the scroll-spy observer).
+	const settingsSections = settingsGroups.flatMap((g) => g.sections);
+
+	// Scroll-spy suppression: while a nav link is being clicked we smooth-scroll
+	// and pin the active section so the observer doesn't flash through
+	// intermediate sections. Cleared once the scroll settles (scrollend / fallback).
+	let suppressSpy = false;
+	let suppressSpyTimeout: ReturnType<typeof setTimeout> | undefined;
 
 	function scrollToSection(sectionId: string) {
 		const element = document.getElementById(sectionId);
-		if (element) {
-			// Use requestAnimationFrame to ensure smooth scroll doesn't conflict with other updates
-			requestAnimationFrame(() => {
-				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-				activeSection = sectionId;
-			});
-		}
+		if (!element) return;
+		suppressSpy = true;
+		activeSection = sectionId;
+		clearTimeout(suppressSpyTimeout);
+
+		element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+		const clear = () => {
+			suppressSpy = false;
+			clearTimeout(suppressSpyTimeout);
+			document.removeEventListener('scrollend', onScrollEnd);
+		};
+		const onScrollEnd = () => clear();
+		// Prefer the native scrollend event (fires when smooth scroll settles);
+		// fall back to a timeout for browsers without scrollend support.
+		document.addEventListener('scrollend', onScrollEnd, { once: true });
+		suppressSpyTimeout = setTimeout(clear, 600);
 	}
 
 	// Create user form
@@ -79,6 +129,14 @@
 	let apiKeys = $state<any[]>([]);
 	let newKeyName = $state('');
 	let newKeyResult = $state<string | null>(null);
+
+	// Library requests (admin)
+	let libraryRequests = $state<any[]>([]);
+	let loadingRequests = $state(false);
+	let processingRequestId = $state<string | null>(null);
+
+	// Per-user inline edit buffers (cache quota override), keyed by user id
+	let userQuotaDrafts = $state<Record<string, string>>({});
 
 	// Password change form
 	let passwordChangeUserId = $state<string | null>(null);
@@ -170,58 +228,73 @@
 		}
 	}
 
+	let observer: IntersectionObserver | null = null;
+	let observerRaf: number | null = null;
+
+	function setupScrollSpy() {
+		teardownScrollSpy();
+		// Sections scroll with the page (the document is the scrolling element),
+		// so the observer uses the default viewport root.
+		observer = new IntersectionObserver(
+			(entries) => {
+				// Don't fight a programmatic (nav-click) scroll in progress.
+				if (suppressSpy) return;
+				if (observerRaf) cancelAnimationFrame(observerRaf);
+				observerRaf = requestAnimationFrame(() => {
+					if (suppressSpy) return;
+					let mostVisible = null;
+					let maxRatio = 0;
+					entries.forEach((entry) => {
+						if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+							maxRatio = entry.intersectionRatio;
+							mostVisible = entry.target.id;
+						}
+					});
+					if (mostVisible && activeSection !== mostVisible) {
+						activeSection = mostVisible;
+					}
+				});
+			},
+			{
+				threshold: [0, 0.25, 0.5, 0.75, 1],
+				rootMargin: '-20% 0px -70% 0px',
+			}
+		);
+		settingsSections.forEach(({ id }) => {
+			const element = document.getElementById(id);
+			if (element) observer!.observe(element);
+		});
+	}
+
+	function teardownScrollSpy() {
+		if (observerRaf) cancelAnimationFrame(observerRaf);
+		observer?.disconnect();
+		observer = null;
+	}
+
+	// (Re)attach the scroll-spy whenever the App Settings tab is shown and its
+	// sections have been rendered.
+	$effect(() => {
+		if (isAdmin && activeTab === 'app' && settings) {
+			// Wait for the sections to be in the DOM before observing.
+			requestAnimationFrame(() => setupScrollSpy());
+			return () => teardownScrollSpy();
+		}
+	});
+
 	onMount(() => {
 		loadApiKeys();
 		if (isAdmin) {
-			// Fire-and-forget: onMount must stay synchronous so the cleanup
-			// it returns below is treated as a teardown, not a Promise.
-			void Promise.all([loadSettings(), loadUsers(), loadDiskInfo(), loadCookieStatus()]);
+			// Fire-and-forget: onMount must stay synchronous.
+			void Promise.all([
+				loadSettings(),
+				loadUsers(),
+				loadDiskInfo(),
+				loadCookieStatus(),
+				loadLibraryRequests(),
+			]);
 		}
-
-		// Set up Intersection Observer to track active section
-		if (activeTab === 'general') {
-			let rafId: number | null = null;
-			const observer = new IntersectionObserver(
-				(entries) => {
-					// Use RAF to batch DOM reads and prevent layout thrashing
-					if (rafId) cancelAnimationFrame(rafId);
-					rafId = requestAnimationFrame(() => {
-						// Find the section that's most visible in the viewport
-						let mostVisible = null;
-						let maxRatio = 0;
-
-						entries.forEach((entry) => {
-							if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-								maxRatio = entry.intersectionRatio;
-								mostVisible = entry.target.id;
-							}
-						});
-
-						// Only update if changed to prevent unnecessary re-renders
-						if (mostVisible && activeSection !== mostVisible) {
-							activeSection = mostVisible;
-						}
-					});
-				},
-				{
-					threshold: [0, 0.25, 0.5, 0.75, 1],
-					rootMargin: '-20% 0px -70% 0px',
-				}
-			);
-
-			// Observe all sections
-			settingsSections.forEach(({ id }) => {
-				const element = document.getElementById(id);
-				if (element) {
-					observer.observe(element);
-				}
-			});
-
-			return () => {
-				if (rafId) cancelAnimationFrame(rafId);
-				observer.disconnect();
-			};
-		}
+		return () => teardownScrollSpy();
 	});
 
 	async function loadSettings() {
@@ -260,7 +333,7 @@
 		}
 	}
 
-	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'plexUrl', 'plexToken', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled', 'rydEnabled'];
+	const SAVEABLE_FIELDS = ['maxConcurrentDownloads', 'downloadPath', 'ytdlpPath', 'autoUpdateYtdlp', 'updateCheckInterval', 'enableArchive', 'archivePath', 'authMode', 'libraryPath', 'musicLibraryPath', 'cacheQuotaBytes', 'jellyfinUrl', 'jellyfinApiKey', 'maxDurationSeconds', 'jellyfinExternalUrl', 'plexUrl', 'plexToken', 'cleanupEnabled', 'cleanupUserIds', 'cleanupIntervalSeconds', 'cleanupProfileTypes', 'cleanupGraceHours', 'autoDeleteWatchedDays', 'appriseUrl', 'notifyOnComplete', 'notifyOnFail', 'backupEnabled', 'backupCron', 'backupPath', 'ldapEnabled', 'ldapUrl', 'ldapBindDn', 'ldapBindPassword', 'ldapSearchBase', 'ldapSearchFilter', 'rateLimit', 'sleepInterval', 'proxyAuthEnabled', 'proxyAuthHeader', 'versionCheckEnabled', 'rydEnabled', 'libraryAccessMode', 'statsVisibleToNonAdmins', 'showTotalSizeToNonAdmins'];
 
 	let diskInfo = $state<{ totalBytes: string; availableBytes: string } | null>(null);
 	let diskTotalGB = $derived(diskInfo ? Number(BigInt(diskInfo.totalBytes)) / (1024 * 1024 * 1024) : null);
@@ -670,6 +743,97 @@
 		}
 	}
 
+	async function loadLibraryRequests() {
+		loadingRequests = true;
+		try {
+			const res = await fetch('/api/library-requests?status=pending');
+			if (res.ok) libraryRequests = await res.json();
+		} catch {
+			// best-effort
+		} finally {
+			loadingRequests = false;
+		}
+	}
+
+	async function handleLibraryRequest(id: string, action: 'approve' | 'deny') {
+		processingRequestId = id;
+		try {
+			const res = await csrfFetch(`/api/library-requests/${id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action }),
+			});
+			if (res.ok) {
+				addToast('success', action === 'approve' ? 'Request approved' : 'Request denied');
+				await loadLibraryRequests();
+			} else {
+				const body = await res.json().catch(() => null);
+				addToast('error', body?.message || `Failed to ${action} request`);
+			}
+		} catch {
+			addToast('error', `Failed to ${action} request`);
+		} finally {
+			processingRequestId = null;
+		}
+	}
+
+	// Library access: null = inherit (default), true = allowed, false = denied.
+	async function updateUserLibraryAccess(user: any, value: string) {
+		const libraryAccess = value === 'default' ? null : value === 'allowed';
+		try {
+			const res = await csrfFetch(`/api/users/${user.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ libraryAccess }),
+			});
+			if (res.ok) {
+				user.libraryAccess = libraryAccess;
+				addToast('success', 'Library access updated');
+			} else {
+				const body = await res.json().catch(() => null);
+				addToast('error', body?.message || 'Failed to update access');
+				await loadUsers();
+			}
+		} catch {
+			addToast('error', 'Failed to update access');
+			await loadUsers();
+		}
+	}
+
+	function userAccessValue(user: any): string {
+		if (user.libraryAccess === null || user.libraryAccess === undefined) return 'default';
+		return user.libraryAccess ? 'allowed' : 'denied';
+	}
+
+	// Cache quota override (GB in the UI, bytes on the wire; blank = default).
+	function userQuotaDisplay(user: any): string {
+		if (userQuotaDrafts[user.id] !== undefined) return userQuotaDrafts[user.id];
+		if (!user.cacheQuotaBytes) return '';
+		return String(Math.floor(Number(BigInt(user.cacheQuotaBytes)) / (1024 * 1024 * 1024)));
+	}
+
+	async function saveUserQuota(user: any) {
+		const raw = (userQuotaDrafts[user.id] ?? '').trim();
+		const cacheQuotaBytes = raw === '' ? null : String(Math.round(parseFloat(raw) * 1024 * 1024 * 1024));
+		try {
+			const res = await csrfFetch(`/api/users/${user.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ cacheQuotaBytes }),
+			});
+			if (res.ok) {
+				user.cacheQuotaBytes = cacheQuotaBytes;
+				delete userQuotaDrafts[user.id];
+				addToast('success', 'Cache quota updated');
+			} else {
+				const body = await res.json().catch(() => null);
+				addToast('error', body?.message || 'Failed to update quota');
+			}
+		} catch {
+			addToast('error', 'Failed to update quota');
+		}
+	}
+
 	async function changePassword() {
 		passwordError = '';
 
@@ -711,18 +875,25 @@
 </svelte:head>
 
 <div class="page">
-	{#if isAdmin}
-		<div class="tabs-wrapper">
-			<a href="/" class="back-arrow" aria-label="Back to home">
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-			</a>
-			<div class="tabs">
+	<div class="tabs-wrapper">
+		<a href="/" class="back-arrow" aria-label="Back to home">
+			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+		</a>
+		<div class="tabs">
+			<button
+				class="tab"
+				class:active={activeTab === 'account'}
+				onclick={() => (activeTab = 'account')}
+			>
+				Account
+			</button>
+			{#if isAdmin}
 				<button
 					class="tab"
-					class:active={activeTab === 'general'}
-					onclick={() => (activeTab = 'general')}
+					class:active={activeTab === 'app'}
+					onclick={() => (activeTab = 'app')}
 				>
-					General
+					App Settings
 				</button>
 				<button
 					class="tab"
@@ -731,21 +902,14 @@
 				>
 					Users
 				</button>
-			</div>
+			{/if}
 		</div>
-	{:else}
-		<div class="tabs-wrapper">
-			<a href="/" class="back-arrow" aria-label="Back to home">
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
-			</a>
+	</div>
 
-		</div>
-	{/if}
-
-	{#if !isAdmin}
+	{#if activeTab === 'account'}
 		<div class="settings-section">
 			<h2>Account</h2>
-			<p class="text-muted">Manage your account settings.</p>
+			<p class="text-muted">Manage your account password.</p>
 			<button
 				class="btn btn-primary"
 				onclick={() => openPasswordChange(data.session?.user?.id || '')}
@@ -753,6 +917,55 @@
 				Change Password
 			</button>
 		</div>
+
+		<div class="settings-section api-keys-section">
+			<h2>API Keys</h2>
+			<p class="text-muted">Create keys for programmatic access. Use as <code>Authorization: Bearer &lt;key&gt;</code></p>
+
+			{#if newKeyResult}
+				<div class="info-box warning-box">
+					<strong>Copy your key now — it won't be shown again:</strong>
+					<code class="api-key-display">{newKeyResult}</code>
+					<button class="btn btn-secondary btn-sm btn-icon" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }} aria-label="Copy key" title="Copy key">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+					</button>
+					<button class="btn btn-secondary btn-sm btn-icon" onclick={() => newKeyResult = null} aria-label="Dismiss" title="Dismiss">
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+					</button>
+				</div>
+			{/if}
+
+			<div class="create-key-form">
+				<input type="text" bind:value={newKeyName} placeholder="Key name (e.g. CI/CD)" />
+				<button class="btn btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
+			</div>
+
+			{#if apiKeys.length > 0}
+				<div class="api-keys-list">
+					{#each apiKeys as key}
+						<div class="api-key-item">
+							<div class="api-key-info">
+								<span class="api-key-name">{key.name}</span>
+								<code class="api-key-prefix">{key.keyPrefix}...</code>
+								<span class="api-key-meta">
+									Created {new Date(key.createdAt).toLocaleDateString()}
+									{#if key.lastUsedAt}
+										· Last used {new Date(key.lastUsedAt).toLocaleDateString()}
+									{/if}
+								</span>
+							</div>
+							<button class="btn btn-danger btn-sm btn-icon" onclick={() => revokeApiKey(key.id)} aria-label="Revoke key" title="Revoke key">
+								<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+							</button>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-muted">No API keys yet.</p>
+			{/if}
+		</div>
+	{:else if !isAdmin}
+		<!-- Non-admins only ever see the Account tab. -->
 	{:else if loading}
 		<div class="settings-container">
 			<nav class="settings-nav" aria-hidden="true">
@@ -777,28 +990,34 @@
 				<p style="color: var(--color-status-error)">{settingsError}</p>
 				<button class="btn btn-secondary" onclick={loadSettings}>Retry</button>
 			</div>
-		{:else if activeTab === 'general' && settings}
+		{:else if activeTab === 'app' && settings}
 			<div class="settings-container">
 				<nav class="settings-nav">
 					<div class="settings-nav-inner">
 						<h3>Quick Navigation</h3>
-						<ul>
-							{#each settingsSections as section}
-								<li>
-									<button
-										class="nav-link"
-										class:active={activeSection === section.id}
-										onclick={() => scrollToSection(section.id)}
-									>
-										{section.label}
-									</button>
-								</li>
-							{/each}
-						</ul>
+						{#each settingsGroups as group}
+							<div class="nav-group">
+								<span class="nav-group-label">{group.label}</span>
+								<ul>
+									{#each group.sections as section}
+										<li>
+											<button
+												class="nav-link"
+												class:active={activeSection === section.id}
+												onclick={() => scrollToSection(section.id)}
+											>
+												{section.label}
+											</button>
+										</li>
+									{/each}
+								</ul>
+							</div>
+						{/each}
 					</div>
 				</nav>
 
 				<div class="general-settings">
+					<h3 class="category-heading">Storage &amp; Library</h3>
 					<div class="settings-section" id="storage">
 						<h2>Storage</h2>
 
@@ -815,7 +1034,7 @@
 						</div>
 
 						<div class="form-group">
-							<label for="cacheQuota">Cache Quota (GB)</label>
+							<label for="cacheQuota">Default Per-User Cache Limit (GB)</label>
 							<input
 								type="number"
 								id="cacheQuota"
@@ -828,9 +1047,9 @@
 							{#if cacheQuotaExceedsDisk && diskTotalGB}
 								<p class="help-text error-text">Exceeds total disk space ({diskTotalGB.toFixed(1)} GB)</p>
 							{:else if diskTotalGB}
-								<p class="help-text">{diskTotalGB.toFixed(1)} GB total on disk</p>
+								<p class="help-text">Default cache budget per user. {diskTotalGB.toFixed(1)} GB total on disk. Override per user in the Users tab.</p>
 							{:else}
-								<p class="help-text">Oldest downloads are auto-removed when exceeded</p>
+								<p class="help-text">Default cache budget per user. Oldest downloads are auto-removed when exceeded. Override per user in the Users tab.</p>
 							{/if}
 						</div>
 					</div>
@@ -935,6 +1154,20 @@
 					</div>
 				</div>
 
+				<div class="settings-section" id="library-access">
+					<h2>Access</h2>
+					<div class="form-group">
+						<label for="libraryAccessMode">Library Access Mode</label>
+						<select id="libraryAccessMode" bind:value={settings.libraryAccessMode}>
+							<option value="free">Free — anyone can add to the library</option>
+							<option value="request">Request — adds require admin approval</option>
+							<option value="disabled">Disabled — only admins can add to the library</option>
+						</select>
+						<p class="help-text">Controls whether non-admin users can save downloads to the permanent library. Per-user overrides are available in the Users tab.</p>
+					</div>
+				</div>
+
+				<h3 class="category-heading">Integrations</h3>
 				<div class="settings-section" id="jellyfin">
 					<h2>Jellyfin</h2>
 
@@ -1177,6 +1410,7 @@
 					{/if}
 				</div>
 
+				<h3 class="category-heading">Downloader</h3>
 				<div class="settings-section" id="ytdlp">
 					<h2>yt-dlp</h2>
 					<div class="form-group">
@@ -1248,6 +1482,21 @@
 					{/if}
 				</div>
 
+				<div class="settings-section" id="ryd">
+					<h2>Return YouTube Dislike</h2>
+					<div class="form-group">
+						<label>
+							<input
+								type="checkbox"
+								bind:checked={settings.rydEnabled}
+							/>
+							Enable dislike counts
+						</label>
+						<p class="help-text">Fetch dislike counts from the Return YouTube Dislike API when downloading videos. When enabled, video IDs are sent to an external service (<a href="https://returnyoutubedislike.com" target="_blank" rel="noopener noreferrer">returnyoutubedislike.com</a>).</p>
+					</div>
+				</div>
+
+				<h3 class="category-heading">Maintenance</h3>
 				<div class="settings-section" id="auto-delete">
 					<h2>Auto-Delete</h2>
 					<div class="form-group">
@@ -1260,20 +1509,6 @@
 							placeholder="Disabled"
 						/>
 						<p class="help-text">Automatically delete watched cache downloads after this many days. Set to 0 or leave empty to disable. Library items are never auto-deleted.</p>
-					</div>
-				</div>
-
-				<div class="settings-section" id="ryd">
-					<h2>Return YouTube Dislike</h2>
-					<div class="form-group">
-						<label>
-							<input
-								type="checkbox"
-								bind:checked={settings.rydEnabled}
-							/>
-							Enable dislike counts
-						</label>
-						<p class="help-text">Fetch dislike counts from the Return YouTube Dislike API when downloading videos. When enabled, video IDs are sent to an external service (<a href="https://returnyoutubedislike.com" target="_blank" rel="noopener noreferrer">returnyoutubedislike.com</a>).</p>
 					</div>
 				</div>
 
@@ -1344,6 +1579,41 @@
 					{/if}
 				</div>
 
+				<div class="settings-section" id="backup">
+					<h2>Backup</h2>
+					<div class="form-group">
+						<label>
+							<input type="checkbox" bind:checked={settings.backupEnabled} />
+							Enable scheduled backups
+						</label>
+					</div>
+
+					{#if settings.backupEnabled}
+						<div class="form-row nested-field">
+							<div class="form-group">
+								<label for="backupCron">Backup schedule (cron)</label>
+								<input
+									type="text"
+									id="backupCron"
+									bind:value={settings.backupCron}
+									placeholder="0 2 * * *"
+								/>
+								<p class="help-text">Cron expression (e.g. "0 2 * * *" for daily at 2 AM)</p>
+							</div>
+							<div class="form-group">
+								<label for="backupPath">Backup path</label>
+								<input
+									type="text"
+									id="backupPath"
+									bind:value={settings.backupPath}
+									placeholder="/backups"
+								/>
+							</div>
+						</div>
+					{/if}
+				</div>
+
+				<h3 class="category-heading">Notifications</h3>
 				<div class="settings-section" id="notifications">
 					<h2>Notifications</h2>
 					<div class="form-group">
@@ -1389,40 +1659,7 @@
 					{/if}
 				</div>
 
-				<div class="settings-section" id="backup">
-					<h2>Backup</h2>
-					<div class="form-group">
-						<label>
-							<input type="checkbox" bind:checked={settings.backupEnabled} />
-							Enable scheduled backups
-						</label>
-					</div>
-
-					{#if settings.backupEnabled}
-						<div class="form-row nested-field">
-							<div class="form-group">
-								<label for="backupCron">Backup schedule (cron)</label>
-								<input
-									type="text"
-									id="backupCron"
-									bind:value={settings.backupCron}
-									placeholder="0 2 * * *"
-								/>
-								<p class="help-text">Cron expression (e.g. "0 2 * * *" for daily at 2 AM)</p>
-							</div>
-							<div class="form-group">
-								<label for="backupPath">Backup path</label>
-								<input
-									type="text"
-									id="backupPath"
-									bind:value={settings.backupPath}
-									placeholder="/backups"
-								/>
-							</div>
-						</div>
-					{/if}
-				</div>
-
+				<h3 class="category-heading">Access &amp; Privacy</h3>
 				<div class="settings-section" id="ldap">
 					<h2>LDAP</h2>
 					<div class="form-group">
@@ -1542,6 +1779,24 @@
 					</div>
 				{/if}
 
+				<div class="settings-section" id="privacy">
+					<h2>Stats &amp; Privacy</h2>
+					<div class="form-group">
+						<label class="toggle-label">
+							<input type="checkbox" bind:checked={settings.statsVisibleToNonAdmins} />
+							Show stats panel to non-admins
+						</label>
+						<p class="help-text">Let non-admin users see the statistics panel.</p>
+					</div>
+					<div class="form-group">
+						<label class="toggle-label">
+							<input type="checkbox" bind:checked={settings.showTotalSizeToNonAdmins} />
+							Show total/global storage size to non-admins
+						</label>
+						<p class="help-text">Reveal the aggregate library/storage size to non-admin users.</p>
+					</div>
+				</div>
+
 				<div class="api-docs-link">
 					<a href="/docs" class="btn btn-secondary btn-lg">
 						<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -1636,6 +1891,35 @@
 								<div class="user-stats">
 									{user._count.downloads} downloads • {user._count.subscriptions} subscriptions
 								</div>
+								<div class="user-overrides">
+									<div class="user-override">
+										<label for={`access-${user.id}`}>Library Access</label>
+										<select
+											id={`access-${user.id}`}
+											value={userAccessValue(user)}
+											onchange={(e) => updateUserLibraryAccess(user, e.currentTarget.value)}
+										>
+											<option value="default">Default</option>
+											<option value="allowed">Allowed</option>
+											<option value="denied">Denied</option>
+										</select>
+									</div>
+									<div class="user-override">
+										<label for={`quota-${user.id}`}>Cache Override (GB)</label>
+										<div class="user-quota-input">
+											<input
+												type="number"
+												id={`quota-${user.id}`}
+												min="0"
+												step="1"
+												placeholder="Default"
+												value={userQuotaDisplay(user)}
+												oninput={(e) => (userQuotaDrafts[user.id] = e.currentTarget.value)}
+											/>
+											<button class="btn btn-secondary btn-sm" onclick={() => saveUserQuota(user)}>Save</button>
+										</div>
+									</div>
+								</div>
 							</div>
 							<div class="user-actions">
 								{#if user.id === data.session?.user?.id}
@@ -1685,50 +1969,56 @@
 				</div>
 			</div>
 
-			<div class="settings-section api-keys-section">
-				<h2>API Keys</h2>
-				<p class="text-muted">Create keys for programmatic access. Use as <code>Authorization: Bearer &lt;key&gt;</code></p>
-
-				{#if newKeyResult}
-					<div class="info-box warning-box">
-						<strong>Copy your key now — it won't be shown again:</strong>
-						<code class="api-key-display">{newKeyResult}</code>
-						<button class="btn btn-secondary btn-sm btn-icon" onclick={() => { navigator.clipboard.writeText(newKeyResult!); addToast('success', 'Copied'); }} aria-label="Copy key" title="Copy key">
-							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-						</button>
-						<button class="btn btn-secondary btn-sm btn-icon" onclick={() => newKeyResult = null} aria-label="Dismiss" title="Dismiss">
-							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-						</button>
-					</div>
-				{/if}
-
-				<div class="create-key-form">
-					<input type="text" bind:value={newKeyName} placeholder="Key name (e.g. CI/CD)" />
-					<button class="btn btn-primary btn-sm" onclick={createApiKey} disabled={!newKeyName.trim()}>Create Key</button>
+			<div class="settings-section">
+				<div class="section-header">
+					<h2>Library Requests</h2>
+					<button class="btn btn-secondary btn-sm btn-with-icon" onclick={loadLibraryRequests} disabled={loadingRequests}>
+						<RefreshIcon width={14} height={14} />
+						Refresh
+					</button>
 				</div>
+				<p class="text-muted">Pending requests from users to add downloads to the permanent library.</p>
 
-				{#if apiKeys.length > 0}
-					<div class="api-keys-list">
-						{#each apiKeys as key}
-							<div class="api-key-item">
-								<div class="api-key-info">
-									<span class="api-key-name">{key.name}</span>
-									<code class="api-key-prefix">{key.keyPrefix}...</code>
-									<span class="api-key-meta">
-										Created {new Date(key.createdAt).toLocaleDateString()}
-										{#if key.lastUsedAt}
-											· Last used {new Date(key.lastUsedAt).toLocaleDateString()}
-										{/if}
+				{#if libraryRequests.length > 0}
+					<div class="requests-list">
+						{#each libraryRequests as req}
+							<div class="request-card">
+								{#if req.download?.thumbnail}
+									<img class="request-thumb" src={req.download.thumbnail} alt="" loading="lazy" />
+								{:else}
+									<div class="request-thumb request-thumb-placeholder"></div>
+								{/if}
+								<div class="request-info">
+									<span class="request-title">{req.download?.title || 'Untitled'}</span>
+									{#if req.download?.uploader}
+										<span class="request-uploader">{req.download.uploader}</span>
+									{/if}
+									<span class="request-meta">
+										Requested by {req.user?.name || req.user?.email || 'Unknown'}
+										· {new Date(req.createdAt).toLocaleDateString()}
 									</span>
 								</div>
-								<button class="btn btn-danger btn-sm btn-icon" onclick={() => revokeApiKey(key.id)} aria-label="Revoke key" title="Revoke key">
-									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-								</button>
+								<div class="request-actions">
+									<button
+										class="btn btn-primary btn-sm"
+										onclick={() => handleLibraryRequest(req.id, 'approve')}
+										disabled={processingRequestId === req.id}
+									>
+										Approve
+									</button>
+									<button
+										class="btn btn-danger btn-sm"
+										onclick={() => handleLibraryRequest(req.id, 'deny')}
+										disabled={processingRequestId === req.id}
+									>
+										Deny
+									</button>
+								</div>
 							</div>
 						{/each}
 					</div>
 				{:else}
-					<p class="text-muted">No API keys yet.</p>
+					<EmptyState title="No pending requests" variant="subtle" size="sm" />
 				{/if}
 			</div>
 		{/if}
@@ -1953,6 +2243,36 @@
 		background: var(--color-accent-primary);
 		color: #fff;
 		font-weight: 500;
+	}
+
+	.nav-group {
+		margin-bottom: var(--spacing-md);
+	}
+
+	.nav-group:last-child {
+		margin-bottom: 0;
+	}
+
+	.nav-group-label {
+		display: block;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--color-text-tertiary);
+		padding: 0 var(--spacing-md);
+		margin-bottom: var(--spacing-xs);
+	}
+
+	.category-heading {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+		color: var(--color-text-secondary);
+		margin-bottom: var(--spacing-md);
+		padding-bottom: var(--spacing-xs);
+		border-bottom: 1px solid var(--color-border-default);
 	}
 
 	.general-settings {
@@ -2243,6 +2563,108 @@
 	.user-stats {
 		color: var(--color-text-tertiary);
 		font-size: 0.875rem;
+	}
+
+	.user-overrides {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--spacing-lg);
+		margin-top: var(--spacing-md);
+	}
+
+	.user-override {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-xs);
+	}
+
+	.user-override label {
+		margin-bottom: 0;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: var(--color-text-secondary);
+	}
+
+	.user-override select {
+		width: auto;
+		min-width: 130px;
+		font-size: 0.875rem;
+		padding: var(--spacing-sm) var(--spacing-md);
+	}
+
+	.user-quota-input {
+		display: flex;
+		gap: var(--spacing-sm);
+		align-items: center;
+	}
+
+	.user-quota-input input {
+		width: 110px;
+		font-size: 0.875rem;
+		padding: var(--spacing-sm) var(--spacing-md);
+	}
+
+	/* Library requests */
+	.requests-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-md);
+		margin-top: var(--spacing-md);
+	}
+
+	.request-card {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		padding: var(--spacing-md);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-overlay-white-10);
+		border-radius: var(--radius-md);
+	}
+
+	.request-thumb {
+		width: 96px;
+		height: 54px;
+		object-fit: cover;
+		border-radius: var(--radius-sm);
+		flex-shrink: 0;
+		background: var(--color-bg-secondary);
+	}
+
+	.request-thumb-placeholder {
+		background: var(--color-overlay-white-05);
+	}
+
+	.request-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.request-title {
+		font-weight: 500;
+		font-size: 0.9375rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.request-uploader {
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+	}
+
+	.request-meta {
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.request-actions {
+		display: flex;
+		gap: var(--spacing-sm);
+		flex-shrink: 0;
 	}
 
 	.user-actions {
@@ -2623,6 +3045,23 @@
 		.user-actions {
 			width: 100%;
 			flex-wrap: wrap;
+		}
+
+		.user-overrides {
+			width: 100%;
+		}
+
+		.request-card {
+			flex-wrap: wrap;
+		}
+
+		.request-actions {
+			width: 100%;
+		}
+
+		.request-actions button {
+			flex: 1;
+			min-height: 44px;
 		}
 
 		.user-actions button {

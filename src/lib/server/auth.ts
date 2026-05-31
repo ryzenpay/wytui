@@ -170,10 +170,12 @@ export async function resolveApiKey(key: string): Promise<SessionUser | null> {
 		data: { lastUsedAt: new Date() },
 	}).catch(() => {});
 
+	// API keys never grant admin privileges, even when the owner is an admin.
+	// Admin actions require an interactive session (least privilege for keys).
 	return {
 		id: apiKey.user.id,
 		email: apiKey.user.email,
-		isAdmin: apiKey.user.isAdmin,
+		isAdmin: false,
 	};
 }
 

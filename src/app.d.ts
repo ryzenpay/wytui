@@ -14,6 +14,8 @@ declare global {
 				};
 			} | null;
 			corsOrigin?: string;
+			// How the current request authenticated (null when unauthenticated)
+			authMethod?: 'apikey' | 'session' | 'proxy' | null;
 		}
 		interface PageData {
 			csrfToken?: string;

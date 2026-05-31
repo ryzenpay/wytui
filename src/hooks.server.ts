@@ -54,6 +54,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					isAdmin: apiKeyUser.isAdmin,
 				},
 			};
+			event.locals.authMethod = 'apikey';
 		}
 	}
 
@@ -89,6 +90,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 									isAdmin: user.isAdmin,
 								},
 							};
+							event.locals.authMethod = 'session';
 						}
 					} else {
 						// No password change timestamp, session is valid
@@ -100,6 +102,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 								isAdmin: user.isAdmin,
 							},
 						};
+						event.locals.authMethod = 'session';
 					}
 				}
 			} else {
@@ -164,6 +167,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 							isAdmin: user.isAdmin,
 						},
 					};
+					event.locals.authMethod = 'proxy';
 
 					// Issue a session cookie so subsequent requests don't re-query
 					issueSessionCookie(event.cookies, {

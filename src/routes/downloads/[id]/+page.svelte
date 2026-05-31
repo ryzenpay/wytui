@@ -181,15 +181,24 @@
 		}
 	}
 
+	let libraryRequestStatus = $state<string | null>(data.libraryRequestStatus ?? null);
+
 	async function handlePromote() {
 		promoting = true;
 		try {
 			const res = await csrfFetch(`/api/downloads/${download.id}/promote`, { method: 'POST' });
 			if (res.ok) {
-				download = { ...download, storagePool: 'library' };
-				addToast('success', 'Moved to library');
+				const body = await res.json().catch(() => ({}));
+				if (body?.requested) {
+					libraryRequestStatus = 'pending';
+					addToast('success', 'Library save requested — awaiting admin approval');
+				} else {
+					download = { ...download, storagePool: 'library' };
+					addToast('success', 'Moved to library');
+				}
 			} else {
-				addToast('error', 'Failed to move to library');
+				const err = await res.json().catch(() => null);
+				addToast('error', err?.message || 'Failed to move to library');
 			}
 		} catch {
 			addToast('error', 'Failed to move to library');
@@ -467,10 +476,22 @@
 					</button>
 					<AddToPlaylistMenu downloadId={download.id} />
 					{#if download.storagePool === 'cache'}
-						<button class="btn btn-accent" onclick={handlePromote} disabled={promoting} title="Save to library" aria-label="Save to library">
-							<FolderDownIcon />
-							{promoting ? 'Moving...' : 'Save to Library'}
-						</button>
+						{#if libraryRequestStatus === 'pending'}
+							<button class="btn btn-secondary" disabled title="Library save requested">
+								<FolderDownIcon />
+								Library Save Requested
+							</button>
+						{:else if data.libraryAction === 'save'}
+							<button class="btn btn-accent" onclick={handlePromote} disabled={promoting} title="Save to library" aria-label="Save to library">
+								<FolderDownIcon />
+								{promoting ? 'Moving...' : 'Save to Library'}
+							</button>
+						{:else if data.libraryAction === 'request'}
+							<button class="btn btn-accent" onclick={handlePromote} disabled={promoting} title="Request to save to library" aria-label="Request to save to library">
+								<FolderDownIcon />
+								{promoting ? 'Requesting...' : 'Request Library Save'}
+							</button>
+						{/if}
 					{/if}
 					{#if data.jellyfinUrl}
 						<button class="btn btn-secondary" onclick={openInJellyfin} title="Open in Jellyfin" aria-label="Open in Jellyfin">

@@ -44,6 +44,8 @@ export const GET = apiRoute('/api/users', 'GET', {
 				email: true,
 				name: true,
 				isAdmin: true,
+				libraryAccess: true,
+				cacheQuotaBytes: true,
 				createdAt: true,
 				_count: {
 					select: {
@@ -55,7 +57,7 @@ export const GET = apiRoute('/api/users', 'GET', {
 			orderBy: { createdAt: 'desc' },
 		});
 
-		return json(users);
+		return json(users.map((u) => ({ ...u, cacheQuotaBytes: u.cacheQuotaBytes?.toString() ?? null })));
 	} catch (e: any) {
 		console.error('Failed to list users:', e);
 		if (e.status) throw e;

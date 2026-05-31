@@ -16,6 +16,9 @@ model User {
   image             String?
   isAdmin           Boolean   @default(false)
   passwordChangedAt DateTime? // For session revocation on password change
+  // Per-user overrides (null = inherit the global default from Settings)
+  libraryAccess     Boolean?  // whether this user may save to the library
+  cacheQuotaBytes   BigInt?   // override for this user's cache limit
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -28,6 +31,7 @@ model User {
   preferences   UserPreference[]
   watchProgress WatchProgress[]
   playlists     Playlist[]
+  libraryRequests LibraryRequest[]
 
   @@map("users")
 }
@@ -184,6 +188,7 @@ model Download {
   watchProgress  WatchProgress[]
   playlistItems  PlaylistItem[]
   subtitleLines  SubtitleLine[]
+  libraryRequest LibraryRequest?
 
   // From subscription (optional)
   subscriptionId String?
@@ -411,10 +416,37 @@ model Settings {
   // Version check
   versionCheckEnabled Boolean @default(true)
 
+  // Multi-tenant / per-user access defaults
+  // Library access mode for non-admin users without an explicit override:
+  //   "free"     - anyone may save to the library directly
+  //   "request"  - users submit a library-save request for admin approval
+  //   "disabled" - library saving is off for non-admins
+  libraryAccessMode        String  @default("free")
+  statsVisibleToNonAdmins  Boolean @default(true)  // show the health/stats modal to non-admins
+  showTotalSizeToNonAdmins Boolean @default(false) // expose global/disk totals to non-admins
+  // NOTE: cacheQuotaBytes above doubles as the default per-user cache limit.
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@map("settings")
+}
+
+// A user's request to save a download to the library (used in "request" mode).
+model LibraryRequest {
+  id         String   @id @default(cuid())
+  downloadId String   @unique
+  download   Download @relation(fields: [downloadId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status     String   @default("pending") // pending | approved | denied
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+  resolvedBy String?  // admin user id who approved/denied
+
+  @@index([status])
+  @@index([userId])
+  @@map("library_requests")
 }
 
 model UserPreference {

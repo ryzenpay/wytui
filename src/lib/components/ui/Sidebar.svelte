@@ -4,6 +4,7 @@
 
 	interface Props {
 		isAdmin: boolean;
+		statsVisible?: boolean;
 		connected: boolean;
 		userEmail?: string;
 		onHealthClick: () => void;
@@ -11,7 +12,7 @@
 		collapsed?: boolean;
 	}
 
-	let { isAdmin, connected, userEmail, onHealthClick, onSignout, collapsed = $bindable(false) }: Props = $props();
+	let { isAdmin, statsVisible = true, connected, userEmail, onHealthClick, onSignout, collapsed = $bindable(false) }: Props = $props();
 
 	type NavItem = {
 		label: string;
@@ -179,7 +180,8 @@
 		<button
 			class="connection-status"
 			class:connected
-			onclick={onHealthClick}
+			onclick={statsVisible ? onHealthClick : undefined}
+			style={statsVisible ? undefined : 'cursor: default'}
 			title={collapsed ? (connected ? 'Connected' : 'Connecting...') : undefined}
 		>
 			<span class="status-dot"></span>

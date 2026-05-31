@@ -118,22 +118,39 @@ async function fetchProfiles() {
 
     const base = data.serverUrl.replace(/\/+$/, '');
     const opts = { credentials: authCredentials(data.apiKey), headers: authHeaders(data.apiKey) };
+    const hasApiKey = !!data.apiKey;
 
-    const [profilesRes, settingsRes] = await Promise.all([
+    const [profilesRes, settingsRes, meRes] = await Promise.all([
       fetch(`${base}/api/profiles`, opts),
       fetch(`${base}/api/settings`, opts),
+      fetch(`${base}/api/auth/me`, opts),
     ]);
 
-    if (!profilesRes.ok) return { success: false, status: profilesRes.status, profiles: [] };
-
-    const profiles = await profilesRes.json();
-    let libraryEnabled = false;
-    if (settingsRes.ok) {
-      const settings = await settingsRes.json();
-      libraryEnabled = !!(settings.libraryPath);
+    if (!profilesRes.ok) {
+      return { success: false, status: profilesRes.status, profiles: [], hasApiKey };
     }
 
-    return { success: true, status: 200, profiles, libraryEnabled };
+    const profiles = await profilesRes.json();
+
+    // Library mode: derive from the per-user settings response.
+    //   save -> may save directly | request -> needs admin approval | none -> hidden
+    let libraryMode = 'none';
+    if (settingsRes.ok) {
+      const settings = await settingsRes.json();
+      if (settings.canUseLibrary) libraryMode = 'save';
+      else if (settings.canRequestLibrary) libraryMode = 'request';
+    }
+
+    // Server-confirmed auth method + identity (truth, not just "is a key present")
+    let authMethod = null;
+    let email = null;
+    if (meRes.ok) {
+      const me = await meRes.json();
+      authMethod = me.authMethod || null;
+      email = me.user?.email || null;
+    }
+
+    return { success: true, status: 200, profiles, libraryMode, authMethod, email, hasApiKey };
   } catch {
     return { success: false, status: 0, profiles: [] };
   }

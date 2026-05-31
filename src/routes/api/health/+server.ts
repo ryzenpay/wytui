@@ -34,14 +34,27 @@ export const GET = apiRoute('/api/health', 'GET', {
 		throw error(401, 'Authentication required');
 	}
 
+	const userId = locals.session.user.id;
+	const isAdmin = !!locals.session.user.isAdmin;
+
 	const settings = await prisma.settings.findUnique({
 		where: { id: 'singleton' },
 		select: {
 			ytdlpVersion: true,
 			maxConcurrentDownloads: true,
 			downloadPath: true,
+			statsVisibleToNonAdmins: true,
+			showTotalSizeToNonAdmins: true,
 		},
 	});
+
+	// Admin can hide the stats panel from non-admins entirely.
+	if (!isAdmin && settings && !settings.statsVisibleToNonAdmins) {
+		throw error(403, 'Stats are not available');
+	}
+
+	// Non-admins see their OWN cache usage; global disk/library totals are gated.
+	const showTotals = isAdmin || !!settings?.showTotalSizeToNonAdmins;
 
 	const [
 		cacheUsage,
@@ -53,8 +66,8 @@ export const GET = apiRoute('/api/health', 'GET', {
 		monitorEnabled,
 		monitorLive,
 	] = await Promise.all([
-		libraryService.getCacheUsage(),
-		libraryService.getLibraryUsage(),
+		libraryService.getCacheUsage(isAdmin ? undefined : userId),
+		showTotals ? libraryService.getLibraryUsage() : Promise.resolve(null),
 		prisma.download.groupBy({ by: ['status'], _count: true }),
 		prisma.subscription.count(),
 		prisma.subscription.count({ where: { enabled: true } }),
@@ -70,6 +83,7 @@ export const GET = apiRoute('/api/health', 'GET', {
 
 	let disk: { totalBytes: string; usedBytes: string; percentage: number } | null = null;
 	try {
+		if (!showTotals) throw new Error('totals hidden');
 		const downloadPath = resolve(settings?.downloadPath || '/downloads');
 		await access(downloadPath);
 		const stats = await statfs(downloadPath);
@@ -83,7 +97,9 @@ export const GET = apiRoute('/api/health', 'GET', {
 			percentage,
 		};
 	} catch (e) {
-		console.warn('Failed to read disk stats:', e instanceof Error ? e.message : e);
+		if (!(e instanceof Error && e.message === 'totals hidden')) {
+			console.warn('Failed to read disk stats:', e instanceof Error ? e.message : e);
+		}
 	}
 
 	const queueStats = queueService.getStats();

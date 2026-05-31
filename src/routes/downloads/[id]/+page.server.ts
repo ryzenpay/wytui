@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
+import { libraryAccessStatus } from '$lib/server/permissions';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
@@ -35,6 +36,25 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		where: { downloadId: params.id },
 		orderBy: { createdAt: 'asc' },
 	});
+
+	// Resolve the library action available for this download (based on its owner's
+	// effective access) so the UI can show Save / Request / nothing.
+	const ownerId = download.userId ?? locals.session.user.id;
+	const owner = await prisma.user.findUnique({
+		where: { id: ownerId },
+		select: { libraryAccess: true, isAdmin: true },
+	});
+	const access = libraryAccessStatus(owner, settings ?? { libraryAccessMode: 'free' });
+	const libraryConfigured = !!settings?.libraryPath;
+	let libraryAction: 'save' | 'request' | 'none' =
+		access === 'allowed' && libraryConfigured ? 'save'
+		: access === 'request' && libraryConfigured ? 'request'
+		: 'none';
+	const existingRequest = await prisma.libraryRequest.findUnique({
+		where: { downloadId: params.id },
+		select: { status: true },
+	});
+	const libraryRequestStatus = existingRequest?.status ?? null;
 
 	const serialized = {
 		...download,
@@ -100,6 +120,8 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		download: serialized,
 		downloadTasks,
 		jellyfinUrl: settings?.jellyfinExternalUrl || settings?.jellyfinUrl || '',
+		libraryAction,
+		libraryRequestStatus,
 		playlistContext,
 		similar,
 		startTimeParam: startTimeParam !== null && isFinite(startTimeParam) && startTimeParam > 0 ? startTimeParam : null,

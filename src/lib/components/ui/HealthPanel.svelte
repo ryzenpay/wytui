@@ -3,7 +3,12 @@
 	import { getSSEState } from '$lib/stores/sse.svelte';
 	import { trapFocus } from '$lib/utils/a11y';
 
-	let { open, onClose }: { open: boolean; onClose: () => void } = $props();
+	let {
+		open,
+		onClose,
+		isAdmin = false,
+		showTotalSize = true,
+	}: { open: boolean; onClose: () => void; isAdmin?: boolean; showTotalSize?: boolean } = $props();
 
 	let data = $state<any>(null);
 	let loading = $state(false);
@@ -142,7 +147,7 @@
 							<div class="card-title"><i class="bi bi-hdd"></i> Storage</div>
 							<div class="progress-section">
 								<div class="progress-header">
-									<span class="stat-label">Cache</span>
+									<span class="stat-label">{isAdmin ? 'Cache' : 'Your Cache'}</span>
 									<span class="stat-detail">{formatBytes(data.storage.cache.usedBytes)} / {formatBytes(data.storage.cache.quotaBytes)}</span>
 								</div>
 								<div class="health-progress">
@@ -166,20 +171,22 @@
 									</div>
 								</div>
 							{/if}
-							<div class="library-stats">
-								{#if data.storage.library.video}
-									<div class="stat-row">
-										<span class="stat-label"><i class="bi bi-film"></i> Video Library</span>
-										<span class="stat-detail">{data.storage.library.video.count} files &middot; {formatBytes(data.storage.library.video.usedBytes)}</span>
-									</div>
-								{/if}
-								{#if data.storage.library.music}
-									<div class="stat-row">
-										<span class="stat-label"><i class="bi bi-music-note-beamed"></i> Music Library</span>
-										<span class="stat-detail">{data.storage.library.music.count} files &middot; {formatBytes(data.storage.library.music.usedBytes)}</span>
-									</div>
-								{/if}
-							</div>
+							{#if data.storage.library}
+								<div class="library-stats">
+									{#if data.storage.library.video}
+										<div class="stat-row">
+											<span class="stat-label"><i class="bi bi-film"></i> Video Library</span>
+											<span class="stat-detail">{data.storage.library.video.count} files &middot; {formatBytes(data.storage.library.video.usedBytes)}</span>
+										</div>
+									{/if}
+									{#if data.storage.library.music}
+										<div class="stat-row">
+											<span class="stat-label"><i class="bi bi-music-note-beamed"></i> Music Library</span>
+											<span class="stat-detail">{data.storage.library.music.count} files &middot; {formatBytes(data.storage.library.music.usedBytes)}</span>
+										</div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 
 						<div class="stat-card">

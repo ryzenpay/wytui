@@ -11,6 +11,7 @@ import { channelOverrideService } from './channel-override.service';
 import { notificationService } from './notification.service';
 import { subtitleService } from './subtitle.service';
 import { extractVideoId } from '$lib/utils/youtube';
+import { libraryAccessStatus, type LibraryAccess } from '$lib/server/permissions';
 
 /**
  * Serialize download object for JSON responses
@@ -141,6 +142,18 @@ class DownloadService {
 			throw new Error('This URL is already being downloaded');
 		}
 
+		// Resolve effective library access for the requesting user. Direct library
+		// saves require 'allowed'; in 'request' mode we save to cache and file a
+		// pending request for admin approval; 'denied' silently falls back to cache.
+		let useLibrary = false;
+		let fileLibraryRequest = false;
+		if (saveToLibrary) {
+			const access = await this.resolveLibraryAccess(userId);
+			if (access === 'allowed') useLibrary = true;
+			else if (access === 'request') fileLibraryRequest = true;
+			// 'denied' -> stays cache
+		}
+
 		// Create download record. Derive videoId from the URL up front so the
 		// record is detectable (e.g. by the extension lookup) immediately, before
 		// phase-1 metadata runs and sets the canonical id.
@@ -152,7 +165,7 @@ class DownloadService {
 				profileId,
 				userId,
 				subscriptionId,
-				storagePool: saveToLibrary ? 'library' : 'cache',
+				storagePool: useLibrary ? 'library' : 'cache',
 				customFlags: customFlags ?? [],
 			},
 			include: {
@@ -161,6 +174,12 @@ class DownloadService {
 		});
 
 		console.log('[DownloadService] Download created in DB:', download.id);
+
+		if (fileLibraryRequest && userId) {
+			await prisma.libraryRequest.create({
+				data: { downloadId: download.id, userId, status: 'pending' },
+			}).catch((e) => console.error('Failed to create library request:', e));
+		}
 
 		if (userId) {
 			this.downloadOwners.set(download.id, userId);
@@ -692,6 +711,17 @@ class DownloadService {
 			} catch (error) {
 				console.error(`[DownloadService] Failed to move to library: ${error}`);
 			}
+		} else if (download.storagePool === 'cache' && settings.libraryPath) {
+			// Fulfil a library request that an admin already approved while the
+			// download was still in flight.
+			const req = await prisma.libraryRequest.findUnique({ where: { downloadId } });
+			if (req?.status === 'approved') {
+				try {
+					await libraryService.promoteToLibrary(downloadId);
+				} catch (error) {
+					console.error(`[DownloadService] Failed to fulfil approved library request: ${error}`);
+				}
+			}
 		}
 
 		// Mark all remaining pending/in_progress tasks as completed (or skipped)
@@ -717,8 +747,9 @@ class DownloadService {
 		// Send notification
 		notificationService.notifyComplete(download.title || download.url).catch(() => {});
 
-		// Enforce cache quota asynchronously
-		libraryService.enforceCacheQuota().catch((error) => {
+		// Enforce cache quota asynchronously — per-user so each user is evicted
+		// against their own limit.
+		libraryService.enforceCacheQuota(download.userId ?? undefined).catch((error) => {
 			console.error('[DownloadService] Cache quota enforcement failed:', error);
 		});
 	}
@@ -1119,6 +1150,19 @@ class DownloadService {
 	 */
 	private extractVideoId(url: string): string | null {
 		return extractVideoId(url);
+	}
+
+	/**
+	 * Resolve a user's effective library-save access ('allowed' | 'request' | 'denied').
+	 * Anonymous (no userId) downloads cannot use the library.
+	 */
+	async resolveLibraryAccess(userId?: string): Promise<LibraryAccess> {
+		if (!userId) return 'denied';
+		const [user, settings] = await Promise.all([
+			prisma.user.findUnique({ where: { id: userId }, select: { libraryAccess: true, isAdmin: true } }),
+			this.getSettings(),
+		]);
+		return libraryAccessStatus(user, settings);
 	}
 
 	/**

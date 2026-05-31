@@ -13,6 +13,8 @@ export const PATCH = apiRoute('/api/users/[id]', 'PATCH', {
 	body: {
 		name: { type: 'string', description: 'Display name' },
 		isAdmin: { type: 'boolean', description: 'Admin status' },
+		libraryAccess: { type: 'boolean', nullable: true, description: 'Per-user library access override (null = follow global mode)' },
+		cacheQuotaBytes: { type: 'string', nullable: true, description: 'Per-user cache quota override in bytes (null = default)' },
 	},
 	responses: {
 		200: {
@@ -24,6 +26,8 @@ export const PATCH = apiRoute('/api/users/[id]', 'PATCH', {
 					email: { type: 'string' },
 					name: { type: 'string' },
 					isAdmin: { type: 'boolean' },
+					libraryAccess: { type: 'boolean', nullable: true },
+					cacheQuotaBytes: { type: 'string', nullable: true },
 					createdAt: { type: 'string', format: 'date-time' },
 				},
 			},
@@ -46,22 +50,35 @@ export const PATCH = apiRoute('/api/users/[id]', 'PATCH', {
 			}
 		}
 
+		// Per-user access overrides. Only apply when the key is present so partial
+		// updates don't clobber existing values. `null` explicitly clears (inherit).
+		const data: Record<string, unknown> = {
+			name: updates.name,
+			isAdmin: updates.isAdmin,
+		};
+		if ('libraryAccess' in updates) {
+			data.libraryAccess = updates.libraryAccess === null ? null : !!updates.libraryAccess;
+		}
+		if ('cacheQuotaBytes' in updates) {
+			const v = updates.cacheQuotaBytes;
+			data.cacheQuotaBytes = v === null || v === '' ? null : BigInt(v);
+		}
+
 		const user = await prisma.user.update({
 			where: { id: params.id },
-			data: {
-				name: updates.name,
-				isAdmin: updates.isAdmin,
-			},
+			data,
 			select: {
 				id: true,
 				email: true,
 				name: true,
 				isAdmin: true,
+				libraryAccess: true,
+				cacheQuotaBytes: true,
 				createdAt: true,
 			},
 		});
 
-		return json(user);
+		return json({ ...user, cacheQuotaBytes: user.cacheQuotaBytes?.toString() ?? null });
 	} catch (e: any) {
 		console.error('Failed to update user:', e);
 		if (e.status) throw e;

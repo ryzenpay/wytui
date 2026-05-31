@@ -6,6 +6,7 @@ import { join, basename, resolve, extname, sep } from 'path';
 import { musicMetadataService } from './music-metadata.service';
 import { ytdlpService } from './ytdlp.service';
 import { plexService } from './plex.service';
+import { effectiveCacheQuota } from '../permissions';
 
 function sanitizeFilename(name: string): string {
 	return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Unknown';
@@ -190,14 +191,25 @@ class LibraryService {
 		}
 	}
 
-	async enforceCacheQuota(): Promise<void> {
+	/**
+	 * Evict oldest cache downloads until under quota. When `userId` is given,
+	 * scope both the usage tally and eviction to that user using their effective
+	 * (per-user or default) quota; otherwise enforce the global quota app-wide.
+	 */
+	async enforceCacheQuota(userId?: string): Promise<void> {
 		const settings = await this.getSettings();
-		const quotaBytes = settings.cacheQuotaBytes;
+		let quotaBytes = settings.cacheQuotaBytes;
+		if (userId) {
+			const user = await prisma.user.findUnique({ where: { id: userId }, select: { cacheQuotaBytes: true } });
+			quotaBytes = effectiveCacheQuota(user, settings);
+		}
+		const scope = userId ? { userId } : {};
 
 		const result = await prisma.download.aggregate({
 			where: {
 				storagePool: 'cache',
 				status: DownloadStatus.COMPLETED,
+				...scope,
 			},
 			_sum: { filesize: true },
 		});
@@ -209,6 +221,7 @@ class LibraryService {
 			where: {
 				storagePool: 'cache',
 				status: DownloadStatus.COMPLETED,
+				...scope,
 			},
 			orderBy: { completedAt: 'asc' },
 			select: { id: true, filesize: true, filepath: true, userId: true },
@@ -243,14 +256,20 @@ class LibraryService {
 		}
 	}
 
-	async getCacheUsage(): Promise<{ usedBytes: string; quotaBytes: string; percentage: number }> {
+	async getCacheUsage(userId?: string): Promise<{ usedBytes: string; quotaBytes: string; percentage: number }> {
 		const settings = await this.getSettings();
-		const quotaBytes = settings.cacheQuotaBytes;
+		let quotaBytes = settings.cacheQuotaBytes;
+		if (userId) {
+			const user = await prisma.user.findUnique({ where: { id: userId }, select: { cacheQuotaBytes: true } });
+			quotaBytes = effectiveCacheQuota(user, settings);
+		}
+		const scope = userId ? { userId } : {};
 
 		const result = await prisma.download.aggregate({
 			where: {
 				storagePool: 'cache',
 				status: DownloadStatus.COMPLETED,
+				...scope,
 			},
 			_sum: { filesize: true },
 		});
