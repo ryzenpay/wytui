@@ -41,8 +41,9 @@
 	}
 
 	function isMobileDevice() {
-		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-			navigator.userAgent
+		return (
+			typeof navigator !== 'undefined' &&
+			/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 		);
 	}
 
@@ -94,8 +95,11 @@
 			const res = await fetch(`/api/downloads/${downloadId}/versions`);
 			versions = res.ok ? await res.json() : [];
 			loaded = true;
-			// Single (or no) version → just download it, no menu.
-			if (versions.length <= 1) {
+			// Single (or no) version → just download it, no menu. On mobile we keep
+			// the menu open even for a single version: tapping a row is a fresh user
+			// gesture, which is what iOS requires for navigator.share() to open the
+			// share sheet (a fetch before share() would consume the activation).
+			if (versions.length <= 1 && !isMobileDevice()) {
 				triggerDownload(versions[0]?.id ?? downloadId);
 				open = false;
 			}
@@ -111,13 +115,6 @@
 	function handleClick() {
 		if (open) {
 			open = false;
-			return;
-		}
-		// On mobile, share the primary file directly within this tap gesture.
-		// Fetching the versions list first would consume the user activation that
-		// iOS requires for navigator.share(), so we skip the version menu there.
-		if (isMobileDevice()) {
-			triggerDownload(downloadId);
 			return;
 		}
 		open = true;
@@ -160,7 +157,7 @@
 		{#if showLabel}{label}{/if}
 	</button>
 
-	{#if open && versions.length > 1}
+	{#if open && versions.length >= 1 && (versions.length > 1 || isMobileDevice())}
 		<div class="dvp-popover" class:down={direction === 'down'} bind:this={menuEl} role="menu" aria-label="Choose version to download">
 			<div class="dvp-head">Choose version</div>
 			{#each versions as v}
