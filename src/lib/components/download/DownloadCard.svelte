@@ -280,6 +280,30 @@
 			navigator.userAgent
 		);
 	}
+
+	async function downloadFile() {
+		// Only use share dialog on mobile devices
+		const useMobileShare =
+			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
+
+		if (!useMobileShare) {
+			window.open(`/api/files/${download.id}`, '_blank');
+			return;
+		}
+
+		try {
+			const response = await fetch(`/api/files/${download.id}`);
+			if (!response.ok) throw new Error('Download failed');
+
+			const blob = await response.blob();
+			const file = new File([blob], download.filename || 'download', { type: blob.type });
+			await navigator.share({ files: [file] });
+		} catch (e: any) {
+			if (e.name !== 'AbortError') {
+				console.error('Share failed:', e);
+			}
+		}
+	}
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -470,6 +494,7 @@
 					label="Download"
 					className="btn btn-sm btn-primary"
 					direction="down"
+					onSingle={downloadFile}
 				/>
 				<AddToPlaylistMenu downloadId={download.id} storagePool={download.storagePool} />
 				{#if download.storagePool === 'cache' && libraryConfigured}

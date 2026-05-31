@@ -21,6 +21,7 @@
 		showLabel = true,
 		direction = 'up',
 		open = $bindable(false),
+		onSingle,
 	}: {
 		downloadId: string;
 		label?: string;
@@ -28,6 +29,8 @@
 		showLabel?: boolean;
 		direction?: 'up' | 'down';
 		open?: boolean;
+		/** Called instead of the default download when there's only one version. */
+		onSingle?: (id: string) => void;
 	} = $props();
 
 	let loading = $state(false);
@@ -40,57 +43,8 @@
 		return `/api/files/${id}`;
 	}
 
-	function isMobileDevice() {
-		return (
-			typeof navigator !== 'undefined' &&
-			/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-		);
-	}
-
-	function filenameFromResponse(res: Response): string | null {
-		const cd = res.headers.get('Content-Disposition');
-		const match = cd?.match(/filename="?([^"]+)"?/i);
-		return match?.[1] ?? null;
-	}
-
-	async function triggerDownload(id: string) {
-		// Desktop: open/download in a new tab (existing behavior).
-		if (!isMobileDevice()) {
-			window.open(fileUrl(id), '_blank');
-			return;
-		}
-
-		// Mobile: fetch the real file, then open the native share sheet so users can
-		// "Save to Photos". canShare must be tested against the *real* file with a
-		// real MIME type — an empty/type-less probe returns false on iOS WebKit,
-		// which is why the old code silently fell through to a blocked window.open.
-		// Failures surface as toasts so they're visible on the phone.
-		try {
-			const res = await fetch(fileUrl(id));
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const blob = await res.blob();
-			const name = filenameFromResponse(res) || 'video.mp4';
-			const file = new File([blob], name, { type: blob.type || 'video/mp4' });
-
-			if (navigator.share && navigator.canShare?.({ files: [file] })) {
-				await navigator.share({ files: [file] });
-				return;
-			}
-
-			// Share unsupported (e.g. Firefox/iOS) → fall back to a real download.
-			addToast('error', 'Share sheet unavailable on this browser — downloading instead');
-			const objUrl = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = objUrl;
-			a.download = name;
-			document.body.appendChild(a);
-			a.click();
-			a.remove();
-			setTimeout(() => URL.revokeObjectURL(objUrl), 10_000);
-		} catch (e: any) {
-			if (e.name === 'AbortError') return; // user dismissed the share sheet
-			addToast('error', `Couldn't share: ${e.name || e.message || e}`);
-		}
+	function triggerDownload(id: string) {
+		window.open(fileUrl(id), '_blank');
 	}
 
 	function versionLabel(v: Version): string {
@@ -128,14 +82,6 @@
 	function handleClick() {
 		if (open) {
 			open = false;
-			return;
-		}
-		// Mobile: replicate the original behavior — fetch the file and open the
-		// native share sheet directly from this tap, no version dropdown. Routing
-		// through a versions fetch first, or unmounting a menu mid-share, breaks the
-		// user activation iOS requires for navigator.share().
-		if (isMobileDevice()) {
-			triggerDownload(downloadId);
 			return;
 		}
 		open = true;
