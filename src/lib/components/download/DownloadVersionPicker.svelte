@@ -21,7 +21,6 @@
 		showLabel = true,
 		direction = 'up',
 		open = $bindable(false),
-		onSingle,
 	}: {
 		downloadId: string;
 		label?: string;
@@ -29,8 +28,6 @@
 		showLabel?: boolean;
 		direction?: 'up' | 'down';
 		open?: boolean;
-		/** Called instead of the default download when there's only one version. */
-		onSingle?: (id: string) => void;
 	} = $props();
 
 	let loading = $state(false);
@@ -43,7 +40,38 @@
 		return `/api/files/${id}`;
 	}
 
-	function triggerDownload(id: string) {
+	function isMobileDevice() {
+		return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+			navigator.userAgent
+		);
+	}
+
+	function filenameFromResponse(res: Response): string | null {
+		const cd = res.headers.get('Content-Disposition');
+		const match = cd?.match(/filename="?([^"]+)"?/i);
+		return match?.[1] ?? null;
+	}
+
+	async function triggerDownload(id: string) {
+		// On mobile, open the native share sheet so users can "Save to Photos"
+		// instead of dumping the file into Files/Downloads. Falls back to a plain
+		// download on desktop or when the Share API is unavailable.
+		const canShareFiles =
+			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
+		if (canShareFiles) {
+			try {
+				const res = await fetch(fileUrl(id));
+				if (!res.ok) throw new Error('fetch failed');
+				const blob = await res.blob();
+				const name = filenameFromResponse(res) || 'download';
+				const file = new File([blob], name, { type: blob.type });
+				await navigator.share({ files: [file] });
+				return;
+			} catch (e: any) {
+				if (e.name === 'AbortError') return; // user dismissed the share sheet
+				console.warn('Share unavailable, falling back to download:', e);
+			}
+		}
 		window.open(fileUrl(id), '_blank');
 	}
 
