@@ -784,27 +784,26 @@ class DownloadService {
 				}, delay);
 				this.retryTimeouts.set(downloadId, timeout);
 			} else {
+				// Terminal failure: drop the record entirely rather than leaving a
+				// FAILED row that's invisible in every list (which only query COMPLETED
+				// or the in-progress statuses) yet still reachable at /downloads/:id.
+				// Notify first — we still hold the record — then delete file, archive
+				// entry, and the row (child rows cascade).
+				this.clearDownloadState(downloadId);
+
 				if (download.filepath) {
 					try {
 						await unlink(download.filepath);
 					} catch {}
 				}
 
-				await this.updateDownload(downloadId, {
-					status: DownloadStatus.FAILED,
-					error,
-				});
+				const videoId = this.extractVideoId(download.url);
+				if (videoId) {
+					await prisma.archive.deleteMany({ where: { videoId } });
+				}
 
-				// Mark all non-completed tasks as failed
-				await prisma.downloadTask.updateMany({
-					where: {
-						downloadId,
-						status: { in: ['pending', 'in_progress'] },
-					},
-					data: { status: 'failed', message: error },
-				});
+				await prisma.download.delete({ where: { id: downloadId } }).catch(() => {});
 
-				this.clearDownloadState(downloadId);
 				this.emitToOwner('download:failed', { id: downloadId, error }, downloadId);
 				this.downloadOwners.delete(downloadId);
 
