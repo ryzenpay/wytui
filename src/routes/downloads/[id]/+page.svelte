@@ -8,8 +8,8 @@
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { formatBytes, formatDuration } from '$lib/utils/format';
 	import VideoPlayer from '$lib/components/player/VideoPlayer.svelte';
+	import DownloadVersionPicker from '$lib/components/download/DownloadVersionPicker.svelte';
 	import TagEditor from '$lib/components/ui/TagEditor.svelte';
-	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
 	import ExternalLinkIcon from '$lib/components/icons/ExternalLinkIcon.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
@@ -23,6 +23,7 @@
 	let deleting = $state(false);
 	let promoting = $state(false);
 	let refreshing = $state(false);
+	let downloadPickerOpen = $state(false);
 
 	const TASK_LABELS: Record<string, string> = {
 		download: 'Download',
@@ -226,9 +227,6 @@
 		}
 	}
 
-	function downloadFile() {
-		window.open(`/api/files/${download.id}`, '_blank');
-	}
 
 	function openInJellyfin() {
 		if (data.jellyfinUrl) {
@@ -315,6 +313,7 @@
 					downloadId={download.id}
 					startTime={data.startTimeParam ?? download.watchProgress?.position ?? 0}
 					onEnded={handleVideoEnded}
+					onDownload={() => (downloadPickerOpen = true)}
 				/>
 			{:else if isAudio && download.status === 'COMPLETED'}
 				<div class="audio-area">
@@ -470,10 +469,7 @@
 
 			<div class="actions">
 				{#if download.status === 'COMPLETED'}
-					<button class="btn btn-primary" onclick={downloadFile} title="Download file" aria-label="Download file">
-						<DownloadIcon />
-						Download File
-					</button>
+					<DownloadVersionPicker downloadId={download.id} label="Download File" className="btn btn-primary" bind:open={downloadPickerOpen} />
 					<AddToPlaylistMenu downloadId={download.id} />
 					{#if download.storagePool === 'cache'}
 						{#if libraryRequestStatus === 'pending'}

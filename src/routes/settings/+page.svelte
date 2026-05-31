@@ -2171,11 +2171,11 @@
 
 	.settings-nav {
 		position: sticky;
-		top: var(--spacing-xl);
+		top: var(--spacing-3xl);
 		flex-shrink: 0;
 		width: 220px;
 		align-self: flex-start;
-		max-height: calc(100vh - var(--spacing-xl) * 2);
+		max-height: calc(100vh - var(--spacing-3xl) - var(--spacing-xl));
 		overflow-y: auto;
 		z-index: 10;
 		contain: layout style;
@@ -2302,6 +2302,12 @@
 
 	.settings-section h2 {
 		font-size: 1.25rem;
+		margin-bottom: var(--spacing-lg);
+	}
+
+	/* A description paragraph right under a section heading needs breathing room
+	   before the controls that follow (e.g. the Account "Change Password" button). */
+	.settings-section h2 + p.text-muted {
 		margin-bottom: var(--spacing-lg);
 	}
 

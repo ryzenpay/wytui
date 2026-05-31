@@ -6,6 +6,7 @@
 	import type { Download } from '$lib/types';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
 	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
+	import DownloadVersionPicker from '$lib/components/download/DownloadVersionPicker.svelte';
 	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
 	import ExternalLinkIcon from '$lib/components/icons/ExternalLinkIcon.svelte';
 	import RefreshIcon from '$lib/components/icons/RefreshIcon.svelte';
@@ -488,10 +489,13 @@
 			{/if}
 
 			{#if download.status === 'COMPLETED'}
-				<button class="btn btn-sm btn-primary" onclick={downloadFile} title="Download file" aria-label="Download file">
-					<DownloadIcon width={14} height={14} />
-					Download
-				</button>
+				<DownloadVersionPicker
+					downloadId={download.id}
+					label="Download"
+					className="btn btn-sm btn-primary"
+					direction="down"
+					onSingle={downloadFile}
+				/>
 				<AddToPlaylistMenu downloadId={download.id} />
 				{#if download.storagePool === 'cache' && libraryConfigured}
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting} title="Save to library" aria-label="Save to library">
