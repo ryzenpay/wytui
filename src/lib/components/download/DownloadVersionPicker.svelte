@@ -54,26 +54,42 @@
 	}
 
 	async function triggerDownload(id: string) {
-		// On mobile, open the native share sheet so users can "Save to Photos".
-		// Check canShare *synchronously* up front (inside the tap gesture) — this
-		// matches the original working implementation. Then fetch the file and
-		// share it; the button stays mounted throughout so iOS keeps the share
-		// activation alive across the single fetch.
-		const canShareFiles =
-			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
-		if (!canShareFiles) {
+		// Desktop: open/download in a new tab (existing behavior).
+		if (!isMobileDevice()) {
 			window.open(fileUrl(id), '_blank');
 			return;
 		}
+
+		// Mobile: fetch the real file, then open the native share sheet so users can
+		// "Save to Photos". canShare must be tested against the *real* file with a
+		// real MIME type — an empty/type-less probe returns false on iOS WebKit,
+		// which is why the old code silently fell through to a blocked window.open.
+		// Failures surface as toasts so they're visible on the phone.
 		try {
 			const res = await fetch(fileUrl(id));
-			if (!res.ok) throw new Error('fetch failed');
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
 			const blob = await res.blob();
-			const name = filenameFromResponse(res) || 'download';
-			const file = new File([blob], name, { type: blob.type });
-			await navigator.share({ files: [file] });
+			const name = filenameFromResponse(res) || 'video.mp4';
+			const file = new File([blob], name, { type: blob.type || 'video/mp4' });
+
+			if (navigator.share && navigator.canShare?.({ files: [file] })) {
+				await navigator.share({ files: [file] });
+				return;
+			}
+
+			// Share unsupported (e.g. Firefox/iOS) → fall back to a real download.
+			addToast('error', 'Share sheet unavailable on this browser — downloading instead');
+			const objUrl = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = objUrl;
+			a.download = name;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			setTimeout(() => URL.revokeObjectURL(objUrl), 10_000);
 		} catch (e: any) {
-			if (e.name !== 'AbortError') console.warn('Share failed:', e);
+			if (e.name === 'AbortError') return; // user dismissed the share sheet
+			addToast('error', `Couldn't share: ${e.name || e.message || e}`);
 		}
 	}
 
