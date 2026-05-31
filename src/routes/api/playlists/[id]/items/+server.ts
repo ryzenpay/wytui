@@ -42,6 +42,8 @@ export const POST = apiRoute('/api/playlists/[id]/items', 'POST', {
 	} catch (e: any) {
 		if (e.status) throw e;
 		if (e.message === 'Playlist not found') throw error(404, e.message);
+		if (e.message === 'Download not found') throw error(404, e.message);
+		if (e.message === 'Not in library') throw error(400, 'Only library items can be added to playlists');
 		if (e.message === 'Access denied') throw error(403, e.message);
 		if (e.code === 'P2002') throw error(409, 'Item already in playlist');
 		console.error('Failed to add playlist item:', e);

@@ -496,7 +496,7 @@
 					direction="down"
 					onSingle={downloadFile}
 				/>
-				<AddToPlaylistMenu downloadId={download.id} />
+				<AddToPlaylistMenu downloadId={download.id} storagePool={download.storagePool} />
 				{#if download.storagePool === 'cache' && libraryConfigured}
 					<button class="btn btn-sm btn-accent" onclick={promoteToLibrary} disabled={promoting} title="Save to library" aria-label="Save to library">
 						<FolderDownIcon width={14} height={14} />

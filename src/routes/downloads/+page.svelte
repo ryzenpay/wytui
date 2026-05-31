@@ -520,7 +520,16 @@
 	}
 
 	async function bulkAddToPlaylist(playlistId: string, playlistName: string) {
-		const ids = [...selectedIds];
+		// Only library items can be added to playlists; skip cache-only selections.
+		const ids = [...selectedIds].filter((id) => {
+			const d = completedDownloads.find((dl) => dl.id === id);
+			return d?.storagePool === 'library';
+		});
+		if (ids.length === 0) {
+			addToast('info', 'Only library items can be added to playlists');
+			bulkPlaylistOpen = false;
+			return;
+		}
 		bulkPlaylistAdding = true;
 		bulkPlaylistOpen = false;
 		try {

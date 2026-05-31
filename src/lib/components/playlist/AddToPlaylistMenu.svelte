@@ -4,7 +4,9 @@
 	import { focusOnMount } from '$lib/utils/a11y';
 	import ListPlusIcon from '$lib/components/icons/ListPlusIcon.svelte';
 
-	let { downloadId }: { downloadId: string } = $props();
+	let { downloadId, storagePool = 'library' }: { downloadId: string; storagePool?: string } = $props();
+
+	const canAddToPlaylist = $derived(storagePool === 'library');
 
 	let open = $state(false);
 	let loading = $state(false);
@@ -137,7 +139,8 @@
 		bind:this={btnEl}
 		class="btn btn-secondary"
 		onclick={handleToggle}
-		title="Add to playlist"
+		disabled={!canAddToPlaylist}
+		title={canAddToPlaylist ? 'Add to playlist' : 'Save to library to add to playlists'}
 		aria-label="Add to playlist"
 	>
 		<ListPlusIcon />

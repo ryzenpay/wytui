@@ -73,6 +73,15 @@ class PlaylistService {
 		if (!playlist) throw new Error('Playlist not found');
 		if (playlist.userId !== userId) throw new Error('Access denied');
 
+		// Only library items can live in playlists — cache items are transient and may be
+		// evicted, which would leave dangling playlist entries.
+		const download = await prisma.download.findUnique({
+			where: { id: downloadId },
+			select: { storagePool: true },
+		});
+		if (!download) throw new Error('Download not found');
+		if (download.storagePool !== 'library') throw new Error('Not in library');
+
 		const maxPosition = await prisma.playlistItem.aggregate({
 			where: { playlistId },
 			_max: { position: true },
