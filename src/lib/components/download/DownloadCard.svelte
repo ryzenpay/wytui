@@ -3,6 +3,7 @@
 	import { showConfirm } from '$lib/stores/modal.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
 	import { getDownloadStatusColor, getDownloadStatusLabel } from '$lib/utils/format';
+	import { downloadOrShare } from '$lib/utils/download';
 	import type { Download } from '$lib/types';
 	import XIcon from '$lib/components/icons/XIcon.svelte';
 	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
@@ -282,27 +283,7 @@
 	}
 
 	async function downloadFile() {
-		// Only use share dialog on mobile devices
-		const useMobileShare =
-			isMobileDevice() && navigator.canShare?.({ files: [new File([], 'test')] });
-
-		if (!useMobileShare) {
-			window.open(`/api/files/${download.id}`, '_blank');
-			return;
-		}
-
-		try {
-			const response = await fetch(`/api/files/${download.id}`);
-			if (!response.ok) throw new Error('Download failed');
-
-			const blob = await response.blob();
-			const file = new File([blob], download.filename || 'download', { type: blob.type });
-			await navigator.share({ files: [file] });
-		} catch (e: any) {
-			if (e.name !== 'AbortError') {
-				console.error('Share failed:', e);
-			}
-		}
+		await downloadOrShare(download.id, download.filename || download.title || undefined);
 	}
 </script>
 
