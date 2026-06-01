@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { formatBytes } from '$lib/utils/format';
+	import { downloadOrShare } from '$lib/utils/download';
 	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
 
 	type Version = {
@@ -39,12 +40,8 @@
 	let menuEl: HTMLDivElement | undefined = $state();
 	let btnEl: HTMLButtonElement | undefined = $state();
 
-	function fileUrl(id: string) {
-		return `/api/files/${id}`;
-	}
-
-	function triggerDownload(id: string) {
-		window.open(fileUrl(id), '_blank');
+	async function triggerDownload(id: string, filename?: string) {
+		await downloadOrShare(id, filename);
 	}
 
 	function versionLabel(v: Version): string {
@@ -67,12 +64,14 @@
 			loaded = true;
 			// Single (or no) version → just download it, no menu.
 			if (versions.length <= 1) {
-				triggerDownload(versions[0]?.id ?? downloadId);
+				const v = versions[0];
+				const filename = v?.title || undefined;
+				await triggerDownload(v?.id ?? downloadId, filename);
 				open = false;
 			}
 		} catch {
 			addToast('error', 'Failed to load versions');
-			triggerDownload(downloadId);
+			await triggerDownload(downloadId);
 			open = false;
 		} finally {
 			loading = false;
@@ -95,8 +94,9 @@
 		if (open && !loaded && !loading) loadVersions();
 	});
 
-	function pick(v: Version) {
-		triggerDownload(v.id);
+	async function pick(v: Version) {
+		const filename = v.title || undefined;
+		await triggerDownload(v.id, filename);
 		open = false;
 	}
 
