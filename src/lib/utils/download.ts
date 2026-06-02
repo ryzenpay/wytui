@@ -1,4 +1,4 @@
-import { addToast } from '$lib/stores/toast.svelte';
+import { addToast, addStickyToast, removeToast } from '$lib/stores/toast.svelte';
 
 export function isMobileDevice(): boolean {
 	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -95,6 +95,9 @@ export async function downloadOrShare(fileId: string, filename?: string): Promis
 	}
 
 	preparing = true;
+	// Immediate feedback — the download isn't always instant, and adding a toast is
+	// a synchronous state update so it doesn't disturb the iOS share activation.
+	const progressId = addStickyToast('info', 'Preparing video…');
 	try {
 		const response = await fetch(fileUrl);
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -104,9 +107,12 @@ export async function downloadOrShare(fileId: string, filename?: string): Promis
 		const file = new File([blob], name, { type: blob.type });
 		cached = { fileId, file };
 
+		removeToast(progressId); // clear it just before the native sheet opens
 		await navigator.share({ files: [file] });
 		cached = null; // shared successfully → free the memory
 	} catch (error: any) {
+		removeToast(progressId);
+
 		// User dismissed the share sheet.
 		if (error?.name === 'AbortError') {
 			cached = null;
