@@ -5,10 +5,28 @@ import * as toastStore from '$lib/stores/toast.svelte';
 // Mock the toast store
 vi.mock('$lib/stores/toast.svelte', () => ({
 	addToast: vi.fn(),
+	addStickyToast: vi.fn(() => 'sticky-id'),
+	removeToast: vi.fn(),
+	resolveToast: vi.fn(),
 }));
 
+// Build a mock fetch Response. `disposition` lets a test exercise the
+// Content-Disposition filename parsing.
+function mockResponse(blob: Blob, disposition?: string) {
+	return {
+		ok: true,
+		status: 200,
+		blob: () => Promise.resolve(blob),
+		headers: { get: (h: string) => (h.toLowerCase() === 'content-disposition' ? disposition ?? null : null) },
+	};
+}
+
+// Each test uses a unique file id so the module-level blob cache (keyed by id)
+// never leaks state between tests.
+let idCounter = 0;
+const nextId = () => `test-file-${++idCounter}`;
+
 describe('downloadOrShare', () => {
-	let originalUserAgent: string;
 	let originalNavigator: typeof navigator;
 	let windowOpenSpy: ReturnType<typeof vi.fn>;
 	let fetchSpy: ReturnType<typeof vi.fn>;
@@ -16,28 +34,20 @@ describe('downloadOrShare', () => {
 	let navigatorCanShareSpy: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
-		// Save original values
-		originalUserAgent = navigator.userAgent;
 		originalNavigator = global.navigator;
-
-		// Reset mocks
 		vi.clearAllMocks();
 
-		// Mock window.open
 		windowOpenSpy = vi.fn();
 		(global.window.open as any) = windowOpenSpy;
 
-		// Mock fetch
 		fetchSpy = vi.fn();
 		(global.fetch as any) = fetchSpy;
 
-		// Mock navigator.share and navigator.canShare
 		navigatorShareSpy = vi.fn();
 		navigatorCanShareSpy = vi.fn();
 	});
 
 	afterEach(() => {
-		// Restore original navigator
 		Object.defineProperty(global, 'navigator', {
 			value: originalNavigator,
 			writable: true,
@@ -77,21 +87,23 @@ describe('downloadOrShare', () => {
 	describe('Desktop behavior', () => {
 		it('should use window.open on desktop browsers', async () => {
 			mockDesktopDevice();
+			const id = nextId();
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			await downloadOrShare(id, 'test.mp4');
 
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(windowOpenSpy).toHaveBeenCalledWith(`/api/files/${id}`, '_blank');
 			expect(fetchSpy).not.toHaveBeenCalled();
 			expect(navigatorShareSpy).not.toHaveBeenCalled();
 		});
 
 		it('should use window.open when Share API is not available', async () => {
 			mockMobileDevice();
+			const id = nextId();
 			// Don't mock Share API (it's undefined)
 
-			await downloadOrShare('test-file-id');
+			await downloadOrShare(id);
 
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(windowOpenSpy).toHaveBeenCalledWith(`/api/files/${id}`, '_blank');
 			expect(fetchSpy).not.toHaveBeenCalled();
 		});
 	});
@@ -103,137 +115,135 @@ describe('downloadOrShare', () => {
 		});
 
 		it('should use Share API on mobile when available', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
+			const id = nextId();
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['test content'], { type: 'video/mp4' })));
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id', 'test-video.mp4');
+			await downloadOrShare(id, 'test-video.mp4');
 
 			expect(navigatorCanShareSpy).toHaveBeenCalledWith({ files: [expect.any(File)] });
-			expect(fetchSpy).toHaveBeenCalledWith('/api/files/test-file-id');
-			expect(navigatorShareSpy).toHaveBeenCalledWith({
-				files: [expect.any(File)],
-			});
+			expect(fetchSpy).toHaveBeenCalledWith(`/api/files/${id}`);
+			expect(navigatorShareSpy).toHaveBeenCalledWith({ files: [expect.any(File)] });
 			expect(windowOpenSpy).not.toHaveBeenCalled();
 		});
 
-		it('should use provided filename in Share API', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
+		it('should use the provided filename in Share API', async () => {
+			const id = nextId();
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'video/mp4' })));
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id', 'my-custom-video.mp4');
+			await downloadOrShare(id, 'my-custom-video.mp4');
 
-			const shareCall = navigatorShareSpy.mock.calls[0][0];
-			const file = shareCall.files[0];
+			const file = navigatorShareSpy.mock.calls[0][0].files[0];
 			expect(file.name).toBe('my-custom-video.mp4');
 			expect(file.type).toBe('video/mp4');
 		});
 
-		it('should use "download" as default filename when none provided', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
+		it('should prefer the Content-Disposition filename from the server', async () => {
+			const id = nextId();
+			fetchSpy.mockResolvedValue(
+				mockResponse(new Blob(['x'], { type: 'video/mp4' }), 'attachment; filename="Server Name.mp4"')
+			);
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id');
+			await downloadOrShare(id, 'client-fallback.mp4');
 
-			const shareCall = navigatorShareSpy.mock.calls[0][0];
-			const file = shareCall.files[0];
-			expect(file.name).toBe('download');
+			const file = navigatorShareSpy.mock.calls[0][0].files[0];
+			expect(file.name).toBe('Server Name.mp4');
+		});
+
+		it('should append the correct extension so iOS recognises the media', async () => {
+			const id = nextId();
+			// No extension on the provided name → must gain .mp4 from the blob type.
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'video/mp4' })));
+			navigatorShareSpy.mockResolvedValue(undefined);
+
+			await downloadOrShare(id, 'My Cool Video');
+
+			const file = navigatorShareSpy.mock.calls[0][0].files[0];
+			expect(file.name).toBe('My Cool Video.mp4');
+		});
+
+		it('should default the filename to "download.mp4" when none provided', async () => {
+			const id = nextId();
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'video/mp4' })));
+			navigatorShareSpy.mockResolvedValue(undefined);
+
+			await downloadOrShare(id);
+
+			const file = navigatorShareSpy.mock.calls[0][0].files[0];
+			expect(file.name).toBe('download.mp4');
 		});
 
 		it('should silently handle AbortError (user cancelled)', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
+			const id = nextId();
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'video/mp4' })));
 
 			const abortError = new Error('User cancelled');
 			abortError.name = 'AbortError';
 			navigatorShareSpy.mockRejectedValue(abortError);
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			await downloadOrShare(id, 'test.mp4');
 
-			// Should not show toast for AbortError
 			expect(toastStore.addToast).not.toHaveBeenCalled();
-			// Should not fallback to window.open
 			expect(windowOpenSpy).not.toHaveBeenCalled();
 		});
 
 		it('should show toast and fallback on network error', async () => {
+			const id = nextId();
 			fetchSpy.mockRejectedValue(new Error('Network error'));
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			await downloadOrShare(id, 'test.mp4');
 
-			expect(toastStore.addToast).toHaveBeenCalledWith(
-				'error',
-				'Failed to share file: Network error'
-			);
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(toastStore.addToast).toHaveBeenCalledWith('error', 'Download failed: Network error');
+			expect(windowOpenSpy).toHaveBeenCalledWith(`/api/files/${id}`, '_blank');
 		});
 
 		it('should show toast and fallback on HTTP error', async () => {
-			fetchSpy.mockResolvedValue({
-				ok: false,
-				status: 404,
-				statusText: 'Not Found',
-			});
+			const id = nextId();
+			fetchSpy.mockResolvedValue({ ok: false, status: 404, headers: { get: () => null } });
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			await downloadOrShare(id, 'test.mp4');
 
-			expect(toastStore.addToast).toHaveBeenCalledWith(
-				'error',
-				'Failed to share file: HTTP 404: Not Found'
-			);
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(toastStore.addToast).toHaveBeenCalledWith('error', 'Download failed: HTTP 404');
+			expect(windowOpenSpy).toHaveBeenCalledWith(`/api/files/${id}`, '_blank');
 		});
 
-		it('should show toast and fallback on share error', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
+		it('should keep the blob and prompt a retry when iOS drops the activation', async () => {
+			const id = nextId();
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'video/mp4' })));
 
-			const shareError = new Error('Share failed');
+			const shareError = new Error('Share not allowed');
 			shareError.name = 'NotAllowedError';
-			navigatorShareSpy.mockRejectedValue(shareError);
+			navigatorShareSpy.mockRejectedValueOnce(shareError);
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			// First tap: download succeeds but share is blocked → prompt, no fallback.
+			await downloadOrShare(id, 'test.mp4');
 
 			expect(toastStore.addToast).toHaveBeenCalledWith(
-				'error',
-				'Failed to share file: Share failed'
+				'info',
+				'Video ready — tap download again to save it'
 			);
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(windowOpenSpy).not.toHaveBeenCalled();
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+			// Second tap: shares the cached blob without re-downloading.
+			navigatorShareSpy.mockResolvedValueOnce(undefined);
+			await downloadOrShare(id, 'test.mp4');
+
+			expect(navigatorShareSpy).toHaveBeenCalledTimes(2);
+			expect(fetchSpy).toHaveBeenCalledTimes(1); // no second download
 		});
 
-		it('should handle error without message', async () => {
-			const mockBlob = new Blob(['test content'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
-
+		it('should handle a share error without a message', async () => {
+			const id = nextId();
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'video/mp4' })));
 			navigatorShareSpy.mockRejectedValue({});
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			await downloadOrShare(id, 'test.mp4');
 
-			expect(toastStore.addToast).toHaveBeenCalledWith(
-				'error',
-				'Failed to share file: Unknown error'
-			);
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(toastStore.addToast).toHaveBeenCalledWith('error', 'Download failed: Unknown error');
+			expect(windowOpenSpy).toHaveBeenCalledWith(`/api/files/${id}`, '_blank');
 		});
 	});
 
@@ -245,11 +255,10 @@ describe('downloadOrShare', () => {
 				configurable: true,
 			});
 			mockShareAPI(true);
-			const mockBlob = new Blob(['test'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({ ok: true, blob: () => Promise.resolve(mockBlob) });
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['t'], { type: 'video/mp4' })));
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id');
+			await downloadOrShare(nextId());
 
 			expect(navigatorShareSpy).toHaveBeenCalled();
 		});
@@ -261,11 +270,10 @@ describe('downloadOrShare', () => {
 				configurable: true,
 			});
 			mockShareAPI(true);
-			const mockBlob = new Blob(['test'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({ ok: true, blob: () => Promise.resolve(mockBlob) });
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['t'], { type: 'video/mp4' })));
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id');
+			await downloadOrShare(nextId());
 
 			expect(navigatorShareSpy).toHaveBeenCalled();
 		});
@@ -277,11 +285,10 @@ describe('downloadOrShare', () => {
 				configurable: true,
 			});
 			mockShareAPI(true);
-			const mockBlob = new Blob(['test'], { type: 'video/mp4' });
-			fetchSpy.mockResolvedValue({ ok: true, blob: () => Promise.resolve(mockBlob) });
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['t'], { type: 'video/mp4' })));
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id');
+			await downloadOrShare(nextId());
 
 			expect(navigatorShareSpy).toHaveBeenCalled();
 		});
@@ -291,30 +298,28 @@ describe('downloadOrShare', () => {
 		it('should handle canShare returning false', async () => {
 			mockMobileDevice();
 			mockShareAPI(false); // canShare returns false
+			const id = nextId();
 
-			await downloadOrShare('test-file-id', 'test.mp4');
+			await downloadOrShare(id, 'test.mp4');
 
-			expect(windowOpenSpy).toHaveBeenCalledWith('/api/files/test-file-id', '_blank');
+			expect(windowOpenSpy).toHaveBeenCalledWith(`/api/files/${id}`, '_blank');
 			expect(fetchSpy).not.toHaveBeenCalled();
 			expect(navigatorShareSpy).not.toHaveBeenCalled();
 		});
 
-		it('should preserve blob type in File object', async () => {
+		it('should preserve blob type in the File object', async () => {
 			mockMobileDevice();
 			mockShareAPI(true);
+			const id = nextId();
 
-			const mockBlob = new Blob(['test content'], { type: 'audio/mp3' });
-			fetchSpy.mockResolvedValue({
-				ok: true,
-				blob: () => Promise.resolve(mockBlob),
-			});
+			fetchSpy.mockResolvedValue(mockResponse(new Blob(['x'], { type: 'audio/mpeg' })));
 			navigatorShareSpy.mockResolvedValue(undefined);
 
-			await downloadOrShare('test-file-id', 'song.mp3');
+			await downloadOrShare(id, 'song.mp3');
 
-			const shareCall = navigatorShareSpy.mock.calls[0][0];
-			const file = shareCall.files[0];
-			expect(file.type).toBe('audio/mp3');
+			const file = navigatorShareSpy.mock.calls[0][0].files[0];
+			expect(file.type).toBe('audio/mpeg');
+			expect(file.name).toBe('song.mp3');
 		});
 	});
 });
