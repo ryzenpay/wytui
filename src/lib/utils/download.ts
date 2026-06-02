@@ -1,6 +1,6 @@
-import { addToast, addStickyToast, removeToast } from '$lib/stores/toast.svelte';
+import { addToast } from '$lib/stores/toast.svelte';
 
-function isMobileDevice(): boolean {
+export function isMobileDevice(): boolean {
 	return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
 		navigator.userAgent
 	);
@@ -51,17 +51,22 @@ function filenameFor(response: Response, fallback: string, mime: string): string
 	return name || 'download';
 }
 
-// Cache the most recently downloaded file. When iOS drops the transient user
-// activation during a long download, navigator.share() rejects with
-// NotAllowedError; caching lets the next tap share instantly (inside the fresh
-// activation) without re-downloading the whole video.
+// Cache the most recently downloaded file. On a slow connection iOS can drop the
+// transient user activation before the download finishes, making navigator.share()
+// reject with NotAllowedError; caching lets a follow-up tap share instantly. On a
+// fast (LAN) connection the first tap shares directly and this never kicks in.
 let cached: { fileId: string; file: File } | null = null;
-// Guards against a flurry of taps each kicking off its own full download.
+// Guards against repeated taps each starting their own full download.
 let preparing = false;
 
 /**
  * Download or share a file, using the Web Share API on mobile devices when available.
  * Falls back to a traditional download on desktop or when sharing isn't supported.
+ *
+ * IMPORTANT: on mobile this must be called directly from the tap handler with no
+ * preceding `await` — iOS only allows navigator.share() while the user-activation
+ * from the tap is still live, and an earlier awaited fetch (e.g. a version list)
+ * consumes it, silently blocking the share sheet.
  */
 export async function downloadOrShare(fileId: string, filename?: string): Promise<void> {
 	const fileUrl = `/api/files/${fileId}`;
@@ -72,17 +77,14 @@ export async function downloadOrShare(fileId: string, filename?: string): Promis
 		return;
 	}
 
-	// Already downloaded on a previous tap → share now, inside this tap's fresh
-	// activation, so iOS won't reject it. This is what makes long videos work.
+	// Already downloaded on a previous tap → share now, inside this fresh
+	// activation, without re-downloading.
 	if (cached && cached.fileId === fileId) {
 		try {
 			await navigator.share({ files: [cached.file] });
 			cached = null;
 		} catch (error: any) {
-			if (error?.name !== 'AbortError') {
-				// Activation lost again somehow — keep the blob and let them retry.
-				addToast('info', 'Tap download again to save the video');
-			}
+			if (error?.name !== 'AbortError') addToast('info', 'Tap download again to save the video');
 		}
 		return;
 	}
@@ -93,7 +95,6 @@ export async function downloadOrShare(fileId: string, filename?: string): Promis
 	}
 
 	preparing = true;
-	const progressId = addStickyToast('info', 'Preparing video…');
 	try {
 		const response = await fetch(fileUrl);
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -102,22 +103,18 @@ export async function downloadOrShare(fileId: string, filename?: string): Promis
 		const name = filenameFor(response, filename || 'download', blob.type);
 		const file = new File([blob], name, { type: blob.type });
 		cached = { fileId, file };
-		removeToast(progressId);
 
 		await navigator.share({ files: [file] });
-		// Shared successfully → free the cached blob.
-		cached = null;
+		cached = null; // shared successfully → free the memory
 	} catch (error: any) {
-		removeToast(progressId);
-
 		// User dismissed the share sheet.
 		if (error?.name === 'AbortError') {
 			cached = null;
 			return;
 		}
 
-		// iOS revoked the user activation while the (large) file downloaded, so
-		// share() rejected. The blob is cached — a second tap shares it instantly.
+		// Slow download → iOS revoked the activation before share() could run. The
+		// blob is cached, so a second tap shares it instantly. (Rare on a LAN.)
 		if (error?.name === 'NotAllowedError' && cached?.fileId === fileId) {
 			addToast('info', 'Video ready — tap download again to save it');
 			return;

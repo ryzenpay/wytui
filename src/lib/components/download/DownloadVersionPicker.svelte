@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { addToast } from '$lib/stores/toast.svelte';
 	import { formatBytes } from '$lib/utils/format';
-	import { downloadOrShare } from '$lib/utils/download';
+	import { downloadOrShare, isMobileDevice } from '$lib/utils/download';
 	import DownloadIcon from '$lib/components/icons/DownloadIcon.svelte';
 
 	type Version = {
@@ -79,6 +79,15 @@
 	}
 
 	function handleClick() {
+		// On mobile, share the primary file immediately within this tap. Fetching
+		// the version list first (loadVersions) would consume the iOS user-activation
+		// that navigator.share() needs, silently blocking the share sheet. This must
+		// stay a direct, await-free call from the tap handler.
+		if (isMobileDevice()) {
+			if (onSingle) onSingle(downloadId);
+			else triggerDownload(downloadId);
+			return;
+		}
 		if (open) {
 			open = false;
 			return;
