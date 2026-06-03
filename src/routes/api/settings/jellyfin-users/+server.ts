@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { apiRoute } from '$lib/server/openapi';
+import { internalFetch } from '$lib/server/utils/fetch';
 import type { RequestHandler } from './$types';
 
 export const GET = apiRoute('/api/settings/jellyfin-users', 'GET', {
@@ -38,7 +39,7 @@ export const GET = apiRoute('/api/settings/jellyfin-users', 'GET', {
 
 	try {
 		const baseUrl = settings.jellyfinUrl.replace(/\/$/, '');
-		const res = await fetch(`${baseUrl}/Users`, {
+		const res = await internalFetch(`${baseUrl}/Users`, {
 			headers: { 'X-Emby-Token': settings.jellyfinApiKey },
 			signal: AbortSignal.timeout(10000),
 		});
@@ -53,7 +54,21 @@ export const GET = apiRoute('/api/settings/jellyfin-users', 'GET', {
 		);
 	} catch (e: any) {
 		if (e.status) throw e;
-		const message = e.name === 'TimeoutError' ? 'Connection timed out' : (e.message || 'Failed to fetch users');
+		let message: string;
+		if (e.name === 'TimeoutError') {
+			message = 'Connection timed out';
+		} else if (e.cause) {
+			const cause = e.cause as any;
+			if (cause.code === 'ECONNREFUSED') {
+				message = 'Connection refused — is Jellyfin running?';
+			} else if (cause.code === 'ENOTFOUND') {
+				message = `Could not resolve host — check the server URL`;
+			} else {
+				message = cause.message || 'Failed to connect to Jellyfin';
+			}
+		} else {
+			message = e.message || 'Failed to fetch users';
+		}
 		throw error(502, message);
 	}
 }) satisfies RequestHandler;

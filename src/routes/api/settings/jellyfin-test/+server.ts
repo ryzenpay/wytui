@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { apiRoute } from '$lib/server/openapi';
+import { internalFetch } from '$lib/server/utils/fetch';
 import type { RequestHandler } from './$types';
 
 export const POST = apiRoute('/api/settings/jellyfin-test', 'POST', {
@@ -36,7 +37,7 @@ export const POST = apiRoute('/api/settings/jellyfin-test', 'POST', {
 
 	try {
 		const baseUrl = url.replace(/\/$/, '');
-		const res = await fetch(`${baseUrl}/System/Info`, {
+		const res = await internalFetch(`${baseUrl}/System/Info`, {
 			headers: { 'X-Emby-Token': apiKey },
 			signal: AbortSignal.timeout(10000),
 		});
@@ -48,7 +49,21 @@ export const POST = apiRoute('/api/settings/jellyfin-test', 'POST', {
 		const info = await res.json();
 		return json({ success: true, serverName: info.ServerName || 'Jellyfin' });
 	} catch (e: any) {
-		const message = e.name === 'TimeoutError' ? 'Connection timed out' : (e.message || 'Connection failed');
+		let message: string;
+		if (e.name === 'TimeoutError') {
+			message = 'Connection timed out';
+		} else if (e.cause) {
+			const cause = e.cause as any;
+			if (cause.code === 'ECONNREFUSED') {
+				message = 'Connection refused — is Jellyfin running?';
+			} else if (cause.code === 'ENOTFOUND') {
+				message = `Could not resolve host — check the server URL`;
+			} else {
+				message = cause.message || 'Connection failed';
+			}
+		} else {
+			message = e.message || 'Connection failed';
+		}
 		return json({ success: false, error: message });
 	}
 }) satisfies RequestHandler;

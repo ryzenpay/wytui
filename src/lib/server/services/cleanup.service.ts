@@ -5,6 +5,7 @@ import { setTimeout as delay } from 'timers/promises';
 import { basename } from 'path';
 import { libraryService } from './library.service';
 import { sseEmitter } from '../sse/emitter';
+import { internalFetch } from '../utils/fetch';
 
 class CleanupService {
 	private running = false;
@@ -115,7 +116,7 @@ class CleanupService {
 		filepath: string,
 	): Promise<string | null> {
 		const searchTerm = filename.replace(/\.[^.]+$/, '');
-		const res = await fetch(
+		const res = await internalFetch(
 			`${baseUrl}/Items?searchTerm=${encodeURIComponent(searchTerm)}&Recursive=true&Fields=Path&Limit=25`,
 			{
 				headers: { 'X-Emby-Token': apiKey },
@@ -144,7 +145,7 @@ class CleanupService {
 		userIds: string[],
 	): Promise<boolean> {
 		for (const userId of userIds) {
-			const res = await fetch(
+			const res = await internalFetch(
 				`${baseUrl}/Users/${userId}/Items/${itemId}/UserData`,
 				{
 					headers: { 'X-Emby-Token': apiKey },
@@ -177,7 +178,7 @@ class CleanupService {
 		}
 
 		try {
-			const res = await fetch(`${baseUrl}/Items/${jellyfinItemId}`, {
+			const res = await internalFetch(`${baseUrl}/Items/${jellyfinItemId}`, {
 				method: 'DELETE',
 				headers: { 'X-Emby-Token': apiKey },
 				signal: AbortSignal.timeout(10000),

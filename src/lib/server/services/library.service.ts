@@ -7,6 +7,7 @@ import { musicMetadataService } from './music-metadata.service';
 import { ytdlpService } from './ytdlp.service';
 import { plexService } from './plex.service';
 import { effectiveCacheQuota } from '../permissions';
+import { internalFetch } from '../utils/fetch';
 
 function sanitizeFilename(name: string): string {
 	return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').trim() || 'Unknown';
@@ -585,7 +586,7 @@ class LibraryService {
 		if (settings.jellyfinUrl && settings.jellyfinApiKey) {
 			try {
 				const url = `${settings.jellyfinUrl.replace(/\/$/, '')}/Library/Refresh`;
-				await fetch(url, {
+				await internalFetch(url, {
 					method: 'POST',
 					headers: {
 						'X-Emby-Token': settings.jellyfinApiKey,
