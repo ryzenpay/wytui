@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
-	import { addToast } from '$lib/stores/toast.svelte';
+	import { addToast, removeToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
@@ -119,6 +119,7 @@
 				monFormUrl = '';
 				monFormOptions = { sponsorblock: false, subtitles: false, metadata: false };
 				showMonitorsForm = false;
+				addToast('success', 'Monitor added');
 				await loadMonitors();
 			} else {
 				const data = await res.json().catch(() => null);
@@ -130,6 +131,10 @@
 	}
 
 	async function toggleMonitor(id: string, enabled: boolean) {
+		let toastId: string | null = null;
+		const timer = setTimeout(() => {
+			toastId = addToast('info', enabled ? 'Pausing monitor...' : 'Resuming monitor...', 10000);
+		}, 350);
 		try {
 			await csrfFetch(`/api/monitors/${id}`, {
 				method: 'PATCH',
@@ -138,7 +143,10 @@
 			});
 			await loadMonitors();
 		} catch (e) {
-			console.error('Failed to toggle monitor:', e);
+			addToast('error', 'Failed to update monitor');
+		} finally {
+			clearTimeout(timer);
+			if (toastId) removeToast(toastId);
 		}
 	}
 
@@ -365,23 +373,27 @@
 							{/if}
 
 							<div class="actions">
-								<button class="btn btn-sm btn-icon btn-secondary" onclick={() => startEditMonitor(monitor)} aria-label="Edit" title="Edit">
+								<button class="btn btn-sm btn-secondary" onclick={() => startEditMonitor(monitor)} aria-label="Edit" title="Edit">
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+									Edit
 								</button>
 								<button
-									class="btn btn-sm btn-icon btn-secondary"
+									class="btn btn-sm btn-secondary"
 									onclick={() => toggleMonitor(monitor.id, monitor.enabled)}
 									aria-label={monitor.enabled ? 'Pause' : 'Resume'}
 									title={monitor.enabled ? 'Pause' : 'Resume'}
 								>
 									{#if monitor.enabled}
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+										Pause
 									{:else}
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+										Resume
 									{/if}
 								</button>
-								<button class="btn btn-sm btn-icon btn-danger" onclick={() => deleteMonitor(monitor.id)} aria-label="Delete" title="Delete">
+								<button class="btn btn-sm btn-danger" onclick={() => deleteMonitor(monitor.id)} aria-label="Delete" title="Delete">
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+									Delete
 								</button>
 							</div>
 						{/if}

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { onSSEEvent } from '$lib/stores/sse.svelte';
 	import { showConfirm } from '$lib/stores/modal.svelte';
-	import { addToast } from '$lib/stores/toast.svelte';
+	import { addToast, removeToast } from '$lib/stores/toast.svelte';
 	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
 	import Skeleton from '$lib/components/ui/Skeleton.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
@@ -26,7 +26,8 @@
 	let subsError = $state<FetchError | null>(null);
 	let profilesError = $state<FetchError | null>(null);
 	let checkingNow = $state<Set<string>>(new Set());
-	let checkResult = $state<{ id: string; message: string } | null>(null);
+	const checkTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+	const checkPendingToastDismiss = new Map<string, () => void>();
 	let showSubsForm = $state(false);
 	let subFormUrl = $state('');
 	let subFormProfileId = $state('');
@@ -95,14 +96,15 @@
 		loadSubscriptions();
 
 		const unsubChecked = onSSEEvent('subscription:checked', ({ id, name, newVideos }) => {
-			const message =
-				newVideos > 0
-					? `Found ${newVideos} new video${newVideos > 1 ? 's' : ''} for ${name}`
-					: `No new videos for ${name}`;
-			checkResult = { id, message };
-			setTimeout(() => {
-				if (checkResult?.id === id) checkResult = null;
-			}, 5000);
+			const safetyTimeout = checkTimeouts.get(id);
+			if (safetyTimeout) { clearTimeout(safetyTimeout); checkTimeouts.delete(id); }
+			const dismiss = checkPendingToastDismiss.get(id);
+			if (dismiss) { dismiss(); checkPendingToastDismiss.delete(id); }
+			checkingNow = new Set([...checkingNow].filter((x) => x !== id));
+			const message = newVideos > 0
+				? `Found ${newVideos} new video${newVideos > 1 ? 's' : ''} for ${name}`
+				: `No new videos for ${name}`;
+			addToast(newVideos > 0 ? 'success' : 'info', message);
 			loadSubscriptions();
 		});
 		const unsubBackfill = onSSEEvent('subscription:backfill', ({ name, totalVideos, newVideos }) => {
@@ -196,6 +198,7 @@
 				subFormSaveToLibrary = libraryConfigured;
 				subFormOptions = { sponsorblock: false, subtitles: false, metadata: false };
 				showSubsForm = false;
+				addToast('success', 'Subscription added');
 				await loadSubscriptions();
 			} else {
 				const data = await res.json().catch(() => null);
@@ -207,6 +210,10 @@
 	}
 
 	async function toggleSubscription(id: string, enabled: boolean) {
+		let toastId: string | null = null;
+		const timer = setTimeout(() => {
+			toastId = addToast('info', enabled ? 'Pausing subscription...' : 'Resuming subscription...', 10000);
+		}, 350);
 		try {
 			await csrfFetch(`/api/subscriptions/${id}`, {
 				method: 'PATCH',
@@ -215,8 +222,10 @@
 			});
 			await loadSubscriptions();
 		} catch (e) {
-			console.error('Failed to toggle subscription:', e);
 			addToast('error', 'Failed to update subscription');
+		} finally {
+			clearTimeout(timer);
+			if (toastId) removeToast(toastId);
 		}
 	}
 
@@ -239,12 +248,30 @@
 	async function checkNow(id: string) {
 		if (checkingNow.has(id)) return;
 		checkingNow = new Set([...checkingNow, id]);
+
+		let toastId: string | null = null;
+		const toastTimer = setTimeout(() => {
+			toastId = addToast('info', 'Checking for new videos...', 30000);
+		}, 350);
+		const dismissToast = () => { clearTimeout(toastTimer); if (toastId) removeToast(toastId); };
+		checkPendingToastDismiss.set(id, dismissToast);
+
+		const safetyTimeout = setTimeout(() => {
+			dismissToast();
+			checkPendingToastDismiss.delete(id);
+			checkingNow = new Set([...checkingNow].filter((x) => x !== id));
+		}, 60000);
+		checkTimeouts.set(id, safetyTimeout);
+
 		try {
 			await csrfFetch(`/api/subscriptions/${id}/check`, { method: 'POST' });
 		} catch (e) {
-			console.error('Failed to check subscription:', e);
-		} finally {
+			clearTimeout(safetyTimeout);
+			checkTimeouts.delete(id);
+			dismissToast();
+			checkPendingToastDismiss.delete(id);
 			checkingNow = new Set([...checkingNow].filter((x) => x !== id));
+			addToast('error', 'Failed to start check');
 		}
 	}
 
@@ -548,13 +575,9 @@
 								</p>
 							{/if}
 
-							{#if checkResult && checkResult.id === sub.id}
-								<p class="check-result">{checkResult.message}</p>
-							{/if}
-
 							<div class="actions">
 								<button
-									class="btn btn-sm btn-icon btn-primary"
+									class="btn btn-sm btn-primary"
 									onclick={() => checkNow(sub.id)}
 									disabled={checkingNow.has(sub.id)}
 									aria-label="Check now"
@@ -562,35 +585,42 @@
 								>
 									{#if checkingNow.has(sub.id)}
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+										Checking
 									{:else}
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+										Check
 									{/if}
 								</button>
-								<button class="btn btn-sm btn-icon btn-secondary" onclick={() => startEditSub(sub)} aria-label="Edit" title="Edit">
+								<button class="btn btn-sm btn-secondary" onclick={() => startEditSub(sub)} aria-label="Edit" title="Edit">
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+									Edit
 								</button>
 								<button
-									class="btn btn-sm btn-icon btn-secondary"
+									class="btn btn-sm btn-secondary"
 									onclick={() => toggleSubscription(sub.id, sub.enabled)}
 									aria-label={sub.enabled ? 'Pause' : 'Resume'}
 									title={sub.enabled ? 'Pause' : 'Resume'}
 								>
 									{#if sub.enabled}
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+										Pause
 									{:else}
 										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+										Resume
 									{/if}
 								</button>
 								<button
-									class="btn btn-sm btn-icon btn-secondary"
+									class="btn btn-sm btn-secondary"
 									onclick={() => (showBackfillMenu = showBackfillMenu === sub.id ? null : sub.id)}
 									aria-label={showBackfillMenu === sub.id ? 'Close backfill' : 'Backfill'}
 									title={showBackfillMenu === sub.id ? 'Close backfill' : 'Backfill'}
 								>
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+									{showBackfillMenu === sub.id ? 'Close' : 'Backfill'}
 								</button>
-								<button class="btn btn-sm btn-icon btn-danger" onclick={() => deleteSubscription(sub.id)} aria-label="Delete" title="Delete">
+								<button class="btn btn-sm btn-danger" onclick={() => deleteSubscription(sub.id)} aria-label="Delete" title="Delete">
 									<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+									Delete
 								</button>
 							</div>
 
@@ -848,12 +878,6 @@
 		margin-bottom: var(--spacing-md);
 		font-size: 0.75rem;
 		color: var(--color-text-secondary);
-	}
-
-	.check-result {
-		font-size: 0.85rem;
-		color: var(--color-accent-primary);
-		margin: var(--spacing-xs) 0 0;
 	}
 
 	.form-error {
