@@ -255,6 +255,13 @@
 		!download.title &&
 		['PENDING', 'FETCHING_INFO', 'DOWNLOADING'].includes(download.status)
 	);
+
+	let urlCopied = $state(false);
+	async function copySourceUrl() {
+		await navigator.clipboard.writeText(download.url);
+		urlCopied = true;
+		setTimeout(() => (urlCopied = false), 1500);
+	}
 </script>
 
 <svelte:head>
@@ -508,7 +515,21 @@
 
 			<div class="source-url">
 				<span class="meta-label">Source</span>
-				<a href={download.url} target="_blank" rel="noopener noreferrer" class="url-link">{download.url}</a>
+				<div class="url-row">
+					<a href={download.url} target="_blank" rel="noopener noreferrer" class="url-link">{download.url}</a>
+					<button
+						class="copy-url-btn"
+						class:copied={urlCopied}
+						onclick={copySourceUrl}
+						title={urlCopied ? 'Copied!' : 'Copy source URL'}
+					>
+						{#if urlCopied}
+							<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+						{:else}
+							<svg viewBox="0 0 20 20" fill="currentColor" width="14" height="14"><path fill-rule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5zm4.03-.78a.75.75 0 011.06 0L15 10.38V7.75a.75.75 0 011.5 0v4.5a.75.75 0 01-.75.75h-4.5a.75.75 0 010-1.5h2.63L8.28 5.78a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>
+						{/if}
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -899,6 +920,12 @@
 		gap: 4px;
 	}
 
+	.url-row {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--spacing-xs);
+	}
+
 	.url-link {
 		font-size: 0.8125rem;
 		color: var(--color-accent-primary);
@@ -908,6 +935,30 @@
 
 	.url-link:hover {
 		text-decoration: underline;
+	}
+
+	.copy-url-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: none;
+		border: none;
+		color: var(--color-text-tertiary);
+		cursor: pointer;
+		padding: 2px;
+		border-radius: var(--radius-sm);
+		transition: all var(--transition-fast);
+		flex-shrink: 0;
+		margin-top: 1px;
+	}
+
+	.copy-url-btn:hover {
+		color: var(--color-accent-primary);
+		background: var(--color-bg-tertiary);
+	}
+
+	.copy-url-btn.copied {
+		color: var(--color-status-success);
 	}
 
 	.similar-section {
