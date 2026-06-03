@@ -3,8 +3,28 @@ import { prisma } from '$lib/server/db';
 import { createReadStream, existsSync } from 'fs';
 import { stat } from 'fs/promises';
 import { resolve, normalize, sep } from 'path';
+import type { Readable } from 'stream';
 import { apiRoute } from '$lib/server/openapi';
 import type { RequestHandler } from './$types';
+
+function nodeStreamToWeb(nodeStream: Readable): ReadableStream<Uint8Array> {
+	return new ReadableStream({
+		start(controller) {
+			nodeStream.on('data', (chunk: Buffer) => {
+				try { controller.enqueue(new Uint8Array(chunk)); } catch { nodeStream.destroy(); }
+			});
+			nodeStream.on('end', () => {
+				try { controller.close(); } catch { /* already closed */ }
+			});
+			nodeStream.on('error', (err) => {
+				try { controller.error(err); } catch { nodeStream.destroy(); }
+			});
+		},
+		cancel() {
+			nodeStream.destroy();
+		},
+	});
+}
 
 function sanitizeFilename(filename: string): string {
 	return filename
@@ -103,8 +123,8 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 					});
 				}
 
-				const stream = createReadStream(download.filepath, { start, end });
-				return new Response(stream as any, {
+				const stream = nodeStreamToWeb(createReadStream(download.filepath, { start, end }));
+				return new Response(stream, {
 					status: 206,
 					headers: {
 						'Content-Type': mimeType,
@@ -119,8 +139,8 @@ export const GET = apiRoute('/api/files/[id]', 'GET', {
 			}
 		}
 
-		const stream = createReadStream(download.filepath);
-		return new Response(stream as any, {
+		const stream = nodeStreamToWeb(createReadStream(download.filepath));
+		return new Response(stream, {
 			headers: {
 				'Content-Type': mimeType,
 				'Content-Length': fileSize.toString(),

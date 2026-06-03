@@ -973,6 +973,8 @@
 	.video-player-wrapper {
 		position: relative;
 		width: 100%;
+		aspect-ratio: 16 / 9;
+		max-height: 80vh;
 		background: #000;
 		border-radius: var(--radius-lg);
 		overflow: hidden;
@@ -987,8 +989,8 @@
 
 	.video-element {
 		width: 100%;
+		height: 100%;
 		display: block;
-		max-height: 70vh;
 		cursor: pointer;
 	}
 
