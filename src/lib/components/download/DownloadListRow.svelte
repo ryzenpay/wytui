@@ -18,6 +18,12 @@
 	let statusLabel = $derived(getDownloadStatusLabel(download.status));
 	let thumbnailFailed = $state(false);
 
+	const VIDEO_EXTENSIONS = new Set(['MP4', 'WEBM', 'MKV', 'FLV', 'MOV', 'AVI']);
+	let mediaType = $derived(download.filename?.split('.').pop()?.toUpperCase() || null);
+	let isVideoCompleted = $derived(
+		download.status === 'COMPLETED' && mediaType !== null && VIDEO_EXTENSIONS.has(mediaType)
+	);
+
 	let formattedSize = $derived(download.filesize ? formatBytes(download.filesize) : null);
 	let formattedDuration = $derived(download.duration ? formatDuration(download.duration) : null);
 
@@ -44,6 +50,12 @@
 				alt={download.title || 'Thumbnail'}
 				onerror={() => (thumbnailFailed = true)}
 			/>
+		{:else if isVideoCompleted}
+			<video
+				src="/api/files/{download.id}#t=0.001"
+				preload="metadata"
+				muted
+			></video>
 		{:else}
 			<div class="thumbnail-placeholder"></div>
 		{/if}
@@ -106,7 +118,8 @@
 		background: var(--color-bg-tertiary);
 	}
 
-	.thumbnail img {
+	.thumbnail img,
+	.thumbnail video {
 		width: 100%;
 		height: 100%;
 		object-fit: cover;

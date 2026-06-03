@@ -313,6 +313,13 @@
 					alt={download.title || 'Thumbnail'}
 					onerror={() => thumbnailFailed = true}
 				/>
+			{:else if isPreviewable && !showPreview}
+				<video
+					class="thumbnail-img"
+					src="/api/files/{download.id}#t=0.001"
+					preload="metadata"
+					muted
+				></video>
 			{/if}
 			{#if !showPreview && download.status === 'COMPLETED'}
 				<div class="play-overlay">
