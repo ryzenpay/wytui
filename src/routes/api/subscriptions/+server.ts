@@ -145,6 +145,13 @@ export const POST = apiRoute('/api/subscriptions', 'POST', {
 			throw error(400, 'Check interval must be between 60 and 86400 seconds');
 		}
 
+		const existing = await prisma.subscription.findFirst({
+			where: { url: data.url, userId },
+		});
+		if (existing) {
+			throw error(409, 'A subscription for this URL already exists');
+		}
+
 		const customFlags = Array.isArray(data.customFlags) ? data.customFlags : [];
 		if (customFlags.length > 0) {
 			const badFlag = ytdlpService.findDangerousFlag(customFlags);
@@ -153,22 +160,10 @@ export const POST = apiRoute('/api/subscriptions', 'POST', {
 			}
 		}
 
-		let resolvedName = data.name;
-		if (resolvedName === data.url) {
-			try {
-				const channelName = await ytdlpService.fetchChannelName(data.url);
-				if (channelName) {
-					resolvedName = channelName;
-				}
-			} catch {
-				// Fall back to the URL as name
-			}
-		}
-
 		const subscription = await prisma.subscription.create({
 			data: {
 				url: data.url,
-				name: resolvedName,
+				name: data.name,
 				type: data.type || 'CHANNEL',
 				profileId: data.profileId,
 				checkInterval,
@@ -182,6 +177,18 @@ export const POST = apiRoute('/api/subscriptions', 'POST', {
 		});
 
 		await subscriptionService.scheduleSubscription(subscription);
+
+		// Resolve the channel name in the background so the response is immediate
+		if (data.name === data.url) {
+			ytdlpService.fetchChannelName(data.url).then(async (channelName) => {
+				if (channelName && channelName !== data.url) {
+					await prisma.subscription.update({
+						where: { id: subscription.id },
+						data: { name: channelName },
+					}).catch(() => {});
+				}
+			}).catch(() => {});
+		}
 
 		subscriptionService.seedArchive(subscription.id).catch((err) =>
 			console.error(`[Subscriptions] Failed to seed archive for ${subscription.name}:`, err)

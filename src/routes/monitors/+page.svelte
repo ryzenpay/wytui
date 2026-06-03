@@ -326,11 +326,13 @@
 									</div>
 								</div>
 								<div class="actions">
-									<button class="btn btn-sm btn-primary btn-icon" onclick={saveEditMonitor} aria-label="Save" title="Save">
+									<button class="btn btn-sm btn-primary" onclick={saveEditMonitor} aria-label="Save" title="Save">
 										<CheckIcon />
+										Save
 									</button>
-									<button class="btn btn-sm btn-secondary btn-icon" onclick={cancelEditMonitor} aria-label="Cancel" title="Cancel">
+									<button class="btn btn-sm btn-secondary" onclick={cancelEditMonitor} aria-label="Cancel" title="Cancel">
 										<XIcon />
+										Cancel
 									</button>
 								</div>
 							</div>

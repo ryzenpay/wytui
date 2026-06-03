@@ -112,6 +112,13 @@ export const POST = apiRoute('/api/monitors', 'POST', {
 			throw error(400, 'Invalid monitor type');
 		}
 
+		const existing = await prisma.monitor.findFirst({
+			where: { url: data.url },
+		});
+		if (existing) {
+			throw error(409, 'A monitor for this URL already exists');
+		}
+
 		const customFlags = Array.isArray(data.customFlags) ? data.customFlags : [];
 		if (customFlags.length > 0) {
 			const badFlag = ytdlpService.findDangerousFlag(customFlags);

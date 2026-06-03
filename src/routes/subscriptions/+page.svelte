@@ -35,6 +35,7 @@
 	let subFormAutoDownload = $state(true);
 	let subFormSaveToLibrary = $state(false);
 	let subFormOptions = $state({ sponsorblock: false, subtitles: false, metadata: false });
+	let subFormSubmitting = $state(false);
 
 	// Subscription edit state
 	let editingSub = $state<any | null>(null);
@@ -177,6 +178,7 @@
 	async function handleSubsSubmit(e: Event) {
 		e.preventDefault();
 		subFormError = '';
+		subFormSubmitting = true;
 		try {
 			const res = await csrfFetch('/api/subscriptions', {
 				method: 'POST',
@@ -206,6 +208,8 @@
 			}
 		} catch (e) {
 			subFormError = 'Failed to create subscription';
+		} finally {
+			subFormSubmitting = false;
 		}
 	}
 
@@ -434,7 +438,9 @@
 				{#if subFormError}
 					<p class="form-error">{subFormError}</p>
 				{/if}
-				<button type="submit" class="btn btn-primary">Create Subscription</button>
+				<button type="submit" class="btn btn-primary" disabled={subFormSubmitting}>
+					{subFormSubmitting ? 'Adding…' : 'Create Subscription'}
+				</button>
 			</form>
 		{/if}
 
@@ -529,11 +535,13 @@
 									</div>
 								</div>
 								<div class="actions">
-									<button class="btn btn-sm btn-primary btn-icon" onclick={saveEditSub} aria-label="Save" title="Save">
+									<button class="btn btn-sm btn-primary" onclick={saveEditSub} aria-label="Save" title="Save">
 										<CheckIcon />
+										Save
 									</button>
-									<button class="btn btn-sm btn-secondary btn-icon" onclick={cancelEditSub} aria-label="Cancel" title="Cancel">
+									<button class="btn btn-sm btn-secondary" onclick={cancelEditSub} aria-label="Cancel" title="Cancel">
 										<XIcon />
+										Cancel
 									</button>
 								</div>
 							</div>
