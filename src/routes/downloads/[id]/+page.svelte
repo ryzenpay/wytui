@@ -477,7 +477,6 @@
 			<div class="actions">
 				{#if download.status === 'COMPLETED'}
 					<DownloadVersionPicker downloadId={download.id} label="Download File" className="btn btn-primary" bind:open={downloadPickerOpen} />
-					<AddToPlaylistMenu downloadId={download.id} storagePool={download.storagePool} />
 					{#if download.storagePool === 'cache'}
 						{#if libraryRequestStatus === 'pending'}
 							<button class="btn btn-secondary" disabled title="Library save requested">
@@ -496,6 +495,7 @@
 							</button>
 						{/if}
 					{/if}
+					<AddToPlaylistMenu downloadId={download.id} storagePool={download.storagePool} />
 					{#if data.jellyfinUrl}
 						<button class="btn btn-secondary" onclick={openInJellyfin} title="Open in Jellyfin" aria-label="Open in Jellyfin">
 							<ExternalLinkIcon />
