@@ -85,11 +85,12 @@ class SubscriptionService {
 
 			console.log(`[Subscriptions] Checking ${subscription.name}...`);
 
-			// Get latest videos from channel
-			const videos = await this.getLatestVideos(subscription.url);
+			// Get latest videos from channel, including real publish dates so we can
+			// tell genuinely-new uploads apart from back-catalog / pre-seeded entries.
+			const videos = await this.getLatestVideosWithDates(subscription.url);
 
 			// Filter out already downloaded videos
-			const newVideos = await this.filterNewVideos(videos);
+			const newVideos = await this.filterNewVideos(videos, subscription);
 
 			if (newVideos.length > 0 && subscription.autoDownload) {
 				console.log(`[Subscriptions] Found ${newVideos.length} new videos for ${subscription.name}`);
@@ -134,6 +135,91 @@ class SubscriptionService {
 	 */
 	private async getLatestVideos(url: string): Promise<any[]> {
 		return this.fetchPlaylistEntries(url, { limit: SubscriptionService.CHECK_DEPTH });
+	}
+
+	/**
+	 * Get latest videos with publish dates and live status (full extraction).
+	 *
+	 * The subscription checker needs the real upload timestamp of each video so it
+	 * can distinguish a genuinely-new upload from a back-catalog entry that was
+	 * pre-seeded into the archive. Flat-playlist mode does not return timestamps,
+	 * so this does a single full extraction limited to CHECK_DEPTH videos.
+	 */
+	private async getLatestVideosWithDates(url: string): Promise<any[]> {
+		ytdlpService.validateUrl(url);
+
+		// Unit Separator — won't appear in titles, so a single delimited line per
+		// video can be parsed without the fragile "group every 3 lines" assumption.
+		const SEP = String.fromCharCode(31);
+
+		return new Promise((resolve, reject) => {
+			const args = [
+				'--no-download',
+				'--print',
+				`%(id)s${SEP}%(title)s${SEP}%(webpage_url)s${SEP}%(timestamp)s${SEP}%(live_status)s`,
+				'--playlist-end',
+				SubscriptionService.CHECK_DEPTH.toString(),
+				url,
+			];
+
+			const proc = spawn(ytdlpService.getPath(), args);
+			let output = '';
+			let error = '';
+			let settled = false;
+
+			const timeout = setTimeout(() => {
+				if (settled) return;
+				settled = true;
+				try { proc.kill('SIGKILL'); } catch {}
+				reject(new Error('yt-dlp playlist fetch timed out'));
+			}, 120000);
+
+			proc.stdout.on('data', (data) => {
+				output += data.toString();
+			});
+
+			proc.stderr.on('data', (data) => {
+				error += data.toString();
+			});
+
+			proc.on('error', (err) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timeout);
+				reject(err);
+			});
+
+			proc.on('close', (code) => {
+				if (settled) return;
+				settled = true;
+				clearTimeout(timeout);
+
+				if (code !== 0) {
+					reject(new Error(`yt-dlp failed: ${error}`));
+					return;
+				}
+
+				const videos = [];
+				for (const line of output.split('\n')) {
+					if (!line.trim()) continue;
+					const parts = line.split(SEP);
+					if (parts.length < 3) continue;
+
+					const [id, title, webpageUrl, tsRaw, liveStatus] = parts;
+					const ts = tsRaw && tsRaw !== 'NA' ? parseInt(tsRaw, 10) : NaN;
+
+					videos.push({
+						id,
+						title,
+						url: webpageUrl,
+						uploadedAt: Number.isFinite(ts) ? new Date(ts * 1000) : null,
+						liveStatus: liveStatus && liveStatus !== 'NA' ? liveStatus : null,
+					});
+				}
+
+				resolve(videos);
+			});
+		});
 	}
 
 	/**
@@ -295,12 +381,30 @@ class SubscriptionService {
 
 	/**
 	 * Filter out already downloaded videos
-	 * Checks both the archive and pending/active downloads to prevent duplicates
+	 * Checks both the archive and pending/active downloads to prevent duplicates.
+	 *
+	 * When `subscription` is provided and the videos carry publish dates (the
+	 * scheduled-check path), the archive is no longer treated as an unconditional
+	 * skip: a video that was only *seeded* (archived without ever being downloaded)
+	 * is reconsidered if it was actually published after the subscription was
+	 * created. This heals the case where a scheduled/premiere video gets pre-seeded
+	 * into the global archive and is then silently skipped once it goes public.
 	 */
-	private async filterNewVideos(videos: any[]): Promise<any[]> {
+	private async filterNewVideos(videos: any[], subscription?: any): Promise<any[]> {
 		const newVideos = [];
+		const subCreatedAt = subscription?.createdAt ? new Date(subscription.createdAt).getTime() : null;
+		const now = Date.now();
 
 		for (const video of videos) {
+			// Skip videos that aren't actually published yet (upcoming premieres /
+			// in-progress livestreams, or a publish timestamp still in the future).
+			if (video.liveStatus === 'is_upcoming' || video.liveStatus === 'is_live') {
+				continue;
+			}
+			if (video.uploadedAt instanceof Date && video.uploadedAt.getTime() > now) {
+				continue;
+			}
+
 			const archived = await prisma.archive.findUnique({
 				where: { videoId: video.id },
 			});
@@ -320,7 +424,22 @@ class SubscriptionService {
 						await prisma.download.delete({ where: { id: download.id } });
 					}
 				} else {
-					continue;
+					// Seed-only archive entry (recorded without ever being downloaded).
+					// Only skip it if the video is genuinely older than the subscription;
+					// a video published *after* we subscribed but pre-seeded (e.g. it was
+					// a scheduled premiere when the channel was seeded) must not be lost.
+					const publishedAfterSub =
+						subCreatedAt != null &&
+						video.uploadedAt instanceof Date &&
+						video.uploadedAt.getTime() > subCreatedAt;
+
+					if (!publishedAfterSub) {
+						continue;
+					}
+
+					// Stale skip-entry for a genuinely new upload — clear it and treat
+					// the video as new so it downloads (and re-archives properly).
+					await prisma.archive.delete({ where: { videoId: video.id } }).catch(() => {});
 				}
 			}
 
