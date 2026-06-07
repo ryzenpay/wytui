@@ -749,7 +749,7 @@
 		</div>
 	{/if}
 
-	<div class="section">
+	<div class="section completed-card">
 		<div class="section-header">
 			<div class="section-header-left">
 				<h2>Completed ({searchQuery ? searchTotal : filteredCompletedDownloads.length})</h2>
@@ -970,6 +970,7 @@
 				</div>
 			</div>
 		</div>
+		<div class="completed-body">
 		{#if completedLoading}
 			{#if viewMode === 'grid'}
 				<Skeleton count={6} variant="card" />
@@ -1091,6 +1092,7 @@
 				</div>
 			</div>
 		{/if}
+		</div>
 	</div>
 </div>
 
@@ -1111,7 +1113,12 @@
 
 	.form-section { align-self: start; }
 	.form-section h2 { margin-bottom: var(--spacing-lg); }
-	.active-section { min-width: 0; }
+	.active-section {
+		min-width: 0;
+		align-self: stretch;
+		border-left: 1px solid var(--border);
+		padding-left: var(--spacing-xl);
+	}
 	.active-section h2 { margin-bottom: var(--spacing-lg); }
 
 	.downloads-list {
@@ -1143,6 +1150,20 @@
 	.section-header-filters { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-xs); }
 	.section-header h2 { margin: 0; line-height: 1; font-size: 1.25rem; }
 	.section > h2 { margin-bottom: var(--spacing-lg); }
+
+	.completed-card {
+		background: var(--bg-secondary);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-lg);
+	}
+	.completed-card .section-header {
+		margin-bottom: 0;
+		padding: var(--spacing-lg);
+		background: var(--bg-tertiary);
+		border-bottom: 1px solid var(--border);
+		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+	}
+	.completed-body { padding: var(--spacing-lg); }
 
 	.select-btn {
 		height: var(--control-height);
@@ -1512,6 +1533,7 @@
 		.page { padding: 0 var(--spacing-sm); }
 		.storage-row { flex-direction: column; }
 		.downloads-layout { grid-template-columns: 1fr; gap: var(--spacing-lg); }
+		.active-section { border-left: none; padding-left: 0; }
 		.downloads-grid { grid-template-columns: 1fr; }
 		.search-bar-section { flex-direction: column; }
 		.search-bar-wrapper { min-width: unset; }

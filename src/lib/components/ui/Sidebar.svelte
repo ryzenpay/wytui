@@ -72,7 +72,7 @@
 <!-- Desktop sidebar -->
 <aside class="sidebar" class:collapsed>
 	<div class="sidebar-header">
-		<a href="/" class="logo">
+		<a href="/" class="logo" title="wytui (W-Y-T-U-I)">
 			{#if !collapsed}
 				<div class="logo-row">
 					<h1>wytui</h1>
@@ -96,9 +96,8 @@
 		</a>
 		<button class="collapse-btn" onclick={() => collapsed = !collapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
 			<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-				<path d="M2 4h12" />
-				<path d="M2 8h12" />
-				<path d="M2 12h12" />
+				<rect x="2" y="3" width="12" height="10" rx="1.5" />
+				<path d="M6 3v10" />
 			</svg>
 		</button>
 	</div>

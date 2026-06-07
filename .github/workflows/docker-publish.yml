@@ -13,6 +13,7 @@ env:
 
 jobs:
   build:
+    if: github.repository == 'willuhmjs/wytui'
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -77,7 +78,7 @@ jobs:
 
   merge:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: github.repository == 'willuhmjs/wytui' && github.event_name != 'pull_request'
     needs: build
     permissions:
       contents: read
