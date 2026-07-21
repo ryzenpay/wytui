@@ -4,7 +4,9 @@
       "Bash(npx svelte-check *)",
       "Bash(npm install *)",
       "Bash(npx tsc *)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(npx prisma *)",
+      "Bash(npm run *)"
     ]
   }
 }

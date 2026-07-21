@@ -12,6 +12,7 @@ env:
 
 jobs:
   helm:
+    if: github.repository == 'willuhmjs/wytui'
     runs-on: ubuntu-latest
     permissions:
       contents: read
