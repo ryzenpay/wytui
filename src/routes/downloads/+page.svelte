@@ -1,24 +1,34 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { csrfFetch, safeFetchJson, isFetchError, type FetchError } from '$lib/utils/fetch';
-	import DownloadForm from '$lib/components/download/DownloadForm.svelte';
-	import DownloadCard from '$lib/components/download/DownloadCard.svelte';
-	import DownloadListRow from '$lib/components/download/DownloadListRow.svelte';
-	import Skeleton from '$lib/components/ui/Skeleton.svelte';
-	import EmptyState from '$lib/components/ui/EmptyState.svelte';
-	import ErrorMessage from '$lib/components/ui/ErrorMessage.svelte';
-	import ViewToggle from '$lib/components/ui/ViewToggle.svelte';
-	import { getSSEState, onSSEEvent } from '$lib/stores/sse.svelte';
-	import { showConfirm } from '$lib/stores/modal.svelte';
-	import { addToast, addStickyToast, updateToast, resolveToast } from '$lib/stores/toast.svelte';
-	import { formatBytes, formatTimestamp } from '$lib/utils/format';
-	import { focusOnMount } from '$lib/utils/a11y';
-	import CheckSquareIcon from '$lib/components/icons/CheckSquareIcon.svelte';
-	import FolderDownIcon from '$lib/components/icons/FolderDownIcon.svelte';
-	import TrashIcon from '$lib/components/icons/TrashIcon.svelte';
-	import ListPlusIcon from '$lib/components/icons/ListPlusIcon.svelte';
+	import { onMount } from "svelte";
+	import { page } from "$app/stores";
+	import { goto } from "$app/navigation";
+	import {
+		csrfFetch,
+		safeFetchJson,
+		isFetchError,
+		type FetchError,
+	} from "$lib/utils/fetch";
+	import DownloadForm from "$lib/components/download/DownloadForm.svelte";
+	import DownloadCard from "$lib/components/download/DownloadCard.svelte";
+	import DownloadListRow from "$lib/components/download/DownloadListRow.svelte";
+	import Skeleton from "$lib/components/ui/Skeleton.svelte";
+	import EmptyState from "$lib/components/ui/EmptyState.svelte";
+	import ErrorMessage from "$lib/components/ui/ErrorMessage.svelte";
+	import ViewToggle from "$lib/components/ui/ViewToggle.svelte";
+	import { getSSEState, onSSEEvent } from "$lib/stores/sse.svelte";
+	import { showConfirm } from "$lib/stores/modal.svelte";
+	import {
+		addToast,
+		addStickyToast,
+		updateToast,
+		resolveToast,
+	} from "$lib/stores/toast.svelte";
+	import { formatBytes, formatTimestamp } from "$lib/utils/format";
+	import { focusOnMount } from "$lib/utils/a11y";
+	import CheckSquareIcon from "$lib/components/icons/CheckSquareIcon.svelte";
+	import FolderDownIcon from "$lib/components/icons/FolderDownIcon.svelte";
+	import TrashIcon from "$lib/components/icons/TrashIcon.svelte";
+	import ListPlusIcon from "$lib/components/icons/ListPlusIcon.svelte";
 
 	let sseState = getSSEState();
 
@@ -28,19 +38,29 @@
 	let completedOffset = $state(0);
 	let hasMoreDownloads = $state(false);
 	let loadingMoreDownloads = $state(false);
-	let completedFilter = $state<'all' | 'cache' | 'library'>('all');
-	let watchStateFilter = $state<'all' | 'watched' | 'unwatched' | 'in_progress'>('all');
-	let channelFilter = $state<string>('all');
-	let channelSearch = $state('');
+	let completedFilter = $state<"all" | "cache" | "library">("all");
+	let watchStateFilter = $state<
+		"all" | "watched" | "unwatched" | "in_progress"
+	>("all");
+	let channelFilter = $state<string>("all");
+	let channelSearch = $state("");
 	let channelDropdownOpen = $state(false);
-	let sortOption = $state<'newest' | 'oldest' | 'largest' | 'smallest' | 'longest' | 'shortest' | 'uploader'>('newest');
+	let sortOption = $state<
+		| "newest"
+		| "oldest"
+		| "largest"
+		| "smallest"
+		| "longest"
+		| "shortest"
+		| "uploader"
+	>("newest");
 	let sortDropdownOpen = $state(false);
-	let resolutionFilter = $state<string>('all');
+	let resolutionFilter = $state<string>("all");
 	let resolutionDropdownOpen = $state(false);
 	let watchStateDropdownOpen = $state(false);
-	let dateFrom = $state('');
-	let dateTo = $state('');
-	let searchQuery = $state('');
+	let dateFrom = $state("");
+	let dateTo = $state("");
+	let searchQuery = $state("");
 	let searchResults = $state<any[]>([]);
 	let searchTotal = $state(0);
 	let searchOffset = $state(0);
@@ -51,7 +71,7 @@
 	let subtitleMatches = $state<any[]>([]);
 	let subtitleTotal = $state(0);
 	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-	let viewMode = $state<'grid' | 'list'>('grid');
+	let viewMode = $state<"grid" | "list">("grid");
 	let selectionMode = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
 	let bulkActing = $state(false);
@@ -61,28 +81,54 @@
 	function flashBulkSuccess() {
 		bulkSuccess = true;
 		if (bulkSuccessTimer) clearTimeout(bulkSuccessTimer);
-		bulkSuccessTimer = setTimeout(() => { bulkSuccess = false; }, 900);
+		bulkSuccessTimer = setTimeout(() => {
+			bulkSuccess = false;
+		}, 900);
 	}
 
-	let jellyfinUrl = $state('');
+	let jellyfinUrl = $state("");
 	let libraryConfigured = $state(false);
-	let cacheUsage = $state<{ usedBytes: string; quotaBytes: string; percentage: number } | null>(null);
-	let libraryUsage = $state<{ video: { usedBytes: string; count: number } | null; music: { usedBytes: string; count: number } | null } | null>(null);
+	let cacheUsage = $state<{
+		usedBytes: string;
+		quotaBytes: string;
+		percentage: number;
+	} | null>(null);
+	let libraryUsage = $state<{
+		video: { usedBytes: string; count: number } | null;
+		music: { usedBytes: string; count: number } | null;
+	} | null>(null);
 	let clearingCache = $state(false);
+	let failedDownloads = $state<any[]>([]);
+	let failedLoading = $state(false);
+	let diskInfo = $state<{
+		totalBytes: string;
+		availableBytes: string;
+	} | null>(null);
 
 	let poolFilteredDownloads = $derived(
-		completedFilter === 'all'
+		completedFilter === "all"
 			? completedDownloads
-			: completedDownloads.filter((d) => d.storagePool === completedFilter)
+			: completedDownloads.filter(
+					(d) => d.storagePool === completedFilter,
+				),
 	);
 
 	let availableChannels = $derived(
-		[...new Set(poolFilteredDownloads.map((d) => d.uploader).filter(Boolean))].sort() as string[]
+		[
+			...new Set(
+				poolFilteredDownloads.map((d) => d.uploader).filter(Boolean),
+			),
+		].sort() as string[],
 	);
 
 	$effect(() => {
-		if (!completedLoading && channelFilter !== 'all' && completedDownloads.length > 0 && !availableChannels.includes(channelFilter)) {
-			channelFilter = 'all';
+		if (
+			!completedLoading &&
+			channelFilter !== "all" &&
+			completedDownloads.length > 0 &&
+			!availableChannels.includes(channelFilter)
+		) {
+			channelFilter = "all";
 		}
 	});
 
@@ -98,8 +144,10 @@
 
 	let filteredChannelOptions = $derived(
 		channelSearch
-			? availableChannels.filter((c) => c.toLowerCase().includes(channelSearch.toLowerCase()))
-			: availableChannels
+			? availableChannels.filter((c) =>
+					c.toLowerCase().includes(channelSearch.toLowerCase()),
+				)
+			: availableChannels,
 	);
 
 	let filtersInitialized = false;
@@ -115,20 +163,41 @@
 		}
 	});
 
-	function buildSearchParams(q: string, sp: string, uf: string, ws: string, rf: string, df: string, dt: string, offset: number) {
-		const params = new URLSearchParams({ q, limit: String(DOWNLOADS_PAGE_SIZE), offset: String(offset) });
-		if (sp !== 'all') params.set('storagePool', sp);
-		if (uf !== 'all') params.set('uploader', uf);
-		if (ws !== 'all') params.set('watchState', ws);
+	function buildSearchParams(
+		q: string,
+		sp: string,
+		uf: string,
+		ws: string,
+		rf: string,
+		df: string,
+		dt: string,
+		offset: number,
+	) {
+		const params = new URLSearchParams({
+			q,
+			limit: String(DOWNLOADS_PAGE_SIZE),
+			offset: String(offset),
+		});
+		if (sp !== "all") params.set("storagePool", sp);
+		if (uf !== "all") params.set("uploader", uf);
+		if (ws !== "all") params.set("watchState", ws);
 		const heightRange = getHeightRange(rf);
-		if (heightRange.min) params.set('minHeight', String(heightRange.min));
-		if (heightRange.max) params.set('maxHeight', String(heightRange.max));
-		if (df) params.set('dateFrom', df);
-		if (dt) params.set('dateTo', dt);
+		if (heightRange.min) params.set("minHeight", String(heightRange.min));
+		if (heightRange.max) params.set("maxHeight", String(heightRange.max));
+		if (df) params.set("dateFrom", df);
+		if (dt) params.set("dateTo", dt);
 		return params;
 	}
 
-	async function runSearch(q: string, sp: string, uf: string, ws: string, rf: string, df: string, dt: string) {
+	async function runSearch(
+		q: string,
+		sp: string,
+		uf: string,
+		ws: string,
+		rf: string,
+		df: string,
+		dt: string,
+	) {
 		searchLoading = true;
 		searchError = null;
 		searchOffset = 0;
@@ -150,7 +219,11 @@
 			hasMoreSearch = false;
 			searchError = isFetchError(e)
 				? e
-				: { type: 'unknown', message: 'Search failed. Please try again.', canRetry: true };
+				: {
+						type: "unknown",
+						message: "Search failed. Please try again.",
+						canRetry: true,
+					};
 		} finally {
 			searchLoading = false;
 		}
@@ -160,14 +233,23 @@
 		if (loadingMoreSearch || !hasMoreSearch || !searchQuery.trim()) return;
 		loadingMoreSearch = true;
 		try {
-			const params = buildSearchParams(searchQuery, completedFilter, channelFilter, watchStateFilter, resolutionFilter, dateFrom, dateTo, searchOffset);
+			const params = buildSearchParams(
+				searchQuery,
+				completedFilter,
+				channelFilter,
+				watchStateFilter,
+				resolutionFilter,
+				dateFrom,
+				dateTo,
+				searchOffset,
+			);
 			const data = await safeFetchJson<any>(`/api/search?${params}`);
 			const results = data.results || data;
 			searchResults = [...searchResults, ...results];
 			searchOffset += results.length;
 			hasMoreSearch = results.length === DOWNLOADS_PAGE_SIZE;
 		} catch (e) {
-			console.error('Failed to load more search results:', e);
+			console.error("Failed to load more search results:", e);
 		} finally {
 			loadingMoreSearch = false;
 		}
@@ -175,7 +257,15 @@
 
 	function retrySearch() {
 		if (!searchQuery.trim()) return;
-		runSearch(searchQuery, completedFilter, channelFilter, watchStateFilter, resolutionFilter, dateFrom, dateTo);
+		runSearch(
+			searchQuery,
+			completedFilter,
+			channelFilter,
+			watchStateFilter,
+			resolutionFilter,
+			dateFrom,
+			dateTo,
+		);
 	}
 
 	$effect(() => {
@@ -202,7 +292,10 @@
 		}
 
 		searchLoading = true;
-		searchDebounceTimer = setTimeout(() => runSearch(q, sp, uf, ws, rf, df, dt), 300);
+		searchDebounceTimer = setTimeout(
+			() => runSearch(q, sp, uf, ws, rf, df, dt),
+			300,
+		);
 	});
 
 	let filteredCompletedDownloads = $derived.by(() => {
@@ -212,32 +305,49 @@
 		}
 
 		// Otherwise use normal filtering
-		let filtered = channelFilter === 'all'
-			? poolFilteredDownloads
-			: poolFilteredDownloads.filter((d) => d.uploader === channelFilter);
+		let filtered =
+			channelFilter === "all"
+				? poolFilteredDownloads
+				: poolFilteredDownloads.filter(
+						(d) => d.uploader === channelFilter,
+					);
 
 		const sorted = [...filtered];
 		switch (sortOption) {
-			case 'oldest':
-				sorted.sort((a, b) => new Date(a.completedAt || a.createdAt).getTime() - new Date(b.completedAt || b.createdAt).getTime());
+			case "oldest":
+				sorted.sort(
+					(a, b) =>
+						new Date(a.completedAt || a.createdAt).getTime() -
+						new Date(b.completedAt || b.createdAt).getTime(),
+				);
 				break;
-			case 'newest':
-				sorted.sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime());
+			case "newest":
+				sorted.sort(
+					(a, b) =>
+						new Date(b.completedAt || b.createdAt).getTime() -
+						new Date(a.completedAt || a.createdAt).getTime(),
+				);
 				break;
-			case 'largest':
-				sorted.sort((a, b) => Number(b.filesize || 0) - Number(a.filesize || 0));
+			case "largest":
+				sorted.sort(
+					(a, b) => Number(b.filesize || 0) - Number(a.filesize || 0),
+				);
 				break;
-			case 'smallest':
-				sorted.sort((a, b) => Number(a.filesize || 0) - Number(b.filesize || 0));
+			case "smallest":
+				sorted.sort(
+					(a, b) => Number(a.filesize || 0) - Number(b.filesize || 0),
+				);
 				break;
-			case 'longest':
+			case "longest":
 				sorted.sort((a, b) => (b.duration || 0) - (a.duration || 0));
 				break;
-			case 'shortest':
+			case "shortest":
 				sorted.sort((a, b) => (a.duration || 0) - (b.duration || 0));
 				break;
-			case 'uploader':
-				sorted.sort((a, b) => (a.uploader || '').localeCompare(b.uploader || ''));
+			case "uploader":
+				sorted.sort((a, b) =>
+					(a.uploader || "").localeCompare(b.uploader || ""),
+				);
 				break;
 		}
 		return sorted;
@@ -245,58 +355,75 @@
 
 	onMount(() => {
 		// Pre-apply uploader filter from URL (e.g. from /channels page)
-		const uploaderParam = $page.url.searchParams.get('uploader');
+		const uploaderParam = $page.url.searchParams.get("uploader");
 		if (uploaderParam) channelFilter = uploaderParam;
 
 		loadSettings();
-		loadCompletedDownloads().then(() => { filtersInitialized = true; });
+		loadCompletedDownloads().then(() => {
+			filtersInitialized = true;
+		});
+		loadFailedDownloads();
 		loadCacheUsage();
+		loadDiskInfo();
 
-		const unsubComplete = onSSEEvent('download:complete', ({ download }) => {
-			const exists = completedDownloads.find((d) => d.id === download.id);
-			if (!exists) {
-				completedDownloads = [download, ...completedDownloads];
-			}
+		const unsubComplete = onSSEEvent(
+			"download:complete",
+			({ download }) => {
+				const exists = completedDownloads.find(
+					(d) => d.id === download.id,
+				);
+				if (!exists) {
+					completedDownloads = [download, ...completedDownloads];
+				}
+				loadCacheUsage();
+			},
+		);
+		const unsubDeleted = onSSEEvent("download:deleted", ({ id }) => {
+			completedDownloads = completedDownloads.filter((d) => d.id !== id);
+			failedDownloads = failedDownloads.filter((d) => d.id !== id);
 			loadCacheUsage();
 		});
-		const unsubDeleted = onSSEEvent('download:deleted', ({ id }) => {
-			completedDownloads = completedDownloads.filter((d) => d.id !== id);
-			loadCacheUsage();
+		// download:failed only carries { id, error }, so refetch the failed
+		// list to pick up the full record and show it live.
+		const unsubFailed = onSSEEvent("download:failed", () => {
+			loadFailedDownloads();
 		});
 
 		return () => {
 			unsubComplete();
 			unsubDeleted();
+			unsubFailed();
 		};
 	});
 
 	async function loadSettings() {
 		try {
-			const res = await fetch('/api/settings');
+			const res = await fetch("/api/settings");
 			if (res.ok) {
 				const settings = await res.json();
 				libraryConfigured = !!settings.libraryPath;
-				jellyfinUrl = settings.jellyfinExternalUrl || settings.jellyfinUrl || '';
+				jellyfinUrl =
+					settings.jellyfinExternalUrl || settings.jellyfinUrl || "";
 			}
 		} catch (e) {
-			console.error('Failed to load settings:', e);
+			console.error("Failed to load settings:", e);
 		}
 	}
 
 	function buildCompletedParams(offset: number) {
 		const params = new URLSearchParams({
-			status: 'COMPLETED',
+			status: "COMPLETED",
 			limit: String(DOWNLOADS_PAGE_SIZE),
 			offset: String(offset),
 		});
-		if (watchStateFilter !== 'all') {
-			params.set('watchState', watchStateFilter);
+		if (watchStateFilter !== "all") {
+			params.set("watchState", watchStateFilter);
 		}
 		const heightRange = getHeightRange(resolutionFilter);
-		if (heightRange.min) params.set('minHeight', String(heightRange.min));
-		if (heightRange.max) params.set('maxHeight', String(heightRange.max));
-		if (dateFrom) params.set('dateFrom', dateFrom);
-		if (dateTo) params.set('dateTo', dateTo);
+		if (heightRange.min) params.set("minHeight", String(heightRange.min));
+		if (heightRange.max) params.set("maxHeight", String(heightRange.max));
+		if (dateFrom) params.set("dateFrom", dateFrom);
+		if (dateTo) params.set("dateTo", dateTo);
 		return params;
 	}
 
@@ -305,7 +432,9 @@
 		completedLoading = true;
 		completedOffset = 0;
 		try {
-			const res = await fetch(`/api/downloads?${buildCompletedParams(0)}`);
+			const res = await fetch(
+				`/api/downloads?${buildCompletedParams(0)}`,
+			);
 			if (res.ok) {
 				const page: any[] = await res.json();
 				completedDownloads = page;
@@ -313,7 +442,7 @@
 				hasMoreDownloads = page.length === DOWNLOADS_PAGE_SIZE;
 			}
 		} catch (e) {
-			console.error('Failed to load completed downloads:', e);
+			console.error("Failed to load completed downloads:", e);
 		} finally {
 			completedLoading = false;
 		}
@@ -323,7 +452,9 @@
 		if (loadingMoreDownloads || !hasMoreDownloads) return;
 		loadingMoreDownloads = true;
 		try {
-			const res = await fetch(`/api/downloads?${buildCompletedParams(completedOffset)}`);
+			const res = await fetch(
+				`/api/downloads?${buildCompletedParams(completedOffset)}`,
+			);
 			if (res.ok) {
 				const page: any[] = await res.json();
 				completedDownloads = [...completedDownloads, ...page];
@@ -331,7 +462,7 @@
 				hasMoreDownloads = page.length === DOWNLOADS_PAGE_SIZE;
 			}
 		} catch (e) {
-			console.error('Failed to load more completed downloads:', e);
+			console.error("Failed to load more completed downloads:", e);
 		} finally {
 			loadingMoreDownloads = false;
 		}
@@ -339,42 +470,110 @@
 
 	function getHeightRange(filter: string): { min?: number; max?: number } {
 		switch (filter) {
-			case '4k': return { min: 2160 };
-			case '1080p': return { min: 1080, max: 1080 };
-			case '720p': return { min: 720, max: 720 };
-			case '480p': return { min: 480, max: 480 };
-			case 'other': return { max: 479 };
-			default: return {};
+			case "4k":
+				return { min: 2160 };
+			case "1080p":
+				return { min: 1080, max: 1080 };
+			case "720p":
+				return { min: 720, max: 720 };
+			case "480p":
+				return { min: 480, max: 480 };
+			case "other":
+				return { max: 479 };
+			default:
+				return {};
 		}
 	}
 
 	async function loadCacheUsage() {
 		try {
-			const res = await fetch('/api/library/usage');
+			const res = await fetch("/api/library/usage");
 			if (res.ok) {
 				const data = await res.json();
 				cacheUsage = data.cache;
 				libraryUsage = data.library;
 			}
 		} catch (e) {
-			console.error('Failed to load usage:', e);
+			console.error("Failed to load usage:", e);
 		}
+	}
+
+	async function loadFailedDownloads() {
+		failedLoading = true;
+		try {
+			const params = new URLSearchParams({
+				status: "FAILED",
+				limit: String(DOWNLOADS_PAGE_SIZE),
+				offset: "0",
+			});
+			const res = await fetch(`/api/downloads?${params}`);
+			if (res.ok) {
+				failedDownloads = await res.json();
+			}
+		} catch (e) {
+			console.error("Failed to load failed downloads:", e);
+		} finally {
+			failedLoading = false;
+		}
+	}
+
+	async function loadDiskInfo() {
+		try {
+			const res = await fetch("/api/settings/disk");
+			if (res.ok) {
+				diskInfo = await res.json();
+			}
+		} catch {
+			// disk info is best-effort
+		}
+	}
+
+	async function retryAllFailed() {
+		if (failedDownloads.length === 0) return;
+
+		// Iterate over a copy: the download:deleted SSE handler mutates
+		// failedDownloads as each old record is removed.
+		for (const download of [...failedDownloads]) {
+			try {
+				const body: any = {
+					url: download.url,
+					profileId: download.profileId,
+				};
+				if (download.storagePool === "library")
+					body.saveToLibrary = true;
+				if (download.customFlags?.length)
+					body.customFlags = download.customFlags;
+
+				await csrfFetch("/api/downloads", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(body),
+				});
+				// Delete the old FAILED record so it doesn't reappear on reload.
+				await csrfFetch(`/api/downloads/${download.id}`, {
+					method: "DELETE",
+				});
+			} catch (e) {
+				console.error(`Failed to retry ${download.id}:`, e);
+			}
+		}
+		await loadCompletedDownloads();
 	}
 
 	async function clearCache() {
 		const confirmed = await showConfirm(
-			'Clear Cache',
-			'This will delete all cached downloads. Library downloads will not be affected.',
-			'Clear Cache'
+			"Clear Cache",
+			"This will delete all cached downloads. Library downloads will not be affected.",
+			"Clear Cache",
 		);
 		if (!confirmed) return;
 
 		clearingCache = true;
 		try {
-			await csrfFetch('/api/library/clear', { method: 'POST' });
+			await csrfFetch("/api/library/clear", { method: "POST" });
 			await Promise.all([loadCompletedDownloads(), loadCacheUsage()]);
 		} catch (e) {
-			console.error('Failed to clear cache:', e);
+			console.error("Failed to clear cache:", e);
 		} finally {
 			clearingCache = false;
 		}
@@ -382,7 +581,8 @@
 
 	function toggleSelection(id: string) {
 		const next = new Set(selectedIds);
-		if (next.has(id)) next.delete(id); else next.add(id);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
 		selectedIds = next;
 	}
 
@@ -415,7 +615,11 @@
 	): Promise<BulkItemResult[]> {
 		const total = ids.length;
 		const results: BulkItemResult[] = [];
-		const toastId = addStickyToast('info', `${verbPresent} 0 of ${total}…`, 0);
+		const toastId = addStickyToast(
+			"info",
+			`${verbPresent} 0 of ${total}…`,
+			0,
+		);
 
 		let completed = 0;
 		let cursor = 0;
@@ -428,7 +632,8 @@
 					await runOne(id);
 					results.push({ id, ok: true });
 				} catch (err) {
-					const reason = err instanceof Error ? err.message : 'Unknown error';
+					const reason =
+						err instanceof Error ? err.message : "Unknown error";
 					results.push({ id, ok: false, reason });
 				}
 				completed += 1;
@@ -448,24 +653,34 @@
 		const successes = total - failures.length;
 
 		if (failures.length === 0) {
-			resolveToast(toastId, 'success', `${verbPast} ${successes} item${successes !== 1 ? 's' : ''}`);
+			resolveToast(
+				toastId,
+				"success",
+				`${verbPast} ${successes} item${successes !== 1 ? "s" : ""}`,
+			);
 		} else if (successes === 0) {
 			resolveToast(
 				toastId,
-				'error',
-				`Failed to ${verbPresent.toLowerCase()} all ${total} item${total !== 1 ? 's' : ''}`,
+				"error",
+				`Failed to ${verbPresent.toLowerCase()} all ${total} item${total !== 1 ? "s" : ""}`,
 				{
-					details: failures.map((f) => `${getDownloadLabel(f.id)}: ${f.reason ?? 'failed'}`),
+					details: failures.map(
+						(f) =>
+							`${getDownloadLabel(f.id)}: ${f.reason ?? "failed"}`,
+					),
 					duration: 10000,
 				},
 			);
 		} else {
 			resolveToast(
 				toastId,
-				'info',
-				`${verbPast} ${successes} item${successes !== 1 ? 's' : ''} (${failures.length} failed)`,
+				"info",
+				`${verbPast} ${successes} item${successes !== 1 ? "s" : ""} (${failures.length} failed)`,
 				{
-					details: failures.map((f) => `${getDownloadLabel(f.id)}: ${f.reason ?? 'failed'}`),
+					details: failures.map(
+						(f) =>
+							`${getDownloadLabel(f.id)}: ${f.reason ?? "failed"}`,
+					),
 					duration: 10000,
 				},
 			);
@@ -478,18 +693,25 @@
 		const ids = [...selectedIds];
 		const count = ids.length;
 		const confirmed = await showConfirm(
-			'Delete Selected',
-			`Delete ${count} download${count !== 1 ? 's' : ''}? This cannot be undone.`,
-			'Delete'
+			"Delete Selected",
+			`Delete ${count} download${count !== 1 ? "s" : ""}? This cannot be undone.`,
+			"Delete",
 		);
 		if (!confirmed) return;
 
 		bulkActing = true;
 		try {
-			const results = await runBulkOperation(ids, 'Deleting', 'Deleted', async (id) => {
-				const res = await csrfFetch(`/api/downloads/${id}`, { method: 'DELETE' });
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			});
+			const results = await runBulkOperation(
+				ids,
+				"Deleting",
+				"Deleted",
+				async (id) => {
+					const res = await csrfFetch(`/api/downloads/${id}`, {
+						method: "DELETE",
+					});
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				},
+			);
 			if (results.some((r) => r.ok)) {
 				flashBulkSuccess();
 				exitSelectionMode();
@@ -510,7 +732,7 @@
 		if (!bulkPlaylistOpen) return;
 		bulkPlaylistLoading = true;
 		try {
-			const res = await fetch('/api/playlists');
+			const res = await fetch("/api/playlists");
 			bulkPlaylists = res.ok ? await res.json() : [];
 		} catch {
 			bulkPlaylists = [];
@@ -523,10 +745,10 @@
 		// Only library items can be added to playlists; skip cache-only selections.
 		const ids = [...selectedIds].filter((id) => {
 			const d = completedDownloads.find((dl) => dl.id === id);
-			return d?.storagePool === 'library';
+			return d?.storagePool === "library";
 		});
 		if (ids.length === 0) {
-			addToast('info', 'Only library items can be added to playlists');
+			addToast("info", "Only library items can be added to playlists");
 			bulkPlaylistOpen = false;
 			return;
 		}
@@ -538,11 +760,14 @@
 				`Adding to "${playlistName}"`,
 				`Added to "${playlistName}"`,
 				async (id) => {
-					const res = await csrfFetch(`/api/playlists/${playlistId}/items`, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ downloadId: id }),
-					});
+					const res = await csrfFetch(
+						`/api/playlists/${playlistId}/items`,
+						{
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ downloadId: id }),
+						},
+					);
 					if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				},
 			);
@@ -557,18 +782,26 @@
 	async function bulkPromote() {
 		const ids = [...selectedIds].filter((id) => {
 			const d = completedDownloads.find((dl) => dl.id === id);
-			return d?.storagePool === 'cache';
+			return d?.storagePool === "cache";
 		});
 		if (ids.length === 0) {
-			addToast('info', 'No cache downloads selected to move');
+			addToast("info", "No cache downloads selected to move");
 			return;
 		}
 		bulkActing = true;
 		try {
-			const results = await runBulkOperation(ids, 'Moving', 'Moved to library', async (id) => {
-				const res = await csrfFetch(`/api/downloads/${id}/promote`, { method: 'POST' });
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			});
+			const results = await runBulkOperation(
+				ids,
+				"Moving",
+				"Moved to library",
+				async (id) => {
+					const res = await csrfFetch(
+						`/api/downloads/${id}/promote`,
+						{ method: "POST" },
+					);
+					if (!res.ok) throw new Error(`HTTP ${res.status}`);
+				},
+			);
 			if (results.some((r) => r.ok)) {
 				flashBulkSuccess();
 				exitSelectionMode();
@@ -580,19 +813,19 @@
 	}
 
 	function focusUrlInput() {
-		const el = document.getElementById('url') as HTMLInputElement | null;
+		const el = document.getElementById("url") as HTMLInputElement | null;
 		if (!el) return;
-		el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		el.scrollIntoView({ behavior: "smooth", block: "center" });
 		el.focus();
 	}
 
 	function clearFilters() {
-		completedFilter = 'all';
-		watchStateFilter = 'all';
-		channelFilter = 'all';
-		dateFrom = '';
-		dateTo = '';
-		searchQuery = '';
+		completedFilter = "all";
+		watchStateFilter = "all";
+		channelFilter = "all";
+		dateFrom = "";
+		dateTo = "";
+		searchQuery = "";
 	}
 </script>
 
@@ -617,8 +850,20 @@
 					variant="subtle"
 				>
 					{#snippet icon()}
-						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+						<svg
+							width="24"
+							height="24"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.75"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path
+								d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+							/>
 							<polyline points="7 10 12 15 17 10" />
 							<line x1="12" y1="15" x2="12" y2="3" />
 						</svg>
@@ -627,13 +872,17 @@
 			{:else}
 				<div class="downloads-list">
 					{#each [...sseState.downloads].sort((a, b) => {
-						const active = ['FETCHING_INFO', 'DOWNLOADING', 'PROCESSING'];
+						const active = ["FETCHING_INFO", "DOWNLOADING", "PROCESSING"];
 						const aActive = active.includes(a.status) ? 0 : 1;
 						const bActive = active.includes(b.status) ? 0 : 1;
 						if (aActive !== bActive) return aActive - bActive;
 						return sseState.downloads.indexOf(b) - sseState.downloads.indexOf(a);
 					}) as download (download.id)}
-						<DownloadCard {download} {jellyfinUrl} {libraryConfigured} />
+						<DownloadCard
+							{download}
+							{jellyfinUrl}
+							{libraryConfigured}
+						/>
 					{/each}
 				</div>
 			{/if}
@@ -647,23 +896,74 @@
 					<div class="cache-usage-header">
 						<div class="cache-usage-left">
 							<span class="cache-usage-label">Cache</span>
-							<span class="cache-usage-tooltip" data-tooltip="Downloads are stored in a temporary cache. When the cache fills up, the oldest downloads are automatically removed to free space. Save to Library to keep downloads permanently.">?</span>
+							<span
+								class="cache-usage-tooltip"
+								data-tooltip="Downloads are stored in a temporary cache. When the cache fills up, the oldest downloads are automatically removed to free space. Save to Library to keep downloads permanently."
+								>?</span
+							>
 						</div>
 						<div class="cache-usage-right">
-							<span class="cache-usage-value">{formatBytes(cacheUsage.usedBytes)} / {formatBytes(cacheUsage.quotaBytes)}</span>
+							<span class="cache-usage-value"
+								>{formatBytes(cacheUsage.usedBytes)} / {formatBytes(
+									cacheUsage.quotaBytes,
+								)}</span
+							>
 							{#if Number(cacheUsage.usedBytes) > 0}
-								<button class="btn btn-sm btn-secondary cache-clear-btn" onclick={clearCache} disabled={clearingCache} aria-label="Clear cache" title="Clear cache">
+								<button
+									class="btn btn-sm btn-secondary cache-clear-btn"
+									onclick={clearCache}
+									disabled={clearingCache}
+									aria-label="Clear cache"
+									title="Clear cache"
+								>
 									{#if clearingCache}
-										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="16"
+											height="16"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											class="spin"
+											><path
+												d="M21 12a9 9 0 1 1-6.219-8.56"
+											/></svg
+										>
 									{:else}
-										<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="16"
+											height="16"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											><polyline
+												points="3 6 5 6 21 6"
+											/><path
+												d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+											/></svg
+										>
 									{/if}
 								</button>
 							{/if}
 						</div>
 					</div>
 					<div class="cache-usage-bar">
-						<div class="cache-usage-fill" class:warning={cacheUsage.percentage > 80} class:critical={cacheUsage.percentage > 95} style="width: max({cacheUsage.percentage}%, {cacheUsage.percentage > 0 ? '4px' : '0px'})"></div>
+						<div
+							class="cache-usage-fill"
+							class:warning={cacheUsage.percentage > 80}
+							class:critical={cacheUsage.percentage > 95}
+							style="width: max({cacheUsage.percentage}%, {cacheUsage.percentage >
+							0
+								? '4px'
+								: '0px'})"
+						></div>
 					</div>
 				</div>
 			{/if}
@@ -674,8 +974,17 @@
 							<span class="cache-usage-label">Video Library</span>
 						</div>
 						<div class="cache-usage-right">
-							<span class="cache-usage-value">{formatBytes(libraryUsage.video.usedBytes)}</span>
-							<span class="storage-count">{libraryUsage.video.count} file{libraryUsage.video.count !== 1 ? 's' : ''}</span>
+							<span class="cache-usage-value"
+								>{formatBytes(
+									libraryUsage.video.usedBytes,
+								)}</span
+							>
+							<span class="storage-count"
+								>{libraryUsage.video.count} file{libraryUsage
+									.video.count !== 1
+									? "s"
+									: ""}</span
+							>
 						</div>
 					</div>
 				</div>
@@ -687,10 +996,82 @@
 							<span class="cache-usage-label">Music Library</span>
 						</div>
 						<div class="cache-usage-right">
-							<span class="cache-usage-value">{formatBytes(libraryUsage.music.usedBytes)}</span>
-							<span class="storage-count">{libraryUsage.music.count} file{libraryUsage.music.count !== 1 ? 's' : ''}</span>
+							<span class="cache-usage-value"
+								>{formatBytes(
+									libraryUsage.music.usedBytes,
+								)}</span
+							>
+							<span class="storage-count"
+								>{libraryUsage.music.count} file{libraryUsage
+									.music.count !== 1
+									? "s"
+									: ""}</span
+							>
 						</div>
 					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
+
+	{#if diskInfo}
+		{#if Number(diskInfo.availableBytes) < Number(diskInfo.totalBytes) * 0.2}
+			<div class="storage-warning">
+				<svg
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					class="warning-icon"
+				>
+					<path
+						d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+					/>
+					<line x1="12" y1="9" x2="12" y2="13" />
+					<line x1="12" y1="17" x2="12.01" y2="17" />
+				</svg>
+				<div class="warning-text">
+					<span class="warning-label">Warning: Disk space low</span>
+					<span class="warning-message"
+						>Your disk is over 80% full. Available: {formatBytes(
+							diskInfo.availableBytes,
+						)} / Total: {formatBytes(diskInfo.totalBytes)}</span
+					>
+				</div>
+			</div>
+		{/if}
+	{/if}
+
+	{#if failedDownloads.length > 0 || failedLoading}
+		<div class="section">
+			<div class="section-header">
+				<h2>Failed ({failedDownloads.length})</h2>
+				{#if failedDownloads.length > 0}
+					<button
+						class="btn btn-sm btn-primary"
+						onclick={retryAllFailed}
+						disabled={failedLoading}
+					>
+						Retry All
+					</button>
+				{/if}
+			</div>
+
+			{#if failedLoading}
+				<Skeleton count={3} variant="card" />
+			{:else}
+				<div class="downloads-grid">
+					{#each failedDownloads as download (download.id)}
+						<DownloadCard
+							{download}
+							{jellyfinUrl}
+							{libraryConfigured}
+						/>
+					{/each}
 				</div>
 			{/if}
 		</div>
@@ -699,9 +1080,26 @@
 	<div class="section">
 		<div class="search-bar-section">
 			<div class="search-bar-wrapper">
-				<svg class="search-icon" width="20" height="20" viewBox="0 0 16 16" fill="none">
-					<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
-					<path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+				<svg
+					class="search-icon"
+					width="20"
+					height="20"
+					viewBox="0 0 16 16"
+					fill="none"
+				>
+					<circle
+						cx="7"
+						cy="7"
+						r="5"
+						stroke="currentColor"
+						stroke-width="1.5"
+					/>
+					<path
+						d="M11 11l3 3"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+					/>
 				</svg>
 				<input
 					type="text"
@@ -710,8 +1108,20 @@
 					bind:value={searchQuery}
 				/>
 				{#if searchQuery}
-					<button class="search-clear-btn" aria-label="Clear search" onclick={() => (searchQuery = '')}>
-						<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+					<button
+						class="search-clear-btn"
+						aria-label="Clear search"
+						onclick={() => (searchQuery = "")}
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+							><path
+								d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+							/></svg
+						>
 					</button>
 				{/if}
 			</div>
@@ -730,18 +1140,41 @@
 	{#if searchQuery.trim() && subtitleMatches.length > 0}
 		<div class="section subtitle-results-section">
 			<h3 class="subtitle-results-heading">
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path
+						d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+					/>
 				</svg>
 				Found in subtitles ({subtitleTotal})
 			</h3>
 			<div class="subtitle-matches">
 				{#each subtitleMatches as match (match.id)}
-					<a class="subtitle-match" href="/downloads/{match.downloadId}?t={Math.floor(match.startTime)}">
-						<div class="subtitle-match-time">{formatTimestamp(match.startTime)}</div>
+					<a
+						class="subtitle-match"
+						href="/downloads/{match.downloadId}?t={Math.floor(
+							match.startTime,
+						)}"
+					>
+						<div class="subtitle-match-time">
+							{formatTimestamp(match.startTime)}
+						</div>
 						<div class="subtitle-match-content">
 							<div class="subtitle-match-text">{match.text}</div>
-							<div class="subtitle-match-video">{match.download.title || 'Untitled'}{match.download.uploader ? ` - ${match.download.uploader}` : ''}</div>
+							<div class="subtitle-match-video">
+								{match.download.title || "Untitled"}{match
+									.download.uploader
+									? ` - ${match.download.uploader}`
+									: ""}
+							</div>
 						</div>
 					</a>
 				{/each}
@@ -752,25 +1185,59 @@
 	<div class="section completed-card">
 		<div class="section-header">
 			<div class="section-header-left">
-				<h2>Completed ({searchQuery ? searchTotal : filteredCompletedDownloads.length})</h2>
+				<h2>
+					Completed ({searchQuery
+						? searchTotal
+						: filteredCompletedDownloads.length})
+				</h2>
 				<ViewToggle bind:view={viewMode} />
 				<button
 					class="select-btn"
 					class:active={selectionMode}
-					onclick={(e) => { e.stopPropagation(); if (selectionMode) exitSelectionMode(); else selectionMode = true; }}
+					onclick={(e) => {
+						e.stopPropagation();
+						if (selectionMode) exitSelectionMode();
+						else selectionMode = true;
+					}}
 				>
-					{selectionMode ? 'Cancel' : 'Select'}
+					{selectionMode ? "Cancel" : "Select"}
 				</button>
 			</div>
 			<div class="section-header-right">
 				<div class="tabs completed-filter">
-					<button class="tab" class:active={completedFilter === 'all'} onclick={(e) => { e.stopPropagation(); completedFilter = 'all'; }}>All</button>
-					<button class="tab" class:active={completedFilter === 'cache'} onclick={(e) => { e.stopPropagation(); completedFilter = 'cache'; }}>Cache</button>
-					<button class="tab" class:active={completedFilter === 'library'} onclick={(e) => { e.stopPropagation(); completedFilter = 'library'; }}>Library</button>
+					<button
+						class="tab"
+						class:active={completedFilter === "all"}
+						onclick={(e) => {
+							e.stopPropagation();
+							completedFilter = "all";
+						}}>All</button
+					>
+					<button
+						class="tab"
+						class:active={completedFilter === "cache"}
+						onclick={(e) => {
+							e.stopPropagation();
+							completedFilter = "cache";
+						}}>Cache</button
+					>
+					<button
+						class="tab"
+						class:active={completedFilter === "library"}
+						onclick={(e) => {
+							e.stopPropagation();
+							completedFilter = "library";
+						}}>Library</button
+					>
 				</div>
 				{#if availableChannels.length > 1}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
-					<div class="channel-dropdown" onkeydown={(e) => { if (e.key === 'Escape') channelDropdownOpen = false; }}>
+					<div
+						class="channel-dropdown"
+						onkeydown={(e) => {
+							if (e.key === "Escape") channelDropdownOpen = false;
+						}}
+					>
 						<button
 							id="dl-channel-trigger"
 							type="button"
@@ -779,11 +1246,33 @@
 							aria-haspopup="listbox"
 							aria-expanded={channelDropdownOpen}
 							aria-controls="dl-channel-menu"
-							onclick={(e) => { e.stopPropagation(); channelDropdownOpen = !channelDropdownOpen; channelSearch = ''; }}
+							onclick={(e) => {
+								e.stopPropagation();
+								channelDropdownOpen = !channelDropdownOpen;
+								channelSearch = "";
+							}}
 						>
-							<span class="channel-dropdown-label">{channelFilter === 'all' ? 'All channels' : channelFilter}</span>
-							<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={channelDropdownOpen} aria-hidden="true">
-								<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+							<span class="channel-dropdown-label"
+								>{channelFilter === "all"
+									? "All channels"
+									: channelFilter}</span
+							>
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 12 12"
+								fill="none"
+								class="channel-dropdown-chevron"
+								class:open={channelDropdownOpen}
+								aria-hidden="true"
+							>
+								<path
+									d="M3 4.5L6 7.5L9 4.5"
+									stroke="currentColor"
+									stroke-width="1.5"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								/>
 							</svg>
 						</button>
 						{#if channelDropdownOpen}
@@ -796,25 +1285,66 @@
 								tabindex="-1"
 								onclick={(e) => e.stopPropagation()}
 							>
-								<input type="text" class="channel-dropdown-search" placeholder="Search channels..." aria-label="Search channels" bind:value={channelSearch} use:focusOnMount />
+								<input
+									type="text"
+									class="channel-dropdown-search"
+									placeholder="Search channels..."
+									aria-label="Search channels"
+									bind:value={channelSearch}
+									use:focusOnMount
+								/>
 								<div class="channel-dropdown-options">
-									<button type="button" role="option" aria-selected={channelFilter === 'all'} class="channel-dropdown-option" class:selected={channelFilter === 'all'} onclick={(e) => { e.stopPropagation(); channelFilter = 'all'; channelDropdownOpen = false; }}>All channels</button>
+									<button
+										type="button"
+										role="option"
+										aria-selected={channelFilter === "all"}
+										class="channel-dropdown-option"
+										class:selected={channelFilter === "all"}
+										onclick={(e) => {
+											e.stopPropagation();
+											channelFilter = "all";
+											channelDropdownOpen = false;
+										}}>All channels</button
+									>
 									{#each filteredChannelOptions as channel}
-										<button type="button" role="option" aria-selected={channelFilter === channel} class="channel-dropdown-option" class:selected={channelFilter === channel} onclick={(e) => { e.stopPropagation(); channelFilter = channel; channelDropdownOpen = false; }}>{channel}</button>
+										<button
+											type="button"
+											role="option"
+											aria-selected={channelFilter ===
+												channel}
+											class="channel-dropdown-option"
+											class:selected={channelFilter ===
+												channel}
+											onclick={(e) => {
+												e.stopPropagation();
+												channelFilter = channel;
+												channelDropdownOpen = false;
+											}}>{channel}</button
+										>
 									{/each}
 									{#if filteredChannelOptions.length === 0}
-										<div class="channel-dropdown-empty">No channels found</div>
+										<div class="channel-dropdown-empty">
+											No channels found
+										</div>
 									{/if}
 								</div>
 							</div>
 							<!-- svelte-ignore a11y_no_static_element_interactions -->
 							<!-- svelte-ignore a11y_click_events_have_key_events -->
-							<div class="channel-dropdown-backdrop" onclick={() => (channelDropdownOpen = false)}></div>
+							<div
+								class="channel-dropdown-backdrop"
+								onclick={() => (channelDropdownOpen = false)}
+							></div>
 						{/if}
 					</div>
 				{/if}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') sortDropdownOpen = false; }}>
+				<div
+					class="sort-dropdown"
+					onkeydown={(e) => {
+						if (e.key === "Escape") sortDropdownOpen = false;
+					}}
+				>
 					<button
 						id="dl-sort-trigger"
 						type="button"
@@ -823,16 +1353,54 @@
 						aria-haspopup="listbox"
 						aria-expanded={sortDropdownOpen}
 						aria-controls="dl-sort-menu"
-						onclick={(e) => { e.stopPropagation(); sortDropdownOpen = !sortDropdownOpen; }}
+						onclick={(e) => {
+							e.stopPropagation();
+							sortDropdownOpen = !sortDropdownOpen;
+						}}
 					>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-							<path d="M2 4h10M4 7h6M6 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 14 14"
+							fill="none"
+							aria-hidden="true"
+						>
+							<path
+								d="M2 4h10M4 7h6M6 10h2"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+							/>
 						</svg>
-						<span class="channel-dropdown-label">{
-							({ newest: 'Newest', oldest: 'Oldest', largest: 'Largest', smallest: 'Smallest', longest: 'Longest', shortest: 'Shortest', uploader: 'Uploader' } as Record<string, string>)[sortOption]
-						}</span>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={sortDropdownOpen} aria-hidden="true">
-							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						<span class="channel-dropdown-label"
+							>{(
+								{
+									newest: "Newest",
+									oldest: "Oldest",
+									largest: "Largest",
+									smallest: "Smallest",
+									longest: "Longest",
+									shortest: "Shortest",
+									uploader: "Uploader",
+								} as Record<string, string>
+							)[sortOption]}</span
+						>
+						<svg
+							width="12"
+							height="12"
+							viewBox="0 0 12 12"
+							fill="none"
+							class="channel-dropdown-chevron"
+							class:open={sortDropdownOpen}
+							aria-hidden="true"
+						>
+							<path
+								d="M3 4.5L6 7.5L9 4.5"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 					{#if sortDropdownOpen}
@@ -846,20 +1414,40 @@
 							onclick={(e) => e.stopPropagation()}
 						>
 							<div class="channel-dropdown-options">
-								{#each [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['largest', 'Largest first'], ['smallest', 'Smallest first'], ['longest', 'Longest first'], ['shortest', 'Shortest first'], ['uploader', 'Uploader A–Z']] as [value, label]}
-									<button type="button" role="option" aria-selected={sortOption === value} class="channel-dropdown-option" class:selected={sortOption === value} onclick={(e) => { e.stopPropagation(); sortOption = value as typeof sortOption; sortDropdownOpen = false; }}>{label}</button>
+								{#each [["newest", "Newest first"], ["oldest", "Oldest first"], ["largest", "Largest first"], ["smallest", "Smallest first"], ["longest", "Longest first"], ["shortest", "Shortest first"], ["uploader", "Uploader A–Z"]] as [value, label]}
+									<button
+										type="button"
+										role="option"
+										aria-selected={sortOption === value}
+										class="channel-dropdown-option"
+										class:selected={sortOption === value}
+										onclick={(e) => {
+											e.stopPropagation();
+											sortOption =
+												value as typeof sortOption;
+											sortDropdownOpen = false;
+										}}>{label}</button
+									>
 								{/each}
 							</div>
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<div class="channel-dropdown-backdrop" onclick={() => (sortDropdownOpen = false)}></div>
+						<div
+							class="channel-dropdown-backdrop"
+							onclick={() => (sortDropdownOpen = false)}
+						></div>
 					{/if}
 				</div>
 			</div>
 			<div class="section-header-filters">
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') watchStateDropdownOpen = false; }}>
+				<div
+					class="sort-dropdown"
+					onkeydown={(e) => {
+						if (e.key === "Escape") watchStateDropdownOpen = false;
+					}}
+				>
 					<button
 						id="dl-watchstate-trigger"
 						type="button"
@@ -868,17 +1456,57 @@
 						aria-haspopup="listbox"
 						aria-expanded={watchStateDropdownOpen}
 						aria-controls="dl-watchstate-menu"
-						onclick={(e) => { e.stopPropagation(); watchStateDropdownOpen = !watchStateDropdownOpen; }}
+						onclick={(e) => {
+							e.stopPropagation();
+							watchStateDropdownOpen = !watchStateDropdownOpen;
+						}}
 					>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-							<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.3" fill="none"/>
-							<path d="M5.5 5.5L9 7L5.5 8.5z" fill="currentColor"/>
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 14 14"
+							fill="none"
+							aria-hidden="true"
+						>
+							<circle
+								cx="7"
+								cy="7"
+								r="5"
+								stroke="currentColor"
+								stroke-width="1.3"
+								fill="none"
+							/>
+							<path
+								d="M5.5 5.5L9 7L5.5 8.5z"
+								fill="currentColor"
+							/>
 						</svg>
-						<span class="channel-dropdown-label">{
-							({ all: 'All states', unwatched: 'Unwatched', in_progress: 'In progress', watched: 'Watched' } as Record<string, string>)[watchStateFilter]
-						}</span>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={watchStateDropdownOpen} aria-hidden="true">
-							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						<span class="channel-dropdown-label"
+							>{(
+								{
+									all: "All states",
+									unwatched: "Unwatched",
+									in_progress: "In progress",
+									watched: "Watched",
+								} as Record<string, string>
+							)[watchStateFilter]}</span
+						>
+						<svg
+							width="12"
+							height="12"
+							viewBox="0 0 12 12"
+							fill="none"
+							class="channel-dropdown-chevron"
+							class:open={watchStateDropdownOpen}
+							aria-hidden="true"
+						>
+							<path
+								d="M3 4.5L6 7.5L9 4.5"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 					{#if watchStateDropdownOpen}
@@ -892,18 +1520,40 @@
 							onclick={(e) => e.stopPropagation()}
 						>
 							<div class="channel-dropdown-options">
-								{#each [['all', 'All states'], ['unwatched', 'Unwatched'], ['in_progress', 'In progress'], ['watched', 'Watched']] as [value, label]}
-									<button type="button" role="option" aria-selected={watchStateFilter === value} class="channel-dropdown-option" class:selected={watchStateFilter === value} onclick={(e) => { e.stopPropagation(); watchStateFilter = value as typeof watchStateFilter; watchStateDropdownOpen = false; }}>{label}</button>
+								{#each [["all", "All states"], ["unwatched", "Unwatched"], ["in_progress", "In progress"], ["watched", "Watched"]] as [value, label]}
+									<button
+										type="button"
+										role="option"
+										aria-selected={watchStateFilter ===
+											value}
+										class="channel-dropdown-option"
+										class:selected={watchStateFilter ===
+											value}
+										onclick={(e) => {
+											e.stopPropagation();
+											watchStateFilter =
+												value as typeof watchStateFilter;
+											watchStateDropdownOpen = false;
+										}}>{label}</button
+									>
 								{/each}
 							</div>
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<div class="channel-dropdown-backdrop" onclick={() => (watchStateDropdownOpen = false)}></div>
+						<div
+							class="channel-dropdown-backdrop"
+							onclick={() => (watchStateDropdownOpen = false)}
+						></div>
 					{/if}
 				</div>
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="sort-dropdown" onkeydown={(e) => { if (e.key === 'Escape') resolutionDropdownOpen = false; }}>
+				<div
+					class="sort-dropdown"
+					onkeydown={(e) => {
+						if (e.key === "Escape") resolutionDropdownOpen = false;
+					}}
+				>
 					<button
 						id="dl-resolution-trigger"
 						type="button"
@@ -912,17 +1562,63 @@
 						aria-haspopup="listbox"
 						aria-expanded={resolutionDropdownOpen}
 						aria-controls="dl-resolution-menu"
-						onclick={(e) => { e.stopPropagation(); resolutionDropdownOpen = !resolutionDropdownOpen; }}
+						onclick={(e) => {
+							e.stopPropagation();
+							resolutionDropdownOpen = !resolutionDropdownOpen;
+						}}
 					>
-						<svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-							<rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.3" fill="none"/>
-							<path d="M5 7h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+						<svg
+							width="14"
+							height="14"
+							viewBox="0 0 14 14"
+							fill="none"
+							aria-hidden="true"
+						>
+							<rect
+								x="2"
+								y="3"
+								width="10"
+								height="8"
+								rx="1"
+								stroke="currentColor"
+								stroke-width="1.3"
+								fill="none"
+							/>
+							<path
+								d="M5 7h4"
+								stroke="currentColor"
+								stroke-width="1.3"
+								stroke-linecap="round"
+							/>
 						</svg>
-						<span class="channel-dropdown-label">{
-							({ all: 'All res', '4k': '4K+', '1080p': '1080p', '720p': '720p', '480p': '480p', other: 'Other' } as Record<string, string>)[resolutionFilter]
-						}</span>
-						<svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="channel-dropdown-chevron" class:open={resolutionDropdownOpen} aria-hidden="true">
-							<path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						<span class="channel-dropdown-label"
+							>{(
+								{
+									all: "All res",
+									"4k": "4K+",
+									"1080p": "1080p",
+									"720p": "720p",
+									"480p": "480p",
+									other: "Other",
+								} as Record<string, string>
+							)[resolutionFilter]}</span
+						>
+						<svg
+							width="12"
+							height="12"
+							viewBox="0 0 12 12"
+							fill="none"
+							class="channel-dropdown-chevron"
+							class:open={resolutionDropdownOpen}
+							aria-hidden="true"
+						>
+							<path
+								d="M3 4.5L6 7.5L9 4.5"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 					</button>
 					{#if resolutionDropdownOpen}
@@ -936,14 +1632,30 @@
 							onclick={(e) => e.stopPropagation()}
 						>
 							<div class="channel-dropdown-options">
-								{#each [['all', 'All resolutions'], ['4k', '4K+ (2160p+)'], ['1080p', '1080p'], ['720p', '720p'], ['480p', '480p'], ['other', 'Below 480p']] as [value, label]}
-									<button type="button" role="option" aria-selected={resolutionFilter === value} class="channel-dropdown-option" class:selected={resolutionFilter === value} onclick={(e) => { e.stopPropagation(); resolutionFilter = value; resolutionDropdownOpen = false; }}>{label}</button>
+								{#each [["all", "All resolutions"], ["4k", "4K+ (2160p+)"], ["1080p", "1080p"], ["720p", "720p"], ["480p", "480p"], ["other", "Below 480p"]] as [value, label]}
+									<button
+										type="button"
+										role="option"
+										aria-selected={resolutionFilter ===
+											value}
+										class="channel-dropdown-option"
+										class:selected={resolutionFilter ===
+											value}
+										onclick={(e) => {
+											e.stopPropagation();
+											resolutionFilter = value;
+											resolutionDropdownOpen = false;
+										}}>{label}</button
+									>
 								{/each}
 							</div>
 						</div>
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<!-- svelte-ignore a11y_click_events_have_key_events -->
-						<div class="channel-dropdown-backdrop" onclick={() => (resolutionDropdownOpen = false)}></div>
+						<div
+							class="channel-dropdown-backdrop"
+							onclick={() => (resolutionDropdownOpen = false)}
+						></div>
 					{/if}
 				</div>
 				<div class="date-range-filter">
@@ -963,135 +1675,245 @@
 						title="Download date to"
 					/>
 					{#if dateFrom || dateTo}
-						<button class="date-clear-btn" aria-label="Clear dates" title="Clear date filter" onclick={() => { dateFrom = ''; dateTo = ''; }}>
-							<svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+						<button
+							class="date-clear-btn"
+							aria-label="Clear dates"
+							title="Clear date filter"
+							onclick={() => {
+								dateFrom = "";
+								dateTo = "";
+							}}
+						>
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+								><path
+									d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+								/></svg
+							>
 						</button>
 					{/if}
 				</div>
 			</div>
 		</div>
 		<div class="completed-body">
-		{#if completedLoading}
-			{#if viewMode === 'grid'}
-				<Skeleton count={6} variant="card" />
+			{#if completedLoading}
+				{#if viewMode === "grid"}
+					<Skeleton count={6} variant="card" />
+				{:else}
+					<Skeleton count={8} variant="table-row" columns={4} />
+				{/if}
+			{:else if filteredCompletedDownloads.length === 0}
+				{@const noFilters =
+					completedFilter === "all" &&
+					watchStateFilter === "all" &&
+					channelFilter === "all" &&
+					!dateFrom &&
+					!dateTo &&
+					!searchQuery}
+				{#if noFilters}
+					<EmptyState
+						title="No completed downloads yet"
+						description="Paste a video URL above to download your first video. It will appear here once it finishes processing."
+						actionLabel="Download a video"
+						onAction={focusUrlInput}
+					>
+						{#snippet icon()}
+							<svg
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<rect
+									x="2"
+									y="3"
+									width="20"
+									height="14"
+									rx="2"
+								/>
+								<path
+									d="M10 8l5 3-5 3V8z"
+									fill="currentColor"
+									stroke="none"
+								/>
+								<line x1="8" y1="21" x2="16" y2="21" />
+								<line x1="12" y1="17" x2="12" y2="21" />
+							</svg>
+						{/snippet}
+					</EmptyState>
+				{:else}
+					<EmptyState
+						title={watchStateFilter !== "all"
+							? `No ${watchStateFilter.replace("_", " ")} downloads`
+							: completedFilter !== "all"
+								? `No ${completedFilter} downloads`
+								: "No downloads match your filters"}
+						description="Try adjusting or clearing your filters to see more results."
+						actionLabel="Clear filters"
+						onAction={clearFilters}
+					>
+						{#snippet icon()}
+							<svg
+								width="28"
+								height="28"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								aria-hidden="true"
+							>
+								<polygon
+									points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"
+								/>
+							</svg>
+						{/snippet}
+					</EmptyState>
+				{/if}
+			{:else if viewMode === "grid"}
+				<div class="downloads-grid">
+					{#each filteredCompletedDownloads as download (download.id)}
+						<DownloadCard
+							{download}
+							{jellyfinUrl}
+							{selectionMode}
+							selected={selectedIds.has(download.id)}
+							{libraryConfigured}
+							onToggleSelect={() => toggleSelection(download.id)}
+						/>
+					{/each}
+				</div>
 			{:else}
-				<Skeleton count={8} variant="table-row" columns={4} />
-			{/if}
-		{:else if filteredCompletedDownloads.length === 0}
-			{@const noFilters = completedFilter === 'all' && watchStateFilter === 'all' && channelFilter === 'all' && !dateFrom && !dateTo && !searchQuery}
-			{#if noFilters}
-				<EmptyState
-					title="No completed downloads yet"
-					description="Paste a video URL above to download your first video. It will appear here once it finishes processing."
-					actionLabel="Download a video"
-					onAction={focusUrlInput}
-				>
-					{#snippet icon()}
-						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<rect x="2" y="3" width="20" height="14" rx="2" />
-							<path d="M10 8l5 3-5 3V8z" fill="currentColor" stroke="none" />
-							<line x1="8" y1="21" x2="16" y2="21" />
-							<line x1="12" y1="17" x2="12" y2="21" />
-						</svg>
-					{/snippet}
-				</EmptyState>
-			{:else}
-				<EmptyState
-					title={watchStateFilter !== 'all' ? `No ${watchStateFilter.replace('_', ' ')} downloads` : completedFilter !== 'all' ? `No ${completedFilter} downloads` : 'No downloads match your filters'}
-					description="Try adjusting or clearing your filters to see more results."
-					actionLabel="Clear filters"
-					onAction={clearFilters}
-				>
-					{#snippet icon()}
-						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-							<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-						</svg>
-					{/snippet}
-				</EmptyState>
-			{/if}
-		{:else if viewMode === 'grid'}
-			<div class="downloads-grid">
-				{#each filteredCompletedDownloads as download (download.id)}
-					<DownloadCard
-						{download}
-						{jellyfinUrl}
-						{selectionMode}
-						selected={selectedIds.has(download.id)}
-						{libraryConfigured}
-						onToggleSelect={() => toggleSelection(download.id)}
-					/>
-				{/each}
-			</div>
-		{:else}
-			<div class="downloads-list">
-				{#each filteredCompletedDownloads as download (download.id)}
-					<DownloadListRow
-						{download}
-						onclick={() => { if (download.status === 'COMPLETED') goto(`/downloads/${download.id}`); }}
-					/>
-				{/each}
-			</div>
-		{/if}
-
-		{#if searchQuery.trim()}
-			{#if hasMoreSearch}
-				<div class="load-more-row">
-					<button class="btn btn-secondary" onclick={loadMoreSearch} disabled={loadingMoreSearch}>
-						{loadingMoreSearch ? 'Loading…' : 'Load More'}
-					</button>
+				<div class="downloads-list">
+					{#each filteredCompletedDownloads as download (download.id)}
+						<DownloadListRow
+							{download}
+							onclick={() => {
+								if (download.status === "COMPLETED")
+									goto(`/downloads/${download.id}`);
+							}}
+						/>
+					{/each}
 				</div>
 			{/if}
-		{:else if hasMoreDownloads && !completedLoading}
-			<div class="load-more-row">
-				<button class="btn btn-secondary" onclick={loadMoreCompletedDownloads} disabled={loadingMoreDownloads}>
-					{loadingMoreDownloads ? 'Loading…' : 'Load More'}
-				</button>
-			</div>
-		{/if}
 
-		{#if selectionMode && selectedIds.size > 0}
-			<div class="bulk-bar" class:bulk-bar-success={bulkSuccess}>
-				<span class="bulk-count">{selectedIds.size} selected</span>
-				<div class="bulk-actions">
-					<button class="btn btn-sm btn-secondary" onclick={() => { selectedIds.size === filteredCompletedDownloads.length ? deselectAll() : selectAll(); }}>
-						<CheckSquareIcon checked={selectedIds.size === filteredCompletedDownloads.length} />
-						{selectedIds.size === filteredCompletedDownloads.length ? 'Deselect all' : 'Select all'}
-					</button>
-					<div class="bulk-playlist-wrap">
-						<button class="btn btn-sm btn-secondary" onclick={openBulkPlaylistPicker} disabled={bulkPlaylistAdding}>
-							<ListPlusIcon />
-							Add to Playlist
+			{#if searchQuery.trim()}
+				{#if hasMoreSearch}
+					<div class="load-more-row">
+						<button
+							class="btn btn-secondary"
+							onclick={loadMoreSearch}
+							disabled={loadingMoreSearch}
+						>
+							{loadingMoreSearch ? "Loading…" : "Load More"}
 						</button>
-						{#if bulkPlaylistOpen}
-							<!-- svelte-ignore a11y_no_static_element_interactions -->
-							<!-- svelte-ignore a11y_click_events_have_key_events -->
-							<div class="bulk-playlist-backdrop" onclick={() => (bulkPlaylistOpen = false)}></div>
-							<div class="bulk-playlist-menu">
-								{#if bulkPlaylistLoading}
-									<p class="bulk-playlist-empty">Loading…</p>
-								{:else if bulkPlaylists.length === 0}
-									<p class="bulk-playlist-empty">No playlists yet</p>
-								{:else}
-									{#each bulkPlaylists as pl}
-										<button class="bulk-playlist-option" onclick={() => bulkAddToPlaylist(pl.id, pl.name)} disabled={bulkPlaylistAdding}>
-											{pl.name}
-										</button>
-									{/each}
-								{/if}
-							</div>
-						{/if}
 					</div>
-					<button class="btn btn-sm btn-accent" onclick={bulkPromote} disabled={bulkActing}>
-						<FolderDownIcon />
-						Move to Library
-					</button>
-					<button class="btn btn-sm btn-danger" onclick={bulkDelete} disabled={bulkActing}>
-						<TrashIcon />
-						Delete
+				{/if}
+			{:else if hasMoreDownloads && !completedLoading}
+				<div class="load-more-row">
+					<button
+						class="btn btn-secondary"
+						onclick={loadMoreCompletedDownloads}
+						disabled={loadingMoreDownloads}
+					>
+						{loadingMoreDownloads ? "Loading…" : "Load More"}
 					</button>
 				</div>
-			</div>
-		{/if}
+			{/if}
+
+			{#if selectionMode && selectedIds.size > 0}
+				<div class="bulk-bar" class:bulk-bar-success={bulkSuccess}>
+					<span class="bulk-count">{selectedIds.size} selected</span>
+					<div class="bulk-actions">
+						<button
+							class="btn btn-sm btn-secondary"
+							onclick={() => {
+								selectedIds.size ===
+								filteredCompletedDownloads.length
+									? deselectAll()
+									: selectAll();
+							}}
+						>
+							<CheckSquareIcon
+								checked={selectedIds.size ===
+									filteredCompletedDownloads.length}
+							/>
+							{selectedIds.size ===
+							filteredCompletedDownloads.length
+								? "Deselect all"
+								: "Select all"}
+						</button>
+						<div class="bulk-playlist-wrap">
+							<button
+								class="btn btn-sm btn-secondary"
+								onclick={openBulkPlaylistPicker}
+								disabled={bulkPlaylistAdding}
+							>
+								<ListPlusIcon />
+								Add to Playlist
+							</button>
+							{#if bulkPlaylistOpen}
+								<!-- svelte-ignore a11y_no_static_element_interactions -->
+								<!-- svelte-ignore a11y_click_events_have_key_events -->
+								<div
+									class="bulk-playlist-backdrop"
+									onclick={() => (bulkPlaylistOpen = false)}
+								></div>
+								<div class="bulk-playlist-menu">
+									{#if bulkPlaylistLoading}
+										<p class="bulk-playlist-empty">
+											Loading…
+										</p>
+									{:else if bulkPlaylists.length === 0}
+										<p class="bulk-playlist-empty">
+											No playlists yet
+										</p>
+									{:else}
+										{#each bulkPlaylists as pl}
+											<button
+												class="bulk-playlist-option"
+												onclick={() =>
+													bulkAddToPlaylist(
+														pl.id,
+														pl.name,
+													)}
+												disabled={bulkPlaylistAdding}
+											>
+												{pl.name}
+											</button>
+										{/each}
+									{/if}
+								</div>
+							{/if}
+						</div>
+						<button
+							class="btn btn-sm btn-accent"
+							onclick={bulkPromote}
+							disabled={bulkActing}
+						>
+							<FolderDownIcon />
+							Move to Library
+						</button>
+						<button
+							class="btn btn-sm btn-danger"
+							onclick={bulkDelete}
+							disabled={bulkActing}
+						>
+							<TrashIcon />
+							Delete
+						</button>
+					</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -1111,15 +1933,21 @@
 		margin-bottom: var(--spacing-2xl);
 	}
 
-	.form-section { align-self: start; }
-	.form-section h2 { margin-bottom: var(--spacing-lg); }
+	.form-section {
+		align-self: start;
+	}
+	.form-section h2 {
+		margin-bottom: var(--spacing-lg);
+	}
 	.active-section {
 		min-width: 0;
 		align-self: stretch;
 		border-left: 1px solid var(--border);
 		padding-left: var(--spacing-xl);
 	}
-	.active-section h2 { margin-bottom: var(--spacing-lg); }
+	.active-section h2 {
+		margin-bottom: var(--spacing-lg);
+	}
 
 	.downloads-list {
 		display: flex;
@@ -1134,7 +1962,10 @@
 		margin: calc(var(--spacing-xs) * -1);
 	}
 
-	.section { margin-bottom: var(--spacing-xl); width: 100%; }
+	.section {
+		margin-bottom: var(--spacing-xl);
+		width: 100%;
+	}
 
 	.section-header {
 		display: flex;
@@ -1145,11 +1976,30 @@
 		flex-wrap: wrap;
 	}
 
-	.section-header-left { display: flex; align-items: center; gap: var(--spacing-sm); }
-	.section-header-right { display: flex; align-items: center; gap: var(--spacing-sm); }
-	.section-header-filters { display: flex; align-items: center; gap: var(--spacing-sm); margin-top: var(--spacing-xs); }
-	.section-header h2 { margin: 0; line-height: 1; font-size: 1.25rem; }
-	.section > h2 { margin-bottom: var(--spacing-lg); }
+	.section-header-left {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+	.section-header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+	.section-header-filters {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		margin-top: var(--spacing-xs);
+	}
+	.section-header h2 {
+		margin: 0;
+		line-height: 1;
+		font-size: 1.25rem;
+	}
+	.section > h2 {
+		margin-bottom: var(--spacing-lg);
+	}
 
 	.completed-card {
 		background: var(--bg-secondary);
@@ -1163,7 +2013,9 @@
 		border-bottom: 1px solid var(--border);
 		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 	}
-	.completed-body { padding: var(--spacing-lg); }
+	.completed-body {
+		padding: var(--spacing-lg);
+	}
 
 	.select-btn {
 		height: var(--control-height);
@@ -1178,139 +2030,389 @@
 		transition: all 0.15s;
 	}
 
-	.select-btn:hover { color: var(--color-text-primary); border-color: var(--color-border-translucent-hover); }
-	.select-btn.active { background: var(--color-accent-primary); border-color: var(--color-accent-primary); color: var(--color-text-on-accent); }
+	.select-btn:hover {
+		color: var(--color-text-primary);
+		border-color: var(--color-border-translucent-hover);
+	}
+	.select-btn.active {
+		background: var(--color-accent-primary);
+		border-color: var(--color-accent-primary);
+		color: var(--color-text-on-accent);
+	}
 
-	.tabs { display: flex; gap: 4px; background: var(--color-bg-secondary); border: 1px solid var(--color-border-default); border-radius: var(--radius-lg); padding: 4px; }
-	.tab { padding: var(--spacing-sm) var(--spacing-xl); background: transparent; border: none; border-radius: var(--radius-md); color: var(--color-text-secondary); font-weight: 500; font-size: 0.875rem; cursor: pointer; transition: all var(--transition-fast); }
-	.tab:hover:not(.active) { color: var(--color-text-primary); background: var(--color-overlay-hover-subtle); }
-	.tab.active { background: var(--color-accent-primary); color: var(--color-text-on-accent); font-weight: 600; }
+	.tabs {
+		display: flex;
+		gap: 4px;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
+		border-radius: var(--radius-lg);
+		padding: 4px;
+	}
+	.tab {
+		padding: var(--spacing-sm) var(--spacing-xl);
+		background: transparent;
+		border: none;
+		border-radius: var(--radius-md);
+		color: var(--color-text-secondary);
+		font-weight: 500;
+		font-size: 0.875rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+	.tab:hover:not(.active) {
+		color: var(--color-text-primary);
+		background: var(--color-overlay-hover-subtle);
+	}
+	.tab.active {
+		background: var(--color-accent-primary);
+		color: var(--color-text-on-accent);
+		font-weight: 600;
+	}
 
-	.completed-filter { margin-bottom: 0; height: var(--control-height); align-items: stretch; background: var(--color-bg-tertiary); border: 1px solid var(--color-border-translucent); border-radius: var(--radius-md); }
-	.completed-filter .tab { display: flex; align-items: center; padding: 0 var(--spacing-md); font-size: 0.8125rem; }
-
-	.channel-dropdown { position: relative; }
-	.channel-dropdown-trigger {
-		display: flex; align-items: center; gap: var(--spacing-sm);
+	.completed-filter {
+		margin-bottom: 0;
 		height: var(--control-height);
-		padding: 0 var(--spacing-md); background: var(--color-bg-tertiary);
-		border: 1px solid var(--color-border-translucent); border-radius: var(--radius-md);
-		color: var(--color-text-primary); font-size: 0.8125rem; cursor: pointer; white-space: nowrap;
+		align-items: stretch;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-translucent);
+		border-radius: var(--radius-md);
+	}
+	.completed-filter .tab {
+		display: flex;
+		align-items: center;
+		padding: 0 var(--spacing-md);
+		font-size: 0.8125rem;
+	}
+
+	.channel-dropdown {
+		position: relative;
+	}
+	.channel-dropdown-trigger {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+		height: var(--control-height);
+		padding: 0 var(--spacing-md);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-translucent);
+		border-radius: var(--radius-md);
+		color: var(--color-text-primary);
+		font-size: 0.8125rem;
+		cursor: pointer;
+		white-space: nowrap;
 		transition: border-color 0.15s;
 	}
-	.channel-dropdown-trigger:hover { border-color: var(--color-border-translucent-hover); }
-	.channel-dropdown-chevron { transition: transform 0.15s; }
-	.channel-dropdown-chevron.open { transform: rotate(180deg); }
+	.channel-dropdown-trigger:hover {
+		border-color: var(--color-border-translucent-hover);
+	}
+	.channel-dropdown-chevron {
+		transition: transform 0.15s;
+	}
+	.channel-dropdown-chevron.open {
+		transform: rotate(180deg);
+	}
 	.channel-dropdown-menu {
-		position: absolute; top: calc(100% + 4px); right: 0; min-width: 220px;
-		background: var(--color-bg-tertiary); border: 1px solid var(--color-border-translucent);
-		border-radius: var(--radius-md); box-shadow: var(--shadow-dropdown); z-index: 100; overflow: hidden;
+		position: absolute;
+		top: calc(100% + 4px);
+		right: 0;
+		min-width: 220px;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-translucent);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-dropdown);
+		z-index: 100;
+		overflow: hidden;
 		transform-origin: top right;
 		animation: dropdown-in 160ms cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
 	}
 	@keyframes dropdown-in {
-		from { opacity: 0; transform: translateY(-6px) scale(0.96); }
-		to { opacity: 1; transform: translateY(0) scale(1); }
+		from {
+			opacity: 0;
+			transform: translateY(-6px) scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.channel-dropdown-menu { animation: none; }
+		.channel-dropdown-menu {
+			animation: none;
+		}
 	}
 	.channel-dropdown-search {
-		width: 100%; padding: var(--spacing-sm) var(--spacing-md); background: transparent;
-		border: none; border-bottom: 1px solid var(--color-border-translucent);
-		color: var(--color-text-primary); font-size: 0.85rem; outline: none;
+		width: 100%;
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: transparent;
+		border: none;
+		border-bottom: 1px solid var(--color-border-translucent);
+		color: var(--color-text-primary);
+		font-size: 0.85rem;
+		outline: none;
 	}
-	.channel-dropdown-search::placeholder { color: var(--color-text-secondary); }
-	.channel-dropdown-options { max-height: 200px; overflow-y: auto; padding: var(--spacing-xs) 0; }
+	.channel-dropdown-search::placeholder {
+		color: var(--color-text-secondary);
+	}
+	.channel-dropdown-options {
+		max-height: 200px;
+		overflow-y: auto;
+		padding: var(--spacing-xs) 0;
+	}
 	.channel-dropdown-option {
-		display: block; width: 100%; padding: var(--spacing-xs) var(--spacing-md);
-		background: transparent; border: none; color: var(--color-text-primary); font-size: 0.85rem;
-		text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+		display: block;
+		width: 100%;
+		padding: var(--spacing-xs) var(--spacing-md);
+		background: transparent;
+		border: none;
+		color: var(--color-text-primary);
+		font-size: 0.85rem;
+		text-align: left;
+		cursor: pointer;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
-	.channel-dropdown-option:hover { background: var(--color-overlay-hover); }
-	.channel-dropdown-option.selected { color: var(--color-accent-primary); }
-	.channel-dropdown-empty { padding: var(--spacing-sm) var(--spacing-md); color: var(--color-text-secondary); font-size: 0.85rem; }
-	.channel-dropdown-backdrop { position: fixed; inset: 0; z-index: 99; }
-	.sort-dropdown { position: relative; }
+	.channel-dropdown-option:hover {
+		background: var(--color-overlay-hover);
+	}
+	.channel-dropdown-option.selected {
+		color: var(--color-accent-primary);
+	}
+	.channel-dropdown-empty {
+		padding: var(--spacing-sm) var(--spacing-md);
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+	}
+	.channel-dropdown-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 99;
+	}
+	.sort-dropdown {
+		position: relative;
+	}
 
-	.downloads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--grid-card-min-width), 1fr)); gap: var(--spacing-lg); width: 100%; }
+	.downloads-grid {
+		display: grid;
+		grid-template-columns: repeat(
+			auto-fill,
+			minmax(var(--grid-card-min-width), 1fr)
+		);
+		gap: var(--spacing-lg);
+		width: 100%;
+	}
 
-	.load-more-row { display: flex; justify-content: center; margin-top: var(--spacing-xl); }
+	.load-more-row {
+		display: flex;
+		justify-content: center;
+		margin-top: var(--spacing-xl);
+	}
 
-	.downloads-list { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; }
+	.downloads-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing-sm);
+		width: 100%;
+	}
 
 	.bulk-bar {
-		position: sticky; bottom: var(--spacing-lg); display: flex; align-items: center; justify-content: space-between;
-		padding: var(--spacing-sm) var(--spacing-lg); background: var(--color-bg-tertiary);
-		border: 1px solid var(--color-border-translucent); border-radius: var(--radius-md);
-		box-shadow: var(--shadow-dropdown); margin-top: var(--spacing-lg); z-index: 50;
-		transition: border-color 0.3s ease, box-shadow 0.3s ease;
+		position: sticky;
+		bottom: var(--spacing-lg);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--spacing-sm) var(--spacing-lg);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-translucent);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-dropdown);
+		margin-top: var(--spacing-lg);
+		z-index: 50;
+		transition:
+			border-color 0.3s ease,
+			box-shadow 0.3s ease;
 	}
 	.bulk-bar-success {
 		border-color: var(--color-status-success, var(--color-status-success));
-		box-shadow: 0 0 0 1px var(--color-status-success, var(--color-status-success)),
+		box-shadow:
+			0 0 0 1px var(--color-status-success, var(--color-status-success)),
 			0 8px 24px -8px var(--color-status-success, var(--color-status-success));
 		animation: bulk-bar-flash 0.9s ease-out;
 	}
 	@keyframes bulk-bar-flash {
-		0% { background: var(--color-bg-tertiary); }
-		25% { background: color-mix(in srgb, var(--color-status-success, var(--color-status-success)) 18%, var(--color-bg-tertiary)); }
-		100% { background: var(--color-bg-tertiary); }
+		0% {
+			background: var(--color-bg-tertiary);
+		}
+		25% {
+			background: color-mix(
+				in srgb,
+				var(--color-status-success, var(--color-status-success)) 18%,
+				var(--color-bg-tertiary)
+			);
+		}
+		100% {
+			background: var(--color-bg-tertiary);
+		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.bulk-bar-success { animation: none; }
+		.bulk-bar-success {
+			animation: none;
+		}
 	}
-	.bulk-count { font-size: 0.875rem; font-weight: 500; color: var(--color-text-primary); }
-	.bulk-actions { display: flex; gap: var(--spacing-sm); align-items: center; flex-wrap: wrap; }
+	.bulk-count {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+	.bulk-actions {
+		display: flex;
+		gap: var(--spacing-sm);
+		align-items: center;
+		flex-wrap: wrap;
+	}
 
-	.bulk-playlist-wrap { position: relative; }
-	.bulk-playlist-backdrop { position: fixed; inset: 0; z-index: 49; }
+	.bulk-playlist-wrap {
+		position: relative;
+	}
+	.bulk-playlist-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 49;
+	}
 	.bulk-playlist-menu {
-		position: absolute; bottom: calc(100% + 8px); left: 0;
-		background: var(--color-bg-tertiary); border: 1px solid var(--color-border-default);
-		border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
-		min-width: 180px; max-height: 240px; overflow-y: auto; z-index: 50;
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 0;
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-default);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-lg);
+		min-width: 180px;
+		max-height: 240px;
+		overflow-y: auto;
+		z-index: 50;
 		padding: var(--spacing-xs);
 		transform-origin: bottom left;
 		animation: dropdown-in 160ms cubic-bezier(0.2, 0.8, 0.3, 1.1) both;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.bulk-playlist-menu { animation: none; }
+		.bulk-playlist-menu {
+			animation: none;
+		}
 	}
 	.bulk-playlist-option {
-		display: block; width: 100%; text-align: left; padding: 7px var(--spacing-sm);
-		background: none; border: none; color: var(--color-text-primary); font: inherit;
-		font-size: 0.875rem; cursor: pointer; border-radius: var(--radius-sm);
-		transition: background var(--transition-fast); min-height: unset;
+		display: block;
+		width: 100%;
+		text-align: left;
+		padding: 7px var(--spacing-sm);
+		background: none;
+		border: none;
+		color: var(--color-text-primary);
+		font: inherit;
+		font-size: 0.875rem;
+		cursor: pointer;
+		border-radius: var(--radius-sm);
+		transition: background var(--transition-fast);
+		min-height: unset;
 	}
-	.bulk-playlist-option:hover { background: var(--color-overlay-hover); }
-	.bulk-playlist-option:disabled { opacity: 0.5; cursor: not-allowed; }
-	.bulk-playlist-empty { padding: var(--spacing-sm) var(--spacing-sm); font-size: 0.875rem; color: var(--color-text-secondary); margin: 0; }
+	.bulk-playlist-option:hover {
+		background: var(--color-overlay-hover);
+	}
+	.bulk-playlist-option:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+	.bulk-playlist-empty {
+		padding: var(--spacing-sm) var(--spacing-sm);
+		font-size: 0.875rem;
+		color: var(--color-text-secondary);
+		margin: 0;
+	}
 
-	.storage-row { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
-	.storage-box {
-		background: var(--color-bg-secondary); border: 1px solid var(--color-border-default);
-		border-radius: var(--radius-lg); padding: var(--spacing-md) var(--spacing-lg); flex: 1; min-width: 0;
+	.storage-row {
+		display: flex;
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-lg);
 	}
-	.storage-count { font-size: 0.75rem; color: var(--color-text-tertiary); }
-	.cache-usage-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm); }
-	.cache-usage-left { display: flex; align-items: center; gap: var(--spacing-xs); }
-	.cache-usage-right { display: flex; align-items: center; gap: var(--spacing-sm); }
-	.cache-usage-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-tertiary); }
+	.storage-box {
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-default);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-md) var(--spacing-lg);
+		flex: 1;
+		min-width: 0;
+	}
+	.storage-count {
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+	}
+	.cache-usage-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--spacing-sm);
+	}
+	.cache-usage-left {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-xs);
+	}
+	.cache-usage-right {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-sm);
+	}
+	.cache-usage-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-tertiary);
+	}
 	.cache-usage-tooltip {
-		display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
-		border-radius: 50%; background: var(--color-bg-tertiary); color: var(--color-text-tertiary);
-		font-size: 0.625rem; font-weight: 700; cursor: help; border: 1px solid var(--color-border-default); position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 16px;
+		border-radius: 50%;
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-tertiary);
+		font-size: 0.625rem;
+		font-weight: 700;
+		cursor: help;
+		border: 1px solid var(--color-border-default);
+		position: relative;
 	}
 	.cache-usage-tooltip::after {
-		content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%;
-		transform: translateX(-50%); background: var(--color-bg-tertiary); color: var(--color-text-primary);
-		border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: 8px 12px;
-		font-size: 0.75rem; font-weight: 400; line-height: 1.4; width: 260px; white-space: normal;
-		pointer-events: none; opacity: 0; transition: opacity 0.15s ease; z-index: 200; box-shadow: var(--shadow-lg);
+		content: attr(data-tooltip);
+		position: absolute;
+		bottom: calc(100% + 8px);
+		left: 50%;
+		transform: translateX(-50%);
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-primary);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-md);
+		padding: 8px 12px;
+		font-size: 0.75rem;
+		font-weight: 400;
+		line-height: 1.4;
+		width: 260px;
+		white-space: normal;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.15s ease;
+		z-index: 200;
+		box-shadow: var(--shadow-lg);
 	}
-	.cache-usage-tooltip:hover::after { opacity: 1; }
-	.cache-usage-value { font-size: 0.8125rem; color: var(--color-text-secondary); }
+	.cache-usage-tooltip:hover::after {
+		opacity: 1;
+	}
+	.cache-usage-value {
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+	}
 	.cache-clear-btn {
 		padding: 4px !important;
 		font-size: 0 !important;
@@ -1319,7 +2421,9 @@
 		align-items: center;
 		justify-content: center;
 	}
-	.cache-clear-btn svg { display: block; }
+	.cache-clear-btn svg {
+		display: block;
+	}
 
 	:global(.btn-icon) {
 		display: inline-flex;
@@ -1332,12 +2436,65 @@
 	:global(.btn-icon svg) {
 		display: block;
 	}
-	@keyframes spin { to { transform: rotate(360deg); } }
-	.cache-clear-btn .spin { animation: spin 1s linear infinite; }
-	.cache-usage-bar { height: 6px; background: var(--color-bg-tertiary); border-radius: var(--radius-sm); overflow: hidden; }
-	.cache-usage-fill { height: 100%; background: var(--color-accent-primary); border-radius: var(--radius-sm); transition: width 0.3s ease; }
-	.cache-usage-fill.warning { background: var(--color-status-warning); }
-	.cache-usage-fill.critical { background: var(--color-status-error); }
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	.cache-clear-btn .spin {
+		animation: spin 1s linear infinite;
+	}
+	.cache-usage-bar {
+		height: 6px;
+		background: var(--color-bg-tertiary);
+		border-radius: var(--radius-sm);
+		overflow: hidden;
+	}
+	.cache-usage-fill {
+		height: 100%;
+		background: var(--color-accent-primary);
+		border-radius: var(--radius-sm);
+		transition: width 0.3s ease;
+	}
+	.cache-usage-fill.warning {
+		background: var(--color-status-warning);
+	}
+	.cache-usage-fill.critical {
+		background: var(--color-status-error);
+	}
+
+	.storage-warning {
+		display: flex;
+		align-items: center;
+		gap: var(--spacing-md);
+		padding: var(--spacing-md) var(--spacing-lg);
+		background: var(--color-overlay-warning-10);
+		border: 1px solid var(--color-status-warning);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--spacing-lg);
+	}
+
+	.warning-icon {
+		color: var(--color-status-warning);
+		min-width: 20px;
+	}
+
+	.warning-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.warning-label {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--color-status-warning);
+	}
+
+	.warning-message {
+		font-size: 0.8125rem;
+		color: var(--color-text-primary);
+	}
 
 	.search-bar-section {
 		margin-bottom: var(--spacing-xl);
@@ -1370,7 +2527,8 @@
 
 	.search-input-main {
 		width: 100%;
-		padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + 28px);
+		padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md)
+			calc(var(--spacing-lg) + 28px);
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
@@ -1408,9 +2566,13 @@
 		background: var(--color-overlay-hover);
 	}
 
-	.filter-dropdown { position: relative; }
+	.filter-dropdown {
+		position: relative;
+	}
 
-	.subtitle-results-section { margin-bottom: var(--spacing-xl); }
+	.subtitle-results-section {
+		margin-bottom: var(--spacing-xl);
+	}
 
 	.subtitle-results-heading {
 		display: flex;
@@ -1422,7 +2584,10 @@
 		margin-bottom: var(--spacing-md);
 	}
 
-	.subtitle-results-heading svg { color: var(--color-text-tertiary); flex-shrink: 0; }
+	.subtitle-results-heading svg {
+		color: var(--color-text-tertiary);
+		flex-shrink: 0;
+	}
 
 	.subtitle-matches {
 		display: flex;
@@ -1440,7 +2605,9 @@
 		border-radius: var(--radius-md);
 		text-decoration: none;
 		color: inherit;
-		transition: border-color 0.15s, background 0.15s;
+		transition:
+			border-color 0.15s,
+			background 0.15s;
 	}
 
 	.subtitle-match:hover {
@@ -1499,8 +2666,13 @@
 		transition: border-color 0.15s;
 	}
 
-	.date-input:hover { border-color: var(--color-border-translucent-hover); }
-	.date-input:focus { outline: none; border-color: var(--color-accent-primary); }
+	.date-input:hover {
+		border-color: var(--color-border-translucent-hover);
+	}
+	.date-input:focus {
+		outline: none;
+		border-color: var(--color-accent-primary);
+	}
 
 	.date-input::-webkit-calendar-picker-indicator {
 		filter: invert(0.7);
@@ -1530,17 +2702,47 @@
 	}
 
 	@media (max-width: 768px) {
-		.page { padding: 0 var(--spacing-sm); }
-		.storage-row { flex-direction: column; }
-		.downloads-layout { grid-template-columns: 1fr; gap: var(--spacing-lg); }
-		.active-section { border-left: none; padding-left: 0; }
-		.downloads-grid { grid-template-columns: 1fr; }
-		.search-bar-section { flex-direction: column; }
-		.search-bar-wrapper { min-width: unset; }
-		.search-input-main { font-size: 1rem; min-height: 44px; }
-		.search-clear-btn { min-width: 44px; min-height: 44px; }
-		.section-header { flex-direction: column; align-items: stretch; gap: var(--spacing-sm); }
-		.section-header-left { justify-content: space-between; flex-wrap: wrap; gap: var(--spacing-sm); }
+		.page {
+			padding: 0 var(--spacing-sm);
+		}
+		.storage-row {
+			flex-direction: column;
+		}
+		.downloads-layout {
+			grid-template-columns: 1fr;
+			gap: var(--spacing-lg);
+		}
+		.active-section {
+			border-left: none;
+			padding-left: 0;
+		}
+		.downloads-grid {
+			grid-template-columns: 1fr;
+		}
+		.search-bar-section {
+			flex-direction: column;
+		}
+		.search-bar-wrapper {
+			min-width: unset;
+		}
+		.search-input-main {
+			font-size: 1rem;
+			min-height: 44px;
+		}
+		.search-clear-btn {
+			min-width: 44px;
+			min-height: 44px;
+		}
+		.section-header {
+			flex-direction: column;
+			align-items: stretch;
+			gap: var(--spacing-sm);
+		}
+		.section-header-left {
+			justify-content: space-between;
+			flex-wrap: wrap;
+			gap: var(--spacing-sm);
+		}
 		.section-header-right {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1552,7 +2754,10 @@
 			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 			gap: var(--spacing-sm);
 		}
-		.select-btn { min-height: 44px; padding: var(--spacing-sm) var(--spacing-md); }
+		.select-btn {
+			min-height: 44px;
+			padding: var(--spacing-sm) var(--spacing-md);
+		}
 		.completed-filter {
 			grid-column: 1 / -1;
 			width: 100%;
@@ -1560,8 +2765,15 @@
 			   contain the 44px touch-target tabs instead of letting them overflow. */
 			height: auto;
 		}
-		.completed-filter .tab { flex: 1; text-align: center; min-height: 44px; }
-		.channel-dropdown, .sort-dropdown { min-width: 0; }
+		.completed-filter .tab {
+			flex: 1;
+			text-align: center;
+			min-height: 44px;
+		}
+		.channel-dropdown,
+		.sort-dropdown {
+			min-width: 0;
+		}
 		.channel-dropdown-trigger {
 			width: 100%;
 			justify-content: space-between;
@@ -1582,11 +2794,30 @@
 			min-width: unset;
 			max-width: calc(100vw - var(--spacing-md) * 2);
 		}
-		.channel-dropdown-search { min-height: 44px; font-size: 1rem; }
-		.channel-dropdown-option { padding: var(--spacing-sm) var(--spacing-md); min-height: 44px; display: flex; align-items: center; }
-		.bulk-bar { flex-direction: column; gap: var(--spacing-sm); padding: var(--spacing-md); }
-		.bulk-actions { width: 100%; flex-wrap: wrap; }
-		.bulk-actions .btn { flex: 1; min-width: 0; min-height: 44px; }
+		.channel-dropdown-search {
+			min-height: 44px;
+			font-size: 1rem;
+		}
+		.channel-dropdown-option {
+			padding: var(--spacing-sm) var(--spacing-md);
+			min-height: 44px;
+			display: flex;
+			align-items: center;
+		}
+		.bulk-bar {
+			flex-direction: column;
+			gap: var(--spacing-sm);
+			padding: var(--spacing-md);
+		}
+		.bulk-actions {
+			width: 100%;
+			flex-wrap: wrap;
+		}
+		.bulk-actions .btn {
+			flex: 1;
+			min-width: 0;
+			min-height: 44px;
+		}
 		.date-range-filter {
 			grid-column: 1 / -1;
 			width: 100%;
@@ -1600,13 +2831,25 @@
 			font-size: 1rem;
 			padding: var(--spacing-sm) var(--spacing-md);
 		}
-		.date-clear-btn { min-width: 44px; min-height: 44px; padding: var(--spacing-sm); }
+		.date-clear-btn {
+			min-width: 44px;
+			min-height: 44px;
+			padding: var(--spacing-sm);
+		}
 	}
 
 	@media (max-width: 480px) {
-		.section-header-right { grid-template-columns: minmax(0, 1fr); }
-		.section-header-filters { grid-template-columns: minmax(0, 1fr); }
-		.tabs { flex-wrap: wrap; }
-		.tab { padding: var(--spacing-sm) var(--spacing-md); }
+		.section-header-right {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.section-header-filters {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.tabs {
+			flex-wrap: wrap;
+		}
+		.tab {
+			padding: var(--spacing-sm) var(--spacing-md);
+		}
 	}
 </style>

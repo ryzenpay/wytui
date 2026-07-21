@@ -57,3 +57,6 @@ extension-artifacts/
 wytui-extension-*.zip
 
 extension/.amo-upload-uuid
+
+# Qwen tooling artifacts
+.qwen/
