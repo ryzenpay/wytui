@@ -85,6 +85,7 @@
 				{ id: "proxy-auth", label: "Reverse Proxy Auth" },
 				{ id: "auth-mode", label: "Authentication" },
 				{ id: "privacy", label: "Stats & Privacy" },
+				{ id: "config", label: "Import / Export" },
 			],
 		},
 	];
@@ -631,6 +632,108 @@
 			}
 		} catch {
 			addToast("error", "Failed to remove cookie file");
+		}
+	}
+
+	// Config export/import
+	let exportingConfig = $state(false);
+	let importingConfig = $state(false);
+	let applyingImport = $state(false);
+	let importError = $state<string | null>(null);
+	let pendingImportYaml = $state<string | null>(null);
+	let importPreview = $state<{
+		changes: { field: string; from: unknown; to: unknown }[];
+	} | null>(null);
+
+	async function exportConfig() {
+		exportingConfig = true;
+		try {
+			const res = await fetch("/api/settings/export");
+			if (!res.ok) {
+				addToast("error", "Failed to export config");
+				return;
+			}
+			const blob = await res.blob();
+			const disposition = res.headers.get("Content-Disposition") || "";
+			const match = disposition.match(/filename="([^"]+)"/);
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = match?.[1] || "wytui-config.yaml";
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+			URL.revokeObjectURL(url);
+		} catch {
+			addToast("error", "Failed to export config");
+		} finally {
+			exportingConfig = false;
+		}
+	}
+
+	async function handleImportFile(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		importError = null;
+		importingConfig = true;
+		try {
+			const yaml = await file.text();
+			const res = await csrfFetch("/api/settings/import", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ yaml, confirm: false }),
+			});
+			const data = await res.json().catch(() => null);
+			if (!res.ok) {
+				importError = data?.message || "Failed to parse config file";
+				return;
+			}
+			pendingImportYaml = yaml;
+			importPreview = data;
+		} catch {
+			importError = "Failed to read config file";
+		} finally {
+			importingConfig = false;
+			input.value = "";
+		}
+	}
+
+	function closeImportPreview() {
+		importPreview = null;
+		pendingImportYaml = null;
+		importError = null;
+	}
+
+	function formatSettingValue(value: unknown): string {
+		if (value === null || value === undefined) return "(not set)";
+		if (Array.isArray(value)) return value.length ? value.join(", ") : "(empty)";
+		if (typeof value === "boolean") return value ? "enabled" : "disabled";
+		return String(value);
+	}
+
+	async function applyImport() {
+		if (!pendingImportYaml) return;
+		applyingImport = true;
+		try {
+			const res = await csrfFetch("/api/settings/import", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ yaml: pendingImportYaml, confirm: true }),
+			});
+			const data = await res.json().catch(() => null);
+			if (!res.ok) {
+				importError = data?.message || "Failed to apply config";
+				return;
+			}
+			settings = data.settings;
+			addToast("success", "Config imported");
+			closeImportPreview();
+		} catch {
+			importError = "Failed to apply config";
+		} finally {
+			applyingImport = false;
 		}
 	}
 
@@ -2578,6 +2681,91 @@
 						</div>
 					</div>
 
+					<div class="settings-section" id="config">
+						<h2>Import / Export</h2>
+						<p class="help-text" style="margin-bottom: var(--spacing-lg);">
+							Back up the full app configuration as YAML, or restore
+							it on this or another instance.
+						</p>
+
+						<div class="form-group">
+							<button
+								class="btn btn-secondary btn-sm btn-with-icon"
+								onclick={exportConfig}
+								disabled={exportingConfig}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><path
+										d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+									/><polyline points="7 10 12 15 17 10" /><line
+										x1="12"
+										y1="15"
+										x2="12"
+										y2="3"
+									/></svg
+								>
+								{exportingConfig ? "Exporting..." : "Export Config"}
+							</button>
+							<p class="help-text">
+								Contains secrets (API keys, tokens, passwords) in
+								plaintext — store the downloaded file securely.
+							</p>
+						</div>
+
+						<div class="form-group">
+							<label
+								class="cookie-upload-label btn-secondary btn-sm btn-with-icon"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									><path
+										d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+									/><polyline points="17 8 12 3 7 8" /><line
+										x1="12"
+										y1="3"
+										x2="12"
+										y2="15"
+									/></svg
+								>
+								{importingConfig ? "Reading..." : "Import Config"}
+								<input
+									type="file"
+									accept=".yaml,.yml"
+									onchange={handleImportFile}
+									disabled={importingConfig}
+									style="display: none;"
+								/>
+							</label>
+							<p class="help-text">
+								You'll see exactly what will change before anything
+								is applied.
+							</p>
+						</div>
+
+						{#if importError && !importPreview}
+							<div class="error-message" style="margin-top: var(--spacing-md);">
+								{importError}
+							</div>
+						{/if}
+					</div>
+
 					<div class="api-docs-link">
 						<a href="/docs" class="btn btn-secondary btn-lg">
 							<svg
@@ -3072,6 +3260,93 @@
 						</button>
 					</div>
 				</form>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Import Config Preview Modal -->
+{#if importPreview}
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	<div class="modal-overlay" onclick={closeImportPreview}>
+		<div
+			class="modal-content"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Confirm config import"
+			tabindex="-1"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => {
+				if (e.key === "Escape") closeImportPreview();
+			}}
+		>
+			<div class="modal-header">
+				<h3>Review Config Import</h3>
+				<button class="modal-close" onclick={closeImportPreview}
+					>&times;</button
+				>
+			</div>
+
+			<div class="modal-body">
+				{#if importError}
+					<div class="error-message">{importError}</div>
+				{/if}
+
+				{#if importPreview.changes.length === 0}
+					<p class="help-text">
+						No changes — this file matches the current settings.
+					</p>
+				{:else}
+					<p class="help-text" style="margin-bottom: var(--spacing-md);">
+						{importPreview.changes.length} setting{importPreview
+							.changes.length === 1
+							? ""
+							: "s"} will change. Review carefully before applying
+						— this includes anything affecting login/auth.
+					</p>
+					<table class="import-diff-table">
+						<thead>
+							<tr>
+								<th>Setting</th>
+								<th>Current</th>
+								<th>New</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each importPreview.changes as change (change.field)}
+								<tr>
+									<td class="import-diff-field">{change.field}</td>
+									<td class="import-diff-from"
+										>{formatSettingValue(change.from)}</td
+									>
+									<td class="import-diff-to"
+										>{formatSettingValue(change.to)}</td
+									>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+
+				<div class="modal-actions">
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={closeImportPreview}
+					>
+						Cancel
+					</button>
+					{#if importPreview.changes.length > 0}
+						<button
+							type="button"
+							class="btn btn-danger"
+							onclick={applyImport}
+							disabled={applyingImport}
+						>
+							{applyingImport ? "Applying..." : "Apply Changes"}
+						</button>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -3931,6 +4206,42 @@
 		align-items: center;
 		padding: var(--spacing-lg);
 		border-bottom: 1px solid var(--color-border-default);
+	}
+
+	.import-diff-table {
+		width: 100%;
+		border-collapse: collapse;
+		margin-bottom: var(--spacing-lg);
+		font-size: var(--font-size-sm);
+	}
+
+	.import-diff-table th,
+	.import-diff-table td {
+		text-align: left;
+		padding: var(--spacing-sm);
+		border-bottom: 1px solid var(--color-border-default);
+		vertical-align: top;
+		word-break: break-word;
+	}
+
+	.import-diff-table th {
+		color: var(--color-text-secondary);
+		font-weight: 600;
+	}
+
+	.import-diff-field {
+		font-family: var(--font-mono, monospace);
+		color: var(--color-text-secondary);
+	}
+
+	.import-diff-from {
+		color: var(--color-text-secondary);
+		text-decoration: line-through;
+	}
+
+	.import-diff-to {
+		color: var(--color-text-primary);
+		font-weight: 600;
 	}
 
 	.modal-header h3 {
