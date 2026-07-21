@@ -5,7 +5,8 @@ import { sseEmitter } from '../sse/emitter';
 import { DownloadStatus } from '@prisma/client';
 import type { ChildProcess } from 'child_process';
 import type { Download } from '$lib/types';
-import { unlink, stat } from 'fs/promises';
+import { unlink, stat, readdir } from 'fs/promises';
+import { dirname, basename, extname, join } from 'path';
 import { libraryService } from './library.service';
 import { channelOverrideService } from './channel-override.service';
 import { notificationService } from './notification.service';
@@ -407,6 +408,19 @@ class DownloadService {
 		const settings = await this.getSettings();
 		const outputPath = settings.downloadPath;
 
+		// Pre-flight disk space check: yt-dlp always writes to outputPath first
+		// regardless of storagePool (library saves are copied over after completion),
+		// so check the real filesystem here rather than trusting the DB-tallied cache
+		// quota, which only tracks storagePool: 'cache' and can't see this coming.
+		const MIN_FREE_DISK_BYTES = BigInt(1_073_741_824); // 1 GiB floor when size is unknown
+		const requiredBytes = download.filesize
+			? (download.filesize * BigInt(120)) / BigInt(100) // 20% buffer for merge/remux overhead
+			: MIN_FREE_DISK_BYTES;
+		const { sufficient } = await libraryService.ensureFreeDiskSpace(outputPath, requiredBytes);
+		if (!sufficient) {
+			throw new Error('Insufficient disk space to start download');
+		}
+
 		// Build yt-dlp arguments (merge profile flags with per-download overrides)
 		let mergedFlags = [...download.profile.customFlags, ...download.customFlags];
 
@@ -760,6 +774,27 @@ class DownloadService {
 	/**
 	 * Handle download error
 	 */
+	/**
+	 * Delete the tracked output file plus any yt-dlp working artifacts left next to it
+	 * (.part, .ytdl, pre-merge fragment streams, etc). yt-dlp writes those under the
+	 * same stem as the final filename, and only unlinking the tracked `filepath` leaves
+	 * them orphaned on disk with no DB row to ever reclaim them.
+	 */
+	private async cleanupPartialFiles(filepath: string): Promise<void> {
+		try {
+			const dir = dirname(filepath);
+			const stem = basename(filepath, extname(filepath));
+			const entries = await readdir(dir);
+			for (const entry of entries) {
+				if (entry === basename(filepath) || entry.startsWith(stem + '.')) {
+					try {
+						await unlink(join(dir, entry));
+					} catch {}
+				}
+			}
+		} catch {}
+	}
+
 	private async handleDownloadError(downloadId: string, error: string): Promise<void> {
 		if (this.handlingError.has(downloadId)) return;
 		this.handlingError.add(downloadId);
@@ -795,9 +830,7 @@ class DownloadService {
 				this.clearDownloadState(downloadId);
 
 				if (download.filepath) {
-					try {
-						await unlink(download.filepath);
-					} catch {}
+					await this.cleanupPartialFiles(download.filepath);
 				}
 
 				const videoId = this.extractVideoId(download.url);
@@ -838,6 +871,14 @@ class DownloadService {
 		if (debounceTimeout) {
 			clearTimeout(debounceTimeout);
 			this.updateDebounce.delete(downloadId);
+		}
+
+		// Cancelling mid-download otherwise leaves yt-dlp's partial file (and any
+		// .part/.ytdl/fragment artifacts) on disk forever — there's no COMPLETED row
+		// to ever make cache/library quota logic notice or clean them up.
+		const download = await prisma.download.findUnique({ where: { id: downloadId } });
+		if (download?.filepath) {
+			await this.cleanupPartialFiles(download.filepath);
 		}
 
 		await this.updateDownload(downloadId, {

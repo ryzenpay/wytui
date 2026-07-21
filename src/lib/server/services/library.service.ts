@@ -297,6 +297,71 @@ class LibraryService {
 		}
 	}
 
+	/** Actual free space available on the disk backing `path`, or null if unreadable. */
+	private async getDiskFreeBytes(path: string): Promise<bigint | null> {
+		try {
+			const stats = await statfs(path);
+			return BigInt(stats.bsize) * BigInt(stats.bavail);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Guarantee at least `requiredBytes` of real free space on `downloadPath` before a
+	 * download starts. The DB-tallied cache quota (enforceCacheQuota/enforceTotalCacheQuota)
+	 * only ever counts `storagePool: 'cache'` rows, so it goes blind whenever downloads are
+	 * routed to the library (or a promotion fails and strands a file) — the disk fills up
+	 * while the quota tally sees ~0 bytes used and never evicts. This checks the actual
+	 * filesystem instead, so it reclaims space regardless of how usage got there.
+	 *
+	 * Evicts the oldest completed cache-pool downloads (across all users) until either
+	 * enough space is free or there's nothing left to evict. Returns `sufficient: true`
+	 * if the disk can't be read at all — we don't want to block downloads on a bad stat.
+	 */
+	async ensureFreeDiskSpace(downloadPath: string, requiredBytes: bigint): Promise<{ freedBytes: bigint; sufficient: boolean }> {
+		let free = await this.getDiskFreeBytes(downloadPath);
+		if (free == null) return { freedBytes: BigInt(0), sufficient: true };
+		if (free >= requiredBytes) return { freedBytes: BigInt(0), sufficient: true };
+
+		const candidates = await prisma.download.findMany({
+			where: { storagePool: 'cache', status: DownloadStatus.COMPLETED },
+			orderBy: { completedAt: 'asc' },
+			select: { id: true, filesize: true, filepath: true, userId: true },
+		});
+
+		let freedBytes = BigInt(0);
+		for (const candidate of candidates) {
+			free = await this.getDiskFreeBytes(downloadPath);
+			if (free != null && free >= requiredBytes) break;
+
+			if (candidate.filepath) {
+				try {
+					await unlink(candidate.filepath);
+				} catch {
+					continue;
+				}
+			}
+
+			const videoId = await this.getVideoIdForDownload(candidate.id);
+			if (videoId) {
+				await prisma.archive.deleteMany({ where: { videoId } });
+			}
+
+			await prisma.download.delete({ where: { id: candidate.id } });
+			freedBytes += candidate.filesize ?? BigInt(0);
+
+			if (candidate.userId) {
+				sseEmitter.broadcastToUser('download:deleted', { id: candidate.id, reason: 'disk_space' }, candidate.userId);
+			} else {
+				sseEmitter.broadcast('download:deleted', { id: candidate.id, reason: 'disk_space' });
+			}
+		}
+
+		free = await this.getDiskFreeBytes(downloadPath);
+		return { freedBytes, sufficient: free == null || free >= requiredBytes };
+	}
+
 	/**
 	 * Effective global cache cap. An explicit Settings.totalCacheQuotaBytes wins;
 	 * otherwise default to (disk capacity − 5 GB) so non-PVC installs leave headroom.
