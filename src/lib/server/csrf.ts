@@ -16,7 +16,8 @@ export function getOrCreateCsrfToken(cookies: Cookies): string {
 	const newToken = randomBytes(32).toString('hex');
 	// Only use secure cookies in production AND when not on localhost
 	// This allows Docker production builds to work on http://localhost
-	const isSecure = process.env.NODE_ENV === 'production' &&
+	const isSecure =
+		process.env.NODE_ENV === 'production' &&
 		!(process.env.ORIGIN?.includes('localhost') || process.env.ORIGIN?.includes('127.0.0.1'));
 
 	cookies.set(CSRF_COOKIE_NAME, newToken, {

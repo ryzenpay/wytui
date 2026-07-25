@@ -50,7 +50,7 @@ export function apiRoute<T extends (...args: any[]) => any>(
 	path: string,
 	method: string,
 	config: RouteConfig,
-	handler: T
+	handler: T,
 ): T {
 	registry.push({ path, method: method.toLowerCase(), config });
 	return handler;

@@ -92,8 +92,8 @@
 		<h1>Search</h1>
 		<div class="search-bar">
 			<svg class="search-icon" width="20" height="20" viewBox="0 0 16 16" fill="none">
-				<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/>
-				<path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+				<circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" />
+				<path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 			</svg>
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
@@ -106,7 +106,11 @@
 			/>
 			{#if query}
 				<button class="search-clear" aria-label="Clear search" onclick={() => (query = '')}>
-					<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" /></svg>
+					<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"
+						><path
+							d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+						/></svg
+					>
 				</button>
 			{/if}
 		</div>
@@ -155,7 +159,17 @@
 			onAction={clearSearchFilters}
 		>
 			{#snippet icon()}
-				<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<svg
+					width="28"
+					height="28"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
 					<circle cx="11" cy="11" r="8" />
 					<line x1="21" y1="21" x2="16.65" y2="16.65" />
 					<line x1="8" y1="8" x2="14" y2="14" />
@@ -172,24 +186,37 @@
 				<button
 					type="button"
 					class="result-card"
-					aria-label="Open {result.title || 'Untitled'}{result.uploader ? ` by ${result.uploader}` : ''}"
+					aria-label="Open {result.title || 'Untitled'}{result.uploader
+						? ` by ${result.uploader}`
+						: ''}"
 					onclick={() => navigateToDownload(result.id)}
 				>
 					{#if result.thumbnail}
 						<div class="result-thumbnail">
 							<img src={result.thumbnail} alt={result.title || 'Thumbnail'} />
 							{#if result.duration}
-								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}">{formatDuration(result.duration)}</span>
+								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}"
+									>{formatDuration(result.duration)}</span
+								>
 							{/if}
 						</div>
 					{:else}
 						<div class="result-thumbnail no-thumb" aria-hidden="true">
-							<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-								<rect x="2" y="2" width="20" height="20" rx="2"/>
-								<path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/>
+							<svg
+								width="32"
+								height="32"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="1.5"
+							>
+								<rect x="2" y="2" width="20" height="20" rx="2" />
+								<path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none" />
 							</svg>
 							{#if result.duration}
-								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}">{formatDuration(result.duration)}</span>
+								<span class="duration-badge" aria-label="Duration {formatDuration(result.duration)}"
+									>{formatDuration(result.duration)}</span
+								>
 							{/if}
 						</div>
 					{/if}
@@ -202,7 +229,11 @@
 							{#if result.videoType}
 								<span class="badge badge-type">{result.videoType}</span>
 							{/if}
-							<span class="badge" class:badge-library={result.storagePool === 'library'} class:badge-cache={result.storagePool === 'cache'}>
+							<span
+								class="badge"
+								class:badge-library={result.storagePool === 'library'}
+								class:badge-cache={result.storagePool === 'cache'}
+							>
 								{result.storagePool === 'library' ? 'Library' : 'Cache'}
 							</span>
 							{#if result.filesize}
@@ -222,7 +253,17 @@
 			size="lg"
 		>
 			{#snippet icon()}
-				<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<svg
+					width="32"
+					height="32"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					aria-hidden="true"
+				>
 					<circle cx="11" cy="11" r="8" />
 					<line x1="21" y1="21" x2="16.65" y2="16.65" />
 				</svg>
@@ -266,7 +307,7 @@
 		border: 1px solid var(--color-border-default);
 		border-radius: var(--radius-lg);
 		color: var(--color-text-primary);
-		font-size: 1.0625rem;
+		font-size: var(--font-size-sm);
 		transition: border-color var(--transition-fast);
 	}
 
@@ -372,7 +413,9 @@
 	}
 
 	@keyframes spin {
-		to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	.results-header {
@@ -400,7 +443,9 @@
 		border-radius: var(--radius-lg);
 		overflow: hidden;
 		cursor: pointer;
-		transition: transform var(--transition-normal), box-shadow var(--transition-normal),
+		transition:
+			transform var(--transition-normal),
+			box-shadow var(--transition-normal),
 			border-color var(--transition-normal);
 		display: flex;
 		flex-direction: column;
@@ -414,7 +459,9 @@
 	.result-card:hover {
 		border-color: var(--color-border-translucent-hover);
 		transform: translateY(-3px) scale(1.01);
-		box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59, 130, 246, 0.06);
+		box-shadow:
+			var(--shadow-lg),
+			0 0 0 1px rgba(59, 130, 246, 0.06);
 	}
 
 	.result-card:focus-visible {

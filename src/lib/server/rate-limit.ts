@@ -56,7 +56,10 @@ class RateLimiter {
 	/**
 	 * Get rate limit info for response headers
 	 */
-	getInfo(identifier: string, config: RateLimitConfig): {
+	getInfo(
+		identifier: string,
+		config: RateLimitConfig,
+	): {
 		limit: number;
 		remaining: number;
 		reset: number;
@@ -125,13 +128,15 @@ export function getClientIdentifier(event: RequestEvent): string {
 export function checkRateLimit(
 	event: RequestEvent,
 	config: RateLimitConfig,
-	identifier?: string
+	identifier?: string,
 ): void {
 	const clientId = identifier || getClientIdentifier(event);
 	const isExceeded = rateLimiter.check(clientId, config);
 
 	if (isExceeded) {
 		const info = rateLimiter.getInfo(clientId, config);
-		throw new Error(`Rate limit exceeded. Try again in ${Math.ceil((info.reset - Date.now()) / 1000)} seconds.`);
+		throw new Error(
+			`Rate limit exceeded. Try again in ${Math.ceil((info.reset - Date.now()) / 1000)} seconds.`,
+		);
 	}
 }

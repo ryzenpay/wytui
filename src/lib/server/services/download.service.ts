@@ -12,6 +12,7 @@ import { notificationService } from './notification.service';
 import { subtitleService } from './subtitle.service';
 import { extractVideoId } from '$lib/utils/youtube';
 import { libraryAccessStatus, type LibraryAccess } from '$lib/server/permissions';
+import { ffmpegPercent } from './download-progress';
 
 /**
  * Serialize download object for JSON responses
@@ -28,19 +29,19 @@ function serializeDownload(download: any): any {
 
 /** Map yt-dlp post-processing module names to task types */
 const MODULE_TO_TASK_TYPE: Record<string, string> = {
-	'SponsorBlock': 'sponsorblock',
-	'ModifyChapters': 'sponsorblock',
-	'Merger': 'merge',
-	'Metadata': 'metadata',
-	'EmbedSubtitle': 'subtitle',
-	'EmbedThumbnail': 'thumbnail',
-	'ExtractAudio': 'convert',
-	'FFmpegVideoConvertor': 'convert',
-	'FFmpegMetadata': 'metadata',
-	'ThumbnailsConvertor': 'thumbnail',
-	'FixupM3u8': 'merge',
-	'FixupDuplicateMoov': 'merge',
-	'FixupStretchedRatio': 'merge',
+	SponsorBlock: 'sponsorblock',
+	ModifyChapters: 'sponsorblock',
+	Merger: 'merge',
+	Metadata: 'metadata',
+	EmbedSubtitle: 'subtitle',
+	EmbedThumbnail: 'thumbnail',
+	ExtractAudio: 'convert',
+	FFmpegVideoConvertor: 'convert',
+	FFmpegMetadata: 'metadata',
+	ThumbnailsConvertor: 'thumbnail',
+	FixupM3u8: 'merge',
+	FixupDuplicateMoov: 'merge',
+	FixupStretchedRatio: 'merge',
 };
 
 class DownloadService {
@@ -61,6 +62,13 @@ class DownloadService {
 
 	// Guard against multiple error handler invocations per download
 	private handlingError = new Set<string>();
+
+	// Downloads the user has cancelled. Marked synchronously at the start of
+	// cancelDownload so the process `close` handler and handleDownloadError can
+	// tell a deliberate kill (yt-dlp exits with code null on SIGTERM) apart from a
+	// real failure — otherwise the close event races the async CANCELLED write and
+	// schedules a retry that respawns the process.
+	private cancelledDownloads = new Set<string>();
 
 	// Track which tasks have been created for a download
 	private downloadTaskIds = new Map<string, Map<string, string>>();
@@ -113,7 +121,7 @@ class DownloadService {
 		userId?: string,
 		subscriptionId?: string,
 		saveToLibrary?: boolean,
-		customFlags?: string[]
+		customFlags?: string[],
 	): Promise<Download> {
 		console.log('[DownloadService] Creating download:', { url, profileId, userId });
 
@@ -134,7 +142,12 @@ class DownloadService {
 			where: {
 				url,
 				status: {
-					in: [DownloadStatus.PENDING, DownloadStatus.FETCHING_INFO, DownloadStatus.DOWNLOADING, DownloadStatus.PROCESSING],
+					in: [
+						DownloadStatus.PENDING,
+						DownloadStatus.FETCHING_INFO,
+						DownloadStatus.DOWNLOADING,
+						DownloadStatus.PROCESSING,
+					],
 				},
 			},
 		});
@@ -176,9 +189,11 @@ class DownloadService {
 		console.log('[DownloadService] Download created in DB:', download.id);
 
 		if (fileLibraryRequest && userId) {
-			await prisma.libraryRequest.create({
-				data: { downloadId: download.id, userId, status: 'pending' },
-			}).catch((e) => console.error('Failed to create library request:', e));
+			await prisma.libraryRequest
+				.create({
+					data: { downloadId: download.id, userId, status: 'pending' },
+				})
+				.catch((e) => console.error('Failed to create library request:', e));
 		}
 
 		if (userId) {
@@ -243,7 +258,7 @@ class DownloadService {
 			if (settings.maxDurationSeconds && metadata.duration) {
 				if (metadata.duration > settings.maxDurationSeconds) {
 					throw new Error(
-						`Video duration (${Math.round(metadata.duration / 60)} min) exceeds limit (${Math.round(settings.maxDurationSeconds / 60)} min)`
+						`Video duration (${Math.round(metadata.duration / 60)} min) exceeds limit (${Math.round(settings.maxDurationSeconds / 60)} min)`,
 					);
 				}
 			}
@@ -251,7 +266,9 @@ class DownloadService {
 			let dislikeCount: number | undefined;
 			if (metadata.videoId && settings.rydEnabled) {
 				try {
-					const rydRes = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`);
+					const rydRes = await fetch(
+						`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`,
+					);
 					if (rydRes.ok) {
 						const rydData = await rydRes.json();
 						dislikeCount = rydData.dislikes ?? undefined;
@@ -305,7 +322,11 @@ class DownloadService {
 		if (flagStr.includes('--embed-thumbnail') || flagStr.includes('--write-thumbnail')) {
 			taskTypes.push('thumbnail');
 		}
-		if (flagStr.includes('--embed-subs') || flagStr.includes('--write-sub') || flagStr.includes('--write-auto-sub')) {
+		if (
+			flagStr.includes('--embed-subs') ||
+			flagStr.includes('--write-sub') ||
+			flagStr.includes('--write-auto-sub')
+		) {
 			taskTypes.push('subtitle');
 		}
 		if (flagStr.includes('--embed-metadata') || flagStr.includes('--add-metadata')) {
@@ -355,7 +376,13 @@ class DownloadService {
 	private async updateTask(
 		downloadId: string,
 		taskType: string,
-		data: { status?: string; progress?: number; message?: string; startedAt?: Date; completedAt?: Date }
+		data: {
+			status?: string;
+			progress?: number;
+			message?: string;
+			startedAt?: Date;
+			completedAt?: Date;
+		},
 	): Promise<void> {
 		const taskMap = this.downloadTaskIds.get(downloadId);
 		let taskId = taskMap?.get(taskType);
@@ -414,7 +441,7 @@ class DownloadService {
 		if (download.channelUrl) {
 			const effective = await channelOverrideService.getEffectiveFlags(
 				download.channelUrl,
-				mergedFlags
+				mergedFlags,
 			);
 			mergedFlags = effective.flags;
 			// If sponsorblock is disabled by override, strip SB flags from mergedFlags
@@ -423,15 +450,20 @@ class DownloadService {
 			}
 		}
 
-		const args = ytdlpService.buildArgs(
-			download.url,
-			outputPath,
-			mergedFlags,
-			{ rateLimit: settings.rateLimit, sleepInterval: settings.sleepInterval, cookiePath: settings.cookiePath }
-		);
+		const aria2cAvailable = settings.useAria2c ? await ytdlpService.isAria2cAvailable() : false;
+		const args = ytdlpService.buildArgs(download.url, outputPath, mergedFlags, {
+			rateLimit: settings.rateLimit,
+			sleepInterval: settings.sleepInterval,
+			cookiePath: settings.cookiePath,
+			concurrentFragments: settings.concurrentFragments,
+			useAria2c: settings.useAria2c,
+			httpChunkSize: settings.httpChunkSize,
+			aria2cAvailable,
+		});
 
-		if (download.duration) {
-			this.downloadDurations.set(downloadId, download.duration);
+		const durationSeconds = download.duration ?? null;
+		if (durationSeconds && durationSeconds > 0) {
+			this.downloadDurations.set(downloadId, durationSeconds);
 		}
 
 		// Create initial task records for this download
@@ -453,7 +485,7 @@ class DownloadService {
 			// stderr while still succeeding. Only a non-zero exit code is fatal.
 			(line) => {
 				if (line.startsWith('ERROR')) this.lastErrorLine.set(downloadId, line);
-			}
+			},
 		);
 
 		// Store process reference
@@ -472,29 +504,39 @@ class DownloadService {
 				this.lastActivity.delete(downloadId);
 			};
 
-			const watchdog = stallTimeoutMs > 0
-				? setInterval(() => {
-					const last = this.lastActivity.get(downloadId) ?? Date.now();
-					if (Date.now() - last > stallTimeoutMs) {
-						if (settled) return;
-						settled = true;
-						console.error(
-							`[DownloadService] Download ${downloadId} stalled (no progress for ` +
-							`${Math.round(stallTimeoutMs / 1000)}s) — killing process`
-						);
-						ytdlpService.killProcess(proc).catch(() => {});
-						cleanup();
-						reject(new Error(`Download stalled (no progress for ${Math.round(stallTimeoutMs / 1000)}s)`));
-					}
-				}, 15000)
-				: null;
+			const watchdog =
+				stallTimeoutMs > 0
+					? setInterval(() => {
+							const last = this.lastActivity.get(downloadId) ?? Date.now();
+							if (Date.now() - last > stallTimeoutMs) {
+								if (settled) return;
+								settled = true;
+								console.error(
+									`[DownloadService] Download ${downloadId} stalled (no progress for ` +
+										`${Math.round(stallTimeoutMs / 1000)}s) — killing process`,
+								);
+								ytdlpService.killProcess(proc).catch(() => {});
+								cleanup();
+								reject(
+									new Error(
+										`Download stalled (no progress for ${Math.round(stallTimeoutMs / 1000)}s)`,
+									),
+								);
+							}
+						}, 15000)
+					: null;
 
 			proc.on('close', async (code) => {
 				if (settled) return;
 				settled = true;
 				cleanup();
 
-				if (code === 0) {
+				// A user cancel kills the process group, so yt-dlp exits via signal
+				// (code === null). That's an expected stop, not a failure — resolve
+				// cleanly so it never reaches handleDownloadError and triggers a retry.
+				if (this.cancelledDownloads.has(downloadId)) {
+					resolve();
+				} else if (code === 0) {
 					await this.completeDownload(downloadId);
 					resolve();
 				} else {
@@ -519,8 +561,19 @@ class DownloadService {
 	private downloadDurations = new Map<string, number>();
 
 	private static readonly MEDIA_EXTENSIONS = new Set([
-		'mp4', 'webm', 'mkv', 'flv', 'mov', 'avi',
-		'mp3', 'm4a', 'aac', 'flac', 'opus', 'ogg', 'wav',
+		'mp4',
+		'webm',
+		'mkv',
+		'flv',
+		'mov',
+		'avi',
+		'mp3',
+		'm4a',
+		'aac',
+		'flac',
+		'opus',
+		'ogg',
+		'wav',
 	]);
 
 	private handleProgress(downloadId: string, data: any): void {
@@ -549,9 +602,9 @@ class DownloadService {
 			const step = this.processingSteps.get(downloadId) || 'Processing';
 			const duration = this.downloadDurations.get(downloadId);
 			let detail = '';
-			let pct: number | undefined;
-			if (duration && data.timeSeconds) {
-				pct = Math.min(100, Math.round((data.timeSeconds / duration) * 100));
+			const pctOrNull = data.timeSeconds ? ffmpegPercent(data.timeSeconds, duration) : null;
+			let pct: number | undefined = pctOrNull ?? undefined;
+			if (pct !== undefined) {
 				detail = data.speed ? `${pct}% · ${data.speed}` : `${pct}%`;
 			} else if (data.speed) {
 				detail = data.speed;
@@ -578,11 +631,18 @@ class DownloadService {
 				}
 			}
 
-			this.emitToOwner('download:progress', {
+			const progressData: any = {
 				id: downloadId,
 				status: 'PROCESSING',
 				processingStep,
-			}, downloadId);
+				indeterminate: pct === undefined,
+			};
+			// Only emit top-level progress field when we have a known percent
+			if (pct !== undefined) {
+				progressData.progress = pct;
+			}
+
+			this.emitToOwner('download:progress', progressData, downloadId);
 			return;
 		}
 
@@ -616,11 +676,17 @@ class DownloadService {
 			}
 
 			this.processingSteps.set(downloadId, data.step);
-			this.emitToOwner('download:progress', {
-				id: downloadId,
-				status: 'PROCESSING',
-				processingStep: data.step,
-			}, downloadId);
+			this.emitToOwner(
+				'download:progress',
+				{
+					id: downloadId,
+					status: 'PROCESSING',
+					processingStep: data.step,
+					indeterminate: true,
+					stepStartedAt: Date.now(),
+				},
+				downloadId,
+			);
 			return;
 		}
 
@@ -648,7 +714,7 @@ class DownloadService {
 					totalBytes,
 				});
 				this.updateDebounce.delete(downloadId);
-			}, 1000)
+			}, 1000),
 		);
 
 		// Update the download task progress (debounced alongside DB update)
@@ -657,14 +723,18 @@ class DownloadService {
 			message: speed ? `${speed} - ETA ${eta}` : undefined,
 		});
 
-		this.emitToOwner('download:progress', {
-			id: downloadId,
-			progress,
-			speed,
-			eta,
-			downloadedBytes: downloadedBytes?.toString(),
-			totalBytes: totalBytes?.toString(),
-		}, downloadId);
+		this.emitToOwner(
+			'download:progress',
+			{
+				id: downloadId,
+				progress,
+				speed,
+				eta,
+				downloadedBytes: downloadedBytes?.toString(),
+				totalBytes: totalBytes?.toString(),
+			},
+			downloadId,
+		);
 	}
 
 	/**
@@ -761,6 +831,9 @@ class DownloadService {
 	 * Handle download error
 	 */
 	private async handleDownloadError(downloadId: string, error: string): Promise<void> {
+		// A cancelled download must never be retried, even if an error from the
+		// dying process slips through before the CANCELLED status is written.
+		if (this.cancelledDownloads.has(downloadId)) return;
 		if (this.handlingError.has(downloadId)) return;
 		this.handlingError.add(downloadId);
 
@@ -822,12 +895,13 @@ class DownloadService {
 	 * Cancel download
 	 */
 	async cancelDownload(downloadId: string): Promise<void> {
-		const proc = this.activeProcesses.get(downloadId);
-		if (proc) {
-			await ytdlpService.killProcess(proc);
-			this.activeProcesses.delete(downloadId);
-		}
+		// Mark cancellation synchronously — BEFORE any await — so the process
+		// `close` handler and handleDownloadError see it the instant the killed
+		// process emits its (signal-driven, code === null) exit.
+		this.cancelledDownloads.add(downloadId);
 
+		// Clear pending timers up front so an already-scheduled retry can't fire
+		// while we're waiting for the process to die.
 		const retryTimeout = this.retryTimeouts.get(downloadId);
 		if (retryTimeout) {
 			clearTimeout(retryTimeout);
@@ -840,13 +914,23 @@ class DownloadService {
 			this.updateDebounce.delete(downloadId);
 		}
 
-		await this.updateDownload(downloadId, {
-			status: DownloadStatus.CANCELLED,
-		});
+		try {
+			const proc = this.activeProcesses.get(downloadId);
+			if (proc) {
+				await ytdlpService.killProcess(proc);
+				this.activeProcesses.delete(downloadId);
+			}
 
-		this.clearDownloadState(downloadId);
-		this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
-		this.downloadOwners.delete(downloadId);
+			await this.updateDownload(downloadId, {
+				status: DownloadStatus.CANCELLED,
+			});
+
+			this.clearDownloadState(downloadId);
+			this.emitToOwner('download:cancelled', { id: downloadId }, downloadId);
+			this.downloadOwners.delete(downloadId);
+		} finally {
+			this.cancelledDownloads.delete(downloadId);
+		}
 	}
 
 	/**
@@ -885,6 +969,30 @@ class DownloadService {
 	}
 
 	/**
+	 * Admin: delete every download (any status/storage pool), optionally scoped to
+	 * a single user. Each is removed via deleteDownload so in-progress processes
+	 * are cancelled and files/archives cleaned up. Returns the number deleted.
+	 */
+	async clearAllDownloads(userId?: string): Promise<number> {
+		const downloads = await prisma.download.findMany({
+			where: userId ? { userId } : {},
+			select: { id: true },
+		});
+
+		let deleted = 0;
+		for (const { id } of downloads) {
+			try {
+				await this.deleteDownload(id);
+				deleted++;
+			} catch (e) {
+				console.error(`[DownloadService] Failed to clear download ${id}:`, e);
+			}
+		}
+
+		return deleted;
+	}
+
+	/**
 	 * Resume a PENDING download (e.g. after server restart)
 	 */
 	resumeDownload(downloadId: string, userId?: string): void {
@@ -911,7 +1019,9 @@ class DownloadService {
 		const settings = await this.getSettings();
 		if (metadata.videoId && settings.rydEnabled) {
 			try {
-				const rydRes = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`);
+				const rydRes = await fetch(
+					`https://returnyoutubedislikeapi.com/votes?videoId=${metadata.videoId}`,
+				);
 				if (rydRes.ok) {
 					const rydData = await rydRes.json();
 					dislikeCount = rydData.dislikes ?? undefined;
@@ -987,7 +1097,7 @@ class DownloadService {
 			maxHeight?: number;
 			dateFrom?: Date;
 			dateTo?: Date;
-		}
+		},
 	): Promise<Download[]> {
 		const where: any = {};
 
@@ -1015,10 +1125,7 @@ class DownloadService {
 						watchProgress: {
 							some: {
 								userId,
-								OR: [
-									{ watched: true },
-									{ position: { gt: 0 } },
-								],
+								OR: [{ watched: true }, { position: { gt: 0 } }],
 							},
 						},
 					};
@@ -1114,11 +1221,15 @@ class DownloadService {
 		// Broadcast status changes to frontend
 		if (data.status) {
 			console.log('[DownloadService] Status change:', downloadId, '→', data.status);
-			this.emitToOwner('download:status', {
-				id: downloadId,
-				status: data.status,
-				...serialized,
-			}, downloadId);
+			this.emitToOwner(
+				'download:status',
+				{
+					id: downloadId,
+					status: data.status,
+					...serialized,
+				},
+				downloadId,
+			);
 		}
 
 		return serialized;
@@ -1161,7 +1272,10 @@ class DownloadService {
 	async resolveLibraryAccess(userId?: string): Promise<LibraryAccess> {
 		if (!userId) return 'denied';
 		const [user, settings] = await Promise.all([
-			prisma.user.findUnique({ where: { id: userId }, select: { libraryAccess: true, isAdmin: true } }),
+			prisma.user.findUnique({
+				where: { id: userId },
+				select: { libraryAccess: true, isAdmin: true },
+			}),
 			this.getSettings(),
 		]);
 		return libraryAccessStatus(user, settings);
