@@ -1,9 +1,9 @@
-import { spawn } from 'child_process';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { createHash } from 'crypto';
 import { youtubeLinkService } from './youtube-link.service';
+import { runYtdlpJson } from '../utils/ytdlp-json';
 
 export interface YtEntry {
 	id: string;
@@ -38,8 +38,6 @@ export function isYouTubeUrl(url: unknown): url is string {
 		return false;
 	}
 }
-
-const YTDLP = process.env.YTDLP_PATH || '/usr/local/bin/yt-dlp';
 
 /** Pure parser for `yt-dlp --flat-playlist --dump-single-json` output. */
 export function parseFlatEntries(json: string): YtEntry[] {
@@ -117,51 +115,10 @@ class YouTubeService {
 		}
 	}
 
-	/** Run yt-dlp and return stdout (flat JSON). Cookies are optional. */
-	private runYtdlpJson(cookiePath: string | null, target: string): Promise<string> {
-		return new Promise((resolve, reject) => {
-			const args = [
-				'--flat-playlist',
-				'--dump-single-json',
-				'--no-warnings',
-				...(cookiePath ? ['--cookies', cookiePath] : []),
-				target,
-			];
-			const p = spawn(YTDLP, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-			let out = '';
-			let err = '';
-			let settled = false;
-
-			const timeout = setTimeout(() => {
-				if (settled) return;
-				settled = true;
-				try {
-					p.kill('SIGKILL');
-				} catch {}
-				reject(new Error('yt-dlp timed out'));
-			}, 120000);
-
-			p.stdout.on('data', (c) => (out += c.toString()));
-			p.stderr.on('data', (c) => (err += c.toString()));
-			p.on('error', (e) => {
-				if (settled) return;
-				settled = true;
-				clearTimeout(timeout);
-				reject(e);
-			});
-			p.on('close', (code) => {
-				if (settled) return;
-				settled = true;
-				clearTimeout(timeout);
-				code === 0 ? resolve(out) : reject(new Error(err || `yt-dlp exit ${code}`));
-			});
-		});
-	}
-
 	private fetchList(userId: string, target: string) {
 		return this.withCookieFile(userId, async (cookiePath) => {
 			try {
-				const json = await this.runYtdlpJson(cookiePath, target);
+				const json = await runYtdlpJson(target, { cookiePath });
 				return parseFlatEntries(json);
 			} catch {
 				return { needsRelink: true } as NeedsRelink;
@@ -264,7 +221,7 @@ class YouTubeService {
 	 * the parsed entries. Throws on failure.
 	 */
 	async fetchPlaylistFlat(url: string): Promise<{ title: string | null; entries: YtEntry[] }> {
-		const json = await this.runYtdlpJson(null, url);
+		const json = await runYtdlpJson(url);
 		let title: string | null = null;
 		try {
 			const t = JSON.parse(json)?.title;

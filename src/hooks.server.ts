@@ -29,19 +29,27 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (isApiPath) {
 		const clientId = getClientIdentifier(event);
 		let rateLimitConfig = RATE_LIMITS.general;
+		let bucketName = 'general';
 
 		// Apply stricter limits for specific endpoints
 		if (event.url.pathname.startsWith('/api/auth') || event.url.pathname.startsWith('/api/setup')) {
 			rateLimitConfig = RATE_LIMITS.auth;
+			bucketName = 'auth';
 		} else if (event.url.pathname.startsWith('/api/downloads')) {
 			rateLimitConfig = RATE_LIMITS.downloads;
+			bucketName = 'downloads';
 		} else if (event.url.pathname.startsWith('/api/settings')) {
 			rateLimitConfig = RATE_LIMITS.settings;
+			bucketName = 'settings';
+		} else if (event.url.pathname.startsWith('/api/youtube/search')) {
+			rateLimitConfig = RATE_LIMITS.youtubeSearch;
+			bucketName = 'youtubeSearch';
 		}
 
-		const isExceeded = rateLimiter.check(clientId, rateLimitConfig);
+		const rateLimitKey = `${bucketName}:${clientId}`;
+		const isExceeded = rateLimiter.check(rateLimitKey, rateLimitConfig);
 		if (isExceeded) {
-			const info = rateLimiter.getInfo(clientId, rateLimitConfig);
+			const info = rateLimiter.getInfo(rateLimitKey, rateLimitConfig);
 			const resetInSeconds = Math.ceil((info.reset - Date.now()) / 1000);
 			throw error(429, `Too many requests. Try again in ${resetInSeconds} seconds.`);
 		}
@@ -282,7 +290,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set(
 		'Content-Security-Policy',
-		"default-src 'self'; img-src 'self' https://*.ytimg.com https://*.ggpht.com https://i.ytimg.com data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://www.gstatic.com; connect-src 'self' https://sponsor.ajay.app https://returnyoutubedislikeapi.com; media-src 'self'; frame-ancestors 'none'",
+		"default-src 'self'; img-src 'self' https://*.ytimg.com https://*.ggpht.com https://*.googleusercontent.com https://i.ytimg.com data:; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://www.gstatic.com; connect-src 'self' https://sponsor.ajay.app https://returnyoutubedislikeapi.com; media-src 'self'; frame-ancestors 'none'",
 	);
 
 	return response;

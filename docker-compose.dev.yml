@@ -22,6 +22,10 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      # Keep SvelteKit's generated output container-local so it never collides
+      # with the host's .svelte-kit (host tooling like `npm run check` and the
+      # container's Vite dev server each own their own copy).
+      - /app/.svelte-kit
       - downloads:/downloads
       - library:/media
     ports:

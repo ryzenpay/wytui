@@ -31,6 +31,7 @@
 
 	const libraryItems: NavItem[] = [
 		{ label: 'Downloads', href: '/downloads', icon: 'download' },
+		{ label: 'Search', href: '/search', icon: 'search' },
 		{ label: 'Channels', href: '/channels', icon: 'channel' },
 		{ label: 'Subscriptions', href: '/subscriptions', icon: 'broadcast' },
 		{ label: 'Monitors', href: '/monitors', icon: 'eye' },
@@ -519,6 +520,9 @@
 		flex-direction: column;
 		z-index: 100;
 		overflow-y: auto;
+		/* Keep the wheel inside the sidebar: without this, scrolling over the
+		   sidebar chains to the document and scrolls the main content instead. */
+		overscroll-behavior: contain;
 		transition: width 0.2s ease;
 	}
 
@@ -631,6 +635,7 @@
 		flex-direction: column;
 		gap: var(--spacing-lg);
 		overflow-y: auto;
+		overscroll-behavior: contain;
 	}
 
 	.nav-group {

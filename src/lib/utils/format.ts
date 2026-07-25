@@ -71,3 +71,21 @@ export function formatUptime(ms: number): string {
 	if (hours > 0) return `${hours}h ${minutes}m`;
 	return `${minutes}m`;
 }
+
+/** Abbreviate a count the way YouTube does: 2761758 -> "2.8M". */
+export function formatCount(n: number): string {
+	const units: [number, string][] = [
+		[1_000_000_000, 'B'],
+		[1_000_000, 'M'],
+		[1_000, 'K'],
+	];
+	for (const [size, suffix] of units) {
+		if (n >= size) {
+			const scaled = n / size;
+			// One decimal below 100, none above — "2.8M" but "999K".
+			const text = scaled < 100 ? scaled.toFixed(1) : String(Math.round(scaled));
+			return `${text.replace(/\.0$/, '')}${suffix}`;
+		}
+	}
+	return String(n);
+}

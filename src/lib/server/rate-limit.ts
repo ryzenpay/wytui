@@ -105,6 +105,13 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
 		windowMs: 60 * 1000,
 		maxRequests: 100,
 	},
+	// Each uncached search spawns a yt-dlp process. Cache hits count against
+	// this too (the hook runs before the handler and cannot tell), so the
+	// budget has to accommodate filter-fiddling, which is mostly cache hits.
+	youtubeSearch: {
+		windowMs: 60 * 1000,
+		maxRequests: 120,
+	},
 	general: {
 		windowMs: 60 * 1000,
 		maxRequests: 500,

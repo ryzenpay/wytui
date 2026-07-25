@@ -224,6 +224,7 @@ export function buildSpec() {
 			{ name: 'Settings', description: 'Application settings' },
 			{ name: 'Users', description: 'User management (admin)' },
 			{ name: 'Library', description: 'Storage and library management' },
+			{ name: 'YouTube', description: 'YouTube search' },
 			{ name: 'Channel Overrides', description: 'Per-channel download configuration overrides' },
 			{ name: 'System', description: 'System health and setup' },
 		],
