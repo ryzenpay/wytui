@@ -115,10 +115,10 @@ class YouTubeService {
 		}
 	}
 
-	private fetchList(userId: string, target: string) {
+	private fetchList(userId: string, target: string, opts: { timeoutMs?: number } = {}) {
 		return this.withCookieFile(userId, async (cookiePath) => {
 			try {
-				const json = await runYtdlpJson(target, { cookiePath });
+				const json = await runYtdlpJson(target, { cookiePath, timeoutMs: opts.timeoutMs });
 				return parseFlatEntries(json);
 			} catch {
 				return { needsRelink: true } as NeedsRelink;
@@ -152,8 +152,8 @@ class YouTubeService {
 	fetchHistory(userId: string) {
 		return this.fetchList(userId, ':ythistory');
 	}
-	fetchPlaylist(userId: string, url: string) {
-		return this.fetchList(userId, url);
+	fetchPlaylist(userId: string, url: string, opts: { timeoutMs?: number } = {}) {
+		return this.fetchList(userId, url, opts);
 	}
 
 	/**

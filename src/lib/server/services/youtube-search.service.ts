@@ -331,6 +331,10 @@ export const youtubeSearchService = new YouTubeSearchService();
 const MAX_QUERY_LENGTH = 200;
 const MAX_LIMIT = 50;
 const DEFAULT_LIMIT = 20;
+// Forwarded to yt-dlp as --playlist-start/--playlist-end (see below). Left
+// unbounded, a caller could force yt-dlp to page arbitrarily deep into
+// YouTube's results on every request — scraping-abuse and ban-risk surface.
+const MAX_OFFSET = 1000;
 
 const VALID_TYPES: SearchResultType[] = ['video', 'channel', 'playlist'];
 const VALID_SORTS: SearchSort[] = ['relevance', 'date', 'views', 'rating'];
@@ -366,7 +370,7 @@ export function parseSearchParams(sp: URLSearchParams): SearchOptions {
 		sort: pickEnum(sp.get('sort'), VALID_SORTS, 'relevance', 'sort'),
 		uploadDate: pickEnum(sp.get('uploadDate'), VALID_UPLOAD_DATES, 'any', 'uploadDate'),
 		duration: pickEnum(sp.get('duration'), VALID_DURATIONS, 'any', 'duration'),
-		offset: pickInt(sp.get('offset'), 0, 0, Number.MAX_SAFE_INTEGER),
+		offset: pickInt(sp.get('offset'), 0, 0, MAX_OFFSET),
 		limit: pickInt(sp.get('limit'), DEFAULT_LIMIT, 1, MAX_LIMIT),
 	};
 }

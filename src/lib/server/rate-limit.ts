@@ -112,6 +112,14 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
 		windowMs: 60 * 1000,
 		maxRequests: 120,
 	},
+	// Playlist/subscription/history/watch-later routes each spawn one or more
+	// yt-dlp processes per request (playlist sync fans out to one call per
+	// selected playlist), and some support a cache-bypassing `refresh` flag.
+	// Kept far below `general` so this can't be used to hammer yt-dlp/YouTube.
+	youtubeScrape: {
+		windowMs: 60 * 1000,
+		maxRequests: 30,
+	},
 	general: {
 		windowMs: 60 * 1000,
 		maxRequests: 500,

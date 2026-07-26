@@ -10,7 +10,7 @@ import { ensureDefaults } from '$lib/server/init';
 import { redirect, type Handle, error } from '@sveltejs/kit';
 import { prisma } from '$lib/server/db';
 import { randomBytes } from 'crypto';
-import { isCsrfExempt, validateCsrfToken } from '$lib/server/csrf';
+import { isCsrfExempt, validateCsrfToken, isExtensionAllowedPath } from '$lib/server/csrf';
 import { rateLimiter, RATE_LIMITS, getClientIdentifier } from '$lib/server/rate-limit';
 
 // Initialise database defaults and start background jobs on server startup
@@ -44,6 +44,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 		} else if (event.url.pathname.startsWith('/api/youtube/search')) {
 			rateLimitConfig = RATE_LIMITS.youtubeSearch;
 			bucketName = 'youtubeSearch';
+		} else if (
+			event.url.pathname.startsWith('/api/youtube/') &&
+			event.url.pathname !== '/api/youtube/link' &&
+			event.url.pathname !== '/api/youtube/subscriptions/export'
+		) {
+			rateLimitConfig = RATE_LIMITS.youtubeScrape;
+			bucketName = 'youtubeScrape';
 		}
 
 		const rateLimitKey = `${bucketName}:${clientId}`;
@@ -225,9 +232,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// Handle CORS for browser extension requests to the API
 	if (isApiPath) {
 		const origin = event.request.headers.get('origin');
-		// Allow browser extension origins (chrome-extension://, moz-extension://, etc.)
+		// Allow browser extension origins (chrome-extension://, moz-extension://, etc.),
+		// but only on the routes the extension actually calls — see
+		// isExtensionAllowedPath for why the origin itself can't be pinned to a
+		// specific extension.
 		const isExtensionOrigin =
-			origin && /^(chrome-extension|moz-extension|safari-web-extension):\/\//.test(origin);
+			!!origin &&
+			/^(chrome-extension|moz-extension|safari-web-extension):\/\//.test(origin) &&
+			isExtensionAllowedPath(event.url.pathname);
 
 		if (event.request.method === 'OPTIONS') {
 			const headers: Record<string, string> = {
